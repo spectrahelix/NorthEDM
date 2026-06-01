@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 
 type Vendor = {
   id: number;
@@ -11,6 +11,7 @@ type Vendor = {
 };
 
 export default async function HomePage() {
+  const supabase = await createClient();
   const { data } = await supabase
     .from("vendors")
     .select("id, name, category, description, vendor_type, is_founder")

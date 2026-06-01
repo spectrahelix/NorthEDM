@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 
 type Vendor = {
@@ -36,6 +36,7 @@ export default async function VendorDetailPage({
 }) {
   const { id } = await params;
   const vendorId = Number(id);
+  const supabase = await createClient();
 
   const { data: vendorData, error: vendorError } = await supabase
     .from("vendors")
