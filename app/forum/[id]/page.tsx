@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ReplyComposer } from "./components/ReplyComposer";
 import { DeleteButton } from "@/app/components/DeleteButton";
-import { getProfile } from "@/utils/supabase/profile";
+import { getProfile, getUsernames } from "@/utils/supabase/profile";
 
 type Thread = {
   id: number;
@@ -34,8 +34,8 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function initials(userId: string) {
-  return userId.slice(0, 2).toUpperCase();
+function avatarText(username: string | undefined) {
+  return username ? username.slice(0, 2).toUpperCase() : "?";
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -82,6 +82,9 @@ export default async function ThreadDetailPage({
   const thread = threadData as Thread;
   const replies = (repliesData ?? []) as Reply[];
 
+  const allUserIds = [...new Set([thread.user_id, ...replies.map((r) => r.user_id)])];
+  const usernameMap = await getUsernames(supabase, allUserIds);
+
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
       <div className="mx-auto max-w-3xl px-6 py-10">
@@ -96,7 +99,7 @@ export default async function ThreadDetailPage({
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-7 mb-4">
           <div className="flex items-start gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3AFFD4]/10 font-dm-mono text-sm text-[#3AFFD4]">
-              {initials(thread.user_id)}
+              {avatarText(usernameMap[thread.user_id])}
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -107,6 +110,11 @@ export default async function ThreadDetailPage({
                 >
                   {thread.category}
                 </span>
+                {usernameMap[thread.user_id] && (
+                  <span className="font-dm-mono text-xs text-neutral-500">
+                    @{usernameMap[thread.user_id]}
+                  </span>
+                )}
                 <span className="font-dm-mono text-xs text-neutral-600">
                   {timeAgo(thread.created_at)}
                 </span>
@@ -141,10 +149,15 @@ export default async function ThreadDetailPage({
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 font-dm-mono text-xs text-neutral-400">
-                    {initials(reply.user_id)}
+                    {avatarText(usernameMap[reply.user_id])}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3">
+                      {usernameMap[reply.user_id] && (
+                        <span className="font-dm-mono text-xs text-neutral-400">
+                          @{usernameMap[reply.user_id]}
+                        </span>
+                      )}
                       <span className="font-dm-mono text-xs text-neutral-600">
                         {timeAgo(reply.created_at)}
                       </span>
@@ -162,7 +175,7 @@ export default async function ThreadDetailPage({
           </div>
         )}
 
-        <ReplyComposer threadId={thread.id} user={user} />
+        <ReplyComposer threadId={thread.id} user={user} profileUsername={profile?.username ?? null} />
       </div>
     </main>
   );

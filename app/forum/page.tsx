@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { ForumFilters } from "./components/ForumFilters";
 import { ForumComposer } from "./components/ForumComposer";
 import { DeleteButton } from "@/app/components/DeleteButton";
-import { getProfile } from "@/utils/supabase/profile";
+import { getProfile, getUsernames } from "@/utils/supabase/profile";
 import { Suspense } from "react";
 
 const CATEGORIES = [
@@ -39,8 +39,8 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function initials(userId: string) {
-  return userId.slice(0, 2).toUpperCase();
+function avatarText(username: string | undefined) {
+  return username ? username.slice(0, 2).toUpperCase() : "?";
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -83,6 +83,9 @@ export default async function ForumPage({
   const { data } = await query;
   const threads = (data ?? []) as Thread[];
   const postCategories = CATEGORIES.filter((c) => c !== "All Posts");
+
+  const userIds = [...new Set(threads.map((t) => t.user_id))];
+  const usernameMap = await getUsernames(supabase, userIds);
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -138,7 +141,7 @@ export default async function ForumPage({
             >
               <ForumFilters initialQ={q ?? ""} />
             </Suspense>
-            <ForumComposer user={user} categories={postCategories} />
+            <ForumComposer user={user} categories={postCategories} profileUsername={profile?.username ?? null} />
           </div>
 
           {category && category !== "All Posts" && (
@@ -177,7 +180,7 @@ export default async function ForumPage({
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3AFFD4]/10 font-dm-mono text-xs text-[#3AFFD4]">
-                      {initials(thread.user_id)}
+                      {avatarText(usernameMap[thread.user_id])}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -191,6 +194,11 @@ export default async function ForumPage({
                         <span className="font-dm-mono text-xs text-neutral-600">
                           {timeAgo(thread.created_at)}
                         </span>
+                        {usernameMap[thread.user_id] && (
+                          <span className="font-dm-mono text-xs text-neutral-500">
+                            @{usernameMap[thread.user_id]}
+                          </span>
+                        )}
                       </div>
                       <h3 className="mt-1.5 font-semibold leading-snug text-neutral-100">
                         {thread.title}
