@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { SocialAuth } from "@/app/components/SocialAuth";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
@@ -127,6 +128,14 @@ export default function SignupPage() {
           <p className="mb-7 text-sm text-neutral-400">
             Your account is your identity across bookings, the marketplace, and the forum.
           </p>
+
+          <SocialAuth next="/profile/edit" />
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

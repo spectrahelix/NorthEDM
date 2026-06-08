@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { SocialAuth } from "@/app/components/SocialAuth";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -53,6 +54,14 @@ export default function LoginPage() {
           <p className="mb-7 text-sm text-neutral-400">
             Sign in to post, reply, and connect with the community.
           </p>
+
+          <SocialAuth next="/feed" />
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
