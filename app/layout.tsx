@@ -1,8 +1,6 @@
 import Link from "next/link";
 import "./globals.css";
-import SignOutButton from "./components/SignOutButton";
-import { NotificationBell } from "./components/NotificationBell";
-import { MessagesNavLink } from "./components/MessagesBadge";
+import { NavBar } from "./components/NavBar";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
@@ -38,7 +36,6 @@ export default async function RootLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get forum role for nav logic
   let forumRole: string | null = null;
   if (user) {
     const { data: userProfile } = await supabase
@@ -49,13 +46,11 @@ export default async function RootLayout({
     forumRole = userProfile?.role ?? null;
   }
 
-  const isForumAdmin =
-    forumRole === "archon" || forumRole === "warden";
-
-  // Also check legacy email-based admin
   const ADMIN_EMAIL = "cjblue27@gmail.com";
-  const isLegacyAdmin = user?.email === ADMIN_EMAIL;
-  const showAdmin = isForumAdmin || isLegacyAdmin;
+  const showAdmin =
+    forumRole === "archon" ||
+    forumRole === "warden" ||
+    user?.email === ADMIN_EMAIL;
 
   return (
     <html
@@ -72,64 +67,7 @@ export default async function RootLayout({
               </div>
             </Link>
 
-            <nav className="flex items-center gap-4 text-sm text-neutral-300">
-              <Link href="/" className="transition hover:text-white">
-                Home
-              </Link>
-              <Link href="/marketplace" className="transition hover:text-white">
-                Marketplace
-              </Link>
-              <Link href="/vendors" className="transition hover:text-white">
-                Vendors
-              </Link>
-              <Link href="/foraging" className="transition hover:text-white">
-                Foraging
-              </Link>
-              <Link href="/feed" className="transition hover:text-white">
-                Feed
-              </Link>
-              <Link
-                href="/forum"
-                className="rounded-full bg-[#E8FF47]/10 px-3 py-1 text-[#E8FF47] transition hover:bg-[#E8FF47]/20"
-              >
-                Forum
-              </Link>
-
-              {user ? (
-                <>
-                  <MessagesNavLink userId={user.id} />
-
-                  <NotificationBell userId={user.id} />
-
-                  <Link
-                    href={`/profile/${user.id}`}
-                    className="transition hover:text-white"
-                  >
-                    Profile
-                  </Link>
-
-                  {showAdmin && (
-                    <Link
-                      href="/admin"
-                      className="font-dm-mono text-xs uppercase tracking-widest text-[#FF5C3A]/80 transition hover:text-[#FF5C3A]"
-                    >
-                      Admin
-                    </Link>
-                  )}
-
-                  <SignOutButton />
-                </>
-              ) : (
-                <>
-                  <Link href="/signup" className="transition hover:text-white">
-                    Signup
-                  </Link>
-                  <Link href="/login" className="transition hover:text-white">
-                    Login
-                  </Link>
-                </>
-              )}
-            </nav>
+            <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} />
           </div>
         </header>
 
