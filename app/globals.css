@@ -10,6 +10,16 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* CrowdWave fonts */
+  --font-bebas: var(--font-bebas-neue);
+  --font-dm-sans: var(--font-dm-sans-var);
+  --font-dm-mono: var(--font-dm-mono-var);
+
+  /* CrowdWave accent colors */
+  --color-cw-yellow: #E8FF47;
+  --color-cw-coral: #FF5C3A;
+  --color-cw-teal: #3AFFD4;
 }
 
 @media (prefers-color-scheme: dark) {

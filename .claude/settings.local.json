@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(head *)",
+      "PowerShell(git config *)",
+      "Bash(git --version)",
+      "Bash(git config *)",
+      "PowerShell(Copy-Item *)"
+    ]
+  }
+}
