@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -24,8 +25,11 @@ export function NavBar({
   showAdmin: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Close drawer on route change
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -120,9 +124,9 @@ export function NavBar({
         </button>
       </div>
 
-      {/* ── Mobile fullscreen drawer ───────────────────────────── */}
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+      {/* ── Mobile drawer — portaled to body so backdrop-blur on header can't trap it ── */}
+      {mounted && open && createPortal(
+        <div className="fixed inset-0 z-[9999] lg:hidden">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -220,7 +224,8 @@ export function NavBar({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
