@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const ADMIN_EMAIL = "cjblue27@gmail.com";
+
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next();
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,42 +14,54 @@ export async function proxy(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookies) {
-          cookies.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
         },
       },
     }
   );
 
+  // Always use getUser() — never getSession() — to verify with the auth server
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const protectedRoutes = ["/admin"];
-  const isProtected = protectedRoutes.some((r) =>
-    request.nextUrl.pathname.startsWith(r)
-  );
+  const path = request.nextUrl.pathname;
 
-  if (isProtected) {
+  // Protect all /admin/* routes
+  if (path.startsWith("/admin")) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    // Enforce actual admin role
+
+    // Check forum role (archon/warden) OR legacy admin email
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("role")
       .eq("id", user.id)
       .single();
-    if (profile?.role !== "admin") {
+
+    const isAdmin =
+      profile?.role === "archon" ||
+      profile?.role === "warden" ||
+      user.email === ADMIN_EMAIL;
+
+    if (!isAdmin) {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
-  return response;
+  return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/((?!_next|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };
