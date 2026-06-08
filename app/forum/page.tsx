@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { ForumFilters } from "./components/ForumFilters";
 import { ForumComposer } from "./components/ForumComposer";
+import { DeleteButton } from "@/app/components/DeleteButton";
+import { getProfile } from "@/utils/supabase/profile";
 import { Suspense } from "react";
 
 const CATEGORIES = [
@@ -62,6 +64,9 @@ export default async function ForumPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const profile = await getProfile(supabase);
+  const isAdmin = profile?.role === "admin";
 
   let query = supabase
     .from("threads")
@@ -194,6 +199,11 @@ export default async function ForumPage({
                       <div className="mt-3 flex items-center gap-4 font-dm-mono text-xs text-neutral-600">
                         <span>{thread.reply_count} replies</span>
                         <span>♥ {thread.heart_count}</span>
+                        {isAdmin && (
+                          <span onClick={(e) => e.preventDefault()}>
+                            <DeleteButton table="threads" id={thread.id} />
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

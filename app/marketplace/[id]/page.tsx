@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
+import { getProfile } from "@/utils/supabase/profile";
+import { VendorEditForm } from "./components/VendorEditForm";
 
 type Vendor = {
   id: number;
@@ -14,6 +16,7 @@ type Vendor = {
   is_public: boolean | null;
   is_founder: boolean | null;
   status: string | null;
+  user_id: string | null;
 };
 
 type Product = {
@@ -37,6 +40,10 @@ export default async function VendorDetailPage({
   const { id } = await params;
   const vendorId = Number(id);
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const profile = await getProfile(supabase);
 
   const { data: vendorData, error: vendorError } = await supabase
     .from("vendors")
@@ -51,6 +58,10 @@ export default async function VendorDetailPage({
   if (vendorError || !vendor) {
     notFound();
   }
+
+  const canEdit =
+    profile?.role === "admin" ||
+    (user && vendor.user_id === user.id);
 
   const { data: productData } = await supabase
     .from("products")
@@ -74,6 +85,18 @@ export default async function VendorDetailPage({
             <h1 className="text-5xl font-semibold">
               {vendor.name || "Unnamed Vendor"}
             </h1>
+            {canEdit && (
+              <VendorEditForm
+                vendorId={vendor.id}
+                initial={{
+                  name: vendor.name ?? "",
+                  description: vendor.description ?? "",
+                  category: vendor.category ?? "",
+                  contact: vendor.contact ?? "",
+                  email: vendor.email ?? "",
+                }}
+              />
+            )}
 
             {vendor.vendor_type === "featured" ? (
               <span className="rounded-full bg-purple-500/20 px-3 py-1 text-sm text-purple-300">

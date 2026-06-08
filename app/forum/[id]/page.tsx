@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ReplyComposer } from "./components/ReplyComposer";
+import { DeleteButton } from "@/app/components/DeleteButton";
+import { getProfile } from "@/utils/supabase/profile";
 
 type Thread = {
   id: number;
@@ -61,6 +63,7 @@ export default async function ThreadDetailPage({
     {
       data: { user },
     },
+    profile,
   ] = await Promise.all([
     supabase.from("threads").select("*").eq("id", id).single(),
     supabase
@@ -69,7 +72,10 @@ export default async function ThreadDetailPage({
       .eq("thread_id", id)
       .order("created_at", { ascending: true }),
     supabase.auth.getUser(),
+    getProfile(supabase),
   ]);
+
+  const isAdmin = profile?.role === "admin";
 
   if (threadError || !threadData) notFound();
 
@@ -114,6 +120,9 @@ export default async function ThreadDetailPage({
               <div className="mt-5 flex items-center gap-5 border-t border-white/10 pt-4 font-dm-mono text-xs text-neutral-600">
                 <span>{replies.length} replies</span>
                 <span>♥ {thread.heart_count}</span>
+                {isAdmin && (
+                  <DeleteButton table="threads" id={thread.id} redirectTo="/forum" label="Delete thread" />
+                )}
               </div>
             </div>
           </div>
@@ -135,9 +144,14 @@ export default async function ThreadDetailPage({
                     {initials(reply.user_id)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-dm-mono text-xs text-neutral-600">
-                      {timeAgo(reply.created_at)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-dm-mono text-xs text-neutral-600">
+                        {timeAgo(reply.created_at)}
+                      </span>
+                      {isAdmin && (
+                        <DeleteButton table="replies" id={reply.id} />
+                      )}
+                    </div>
                     <p className="mt-1.5 text-sm leading-relaxed text-neutral-300 whitespace-pre-wrap">
                       {reply.body}
                     </p>
