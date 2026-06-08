@@ -70,11 +70,14 @@ export default async function RootLayout({
               <Link href="/wook-world" className="hover:text-white">
                 Wook World
               </Link>
+              <Link href="/feed" className="hover:text-white">
+                Feed
+              </Link>
               <Link
-                href="/crowdwave"
+                href="/forum"
                 className="rounded-full bg-[#E8FF47]/10 px-3 py-1 text-[#E8FF47] hover:bg-[#E8FF47]/20 transition"
               >
-                CrowdWave
+                Forum
               </Link>
               {user ? (
                 <>
