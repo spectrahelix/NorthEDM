@@ -1,5 +1,18 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "NorthEDM — Unite the Northeast",
+  description:
+    "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, vendor marketplace, and Wook World. Your regional home base.",
+  openGraph: {
+    title: "NorthEDM — Unite the Northeast",
+    description:
+      "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, vendor marketplace, and Wook World.",
+    url: "https://northedm.com",
+  },
+};
 
 type Vendor = {
   id: number;

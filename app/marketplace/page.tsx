@@ -1,5 +1,18 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Marketplace",
+  description:
+    "Browse the NorthEDM Marketplace — mushrooms, holistic goods, art, festival gear, workshops, and founder vendors across the Northeast.",
+  openGraph: {
+    title: "NorthEDM Marketplace",
+    description:
+      "Mushrooms, holistic goods, art, festival gear, workshops, and founder vendors across the Northeast.",
+    url: "https://northedm.com/marketplace",
+  },
+};
 
 type Vendor = {
   id: number;

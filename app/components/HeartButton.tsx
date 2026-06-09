@@ -31,6 +31,7 @@ export function HeartButton({
     setPending(true);
     const supabase = createClient();
     const next = !hearted;
+    const snapshot = count; // capture before optimistic update
     setHearted(next);
     setCount((c) => (next ? c + 1 : c - 1));
 
@@ -40,7 +41,7 @@ export function HeartButton({
         .insert({ thread_id: threadId, user_id: userId });
       await supabase
         .from("threads")
-        .update({ heart_count: count + 1 })
+        .update({ heart_count: snapshot + 1 })
         .eq("id", threadId);
     } else {
       await supabase
@@ -50,7 +51,7 @@ export function HeartButton({
         .eq("user_id", userId);
       await supabase
         .from("threads")
-        .update({ heart_count: Math.max(0, count - 1) })
+        .update({ heart_count: Math.max(0, snapshot - 1) })
         .eq("id", threadId);
     }
     setPending(false);

@@ -25,11 +25,10 @@ export default async function AdminLayout({
     .eq("id", user.id)
     .single();
 
-  const isForumAdmin =
-    profile?.role === "archon" || profile?.role === "warden";
+  const isRoleAdmin = profile?.role === "archon" || profile?.role === "warden";
   const isLegacyAdmin = user.email === ADMIN_EMAIL;
 
-  if (!isForumAdmin && !isLegacyAdmin) {
+  if (!isRoleAdmin && !isLegacyAdmin) {
     redirect("/");
   }
 

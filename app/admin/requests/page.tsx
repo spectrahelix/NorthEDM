@@ -11,9 +11,20 @@ export default async function AdminRequestsPage() {
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user || user.email !== ADMIN_EMAIL) {
-    redirect("/");
-  }
+  if (authError || !user) redirect("/");
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin =
+    profile?.role === "archon" ||
+    profile?.role === "warden" ||
+    user.email === ADMIN_EMAIL;
+
+  if (!isAdmin) redirect("/");
 
   const { data: requests, error } = await supabase
     .from("requests")

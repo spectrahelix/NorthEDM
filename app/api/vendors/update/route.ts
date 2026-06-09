@@ -11,7 +11,18 @@ export async function POST(req: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.email !== ADMIN_EMAIL) {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("role")
+      .eq("id", user?.id ?? "")
+      .single();
+
+    const isAdmin =
+      profile?.role === "archon" ||
+      profile?.role === "warden" ||
+      user?.email === ADMIN_EMAIL;
+
+    if (!user || !isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -22,8 +22,43 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: "NorthEDM",
-  description: "Unite the Northeast",
+  metadataBase: new URL("https://northedm.com"),
+  title: {
+    default: "NorthEDM — Unite the Northeast",
+    template: "%s | NorthEDM",
+  },
+  description:
+    "NorthEDM is the hub for Appalachian festival culture, Northeast EDM community, mushroom foraging tours, a vendor marketplace, and Wook World. Join the movement.",
+  keywords: [
+    "NorthEDM",
+    "Northeast EDM",
+    "festival community",
+    "mushroom foraging",
+    "Appalachian culture",
+    "electronic music northeast",
+    "EDM marketplace",
+    "wook world",
+    "foraging tours",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://northedm.com",
+    siteName: "NorthEDM",
+    title: "NorthEDM — Unite the Northeast",
+    description:
+      "Appalachian-rooted festival culture, Northeast EDM community, mushroom foraging, vendor marketplace, and Wook World.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NorthEDM — Unite the Northeast",
+    description:
+      "Appalachian-rooted festival culture, Northeast EDM community, mushroom foraging, vendor marketplace, and Wook World.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default async function RootLayout({
@@ -50,7 +85,7 @@ export default async function RootLayout({
   const showAdmin =
     forumRole === "archon" ||
     forumRole === "warden" ||
-    user?.email === ADMIN_EMAIL;
+    (user?.email === ADMIN_EMAIL);
 
   return (
     <html
