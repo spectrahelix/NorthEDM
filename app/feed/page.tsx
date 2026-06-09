@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import type { Metadata } from "next";
 import { WeatherStrip } from "./components/WeatherStrip";
+
+export const metadata: Metadata = {
+  title: "What's Happening",
+  description:
+    "Northeast EDM festival calendar, local show listings, trending vendors, and Appalachian foraging conditions — all in one feed.",
+  openGraph: {
+    title: "What's Happening | NorthEDM",
+    description:
+      "Northeast EDM festival calendar, local show listings, trending vendors, and Appalachian foraging conditions.",
+    url: "https://northedm.com/feed",
+  },
+};
 
 type FestivalEvent = {
   id: number;
@@ -43,11 +56,60 @@ const TICKET_LABEL: Record<string, string> = {
   sold_out: "Sold Out",
 };
 
+const EVENTS_FALLBACK: FestivalEvent[] = [
+  {
+    id: 1,
+    name: "Firefly Music Festival",
+    location: "The Woodlands, Dover, DE",
+    start_date: "2026-06-18",
+    end_date: "2026-06-21",
+    lat: 39.1518,
+    lng: -75.5242,
+    ticket_status: "available",
+    badge: "soon",
+  },
+  {
+    id: 2,
+    name: "Resonance Music Festival",
+    location: "Artemas, PA",
+    start_date: "2026-07-21",
+    end_date: "2026-07-25",
+    lat: 39.7423,
+    lng: -78.3015,
+    ticket_status: "available",
+    badge: "new",
+  },
+  {
+    id: 3,
+    name: "Elements Music & Arts Festival",
+    location: "Pocono Raceway, Long Pond, PA",
+    start_date: "2026-08-07",
+    end_date: "2026-08-09",
+    lat: 41.0559,
+    lng: -75.7129,
+    ticket_status: "limited",
+    badge: "hot",
+  },
+];
+
+const LOCAL_SHOWS = [
+  { city: "Brooklyn, NY", venue: "Avant Gardner", night: "Fri–Sat", genre: "Techno / House", note: "Recurring deep techno programming" },
+  { city: "Philadelphia, PA", venue: "The Fillmore", night: "Varies", genre: "Bass / Electronic", note: "Frequent touring EDM stops" },
+  { city: "Boston, MA", venue: "Big Night Live", night: "Fri–Sat", genre: "House / Bass", note: "Club nights + touring artists" },
+  { city: "Pittsburgh, PA", venue: "Club Café", night: "Varies", genre: "Underground Electronic", note: "Regional underground circuit" },
+  { city: "Asheville, NC", venue: "The Orange Peel", night: "Varies", genre: "Jam / Electronic", note: "Appalachian gateway stop" },
+  { city: "Albany, NY", venue: "Upstate Concert Hall", night: "Varies", genre: "Bass / Dubstep", note: "Upstate touring corridor" },
+];
+
 const FORAGING_FALLBACK: ForagingCondition[] = [
-  { id: 1, region: "Blue Ridge", condition: "good", notes: "Chanterelles peaking, morels winding down.", updated_at: "" },
-  { id: 2, region: "Smoky Mountains", condition: "fair", notes: "Dry spell — check north-facing slopes.", updated_at: "" },
-  { id: 3, region: "Catskills", condition: "good", notes: "Hen of the woods coming in strong near oak.", updated_at: "" },
-  { id: 4, region: "Adirondacks", condition: "poor", notes: "Too wet. Wait 5–7 days before heading out.", updated_at: "" },
+  { id: 1, region: "Blue Ridge (VA/NC)", condition: "good", notes: "Chanterelles peaking. Check southern hollows after rain.", updated_at: "" },
+  { id: 2, region: "Smoky Mountains", condition: "fair", notes: "Dry spell — focus on north-facing slopes and creek drainages.", updated_at: "" },
+  { id: 3, region: "Catskills (NY)", condition: "good", notes: "Hen of the woods coming in strong near old-growth oak.", updated_at: "" },
+  { id: 4, region: "Adirondacks (NY)", condition: "poor", notes: "Too saturated. Wait 5–7 days before heading out.", updated_at: "" },
+  { id: 5, region: "Poconos (PA)", condition: "good", notes: "Chicken of the woods fruiting on downed oak and locust.", updated_at: "" },
+  { id: 6, region: "Appalachian Trail (NJ/PA)", condition: "fair", notes: "Oysters spotted near fallen hardwoods. Chanterelles starting.", updated_at: "" },
+  { id: 7, region: "White Mountains (NH)", condition: "good", notes: "Boletes and chanterelles on higher trails. Good moisture.", updated_at: "" },
+  { id: 8, region: "Green Mountains (VT)", condition: "fair", notes: "Mixed conditions. Lobster mushrooms showing in spots.", updated_at: "" },
 ];
 
 function formatDateRange(start: string, end: string) {
@@ -78,7 +140,7 @@ export default async function FeedPage() {
     supabase.from("foraging_conditions").select("*").order("id", { ascending: true }),
   ]);
 
-  const events = (eventsData ?? []) as FestivalEvent[];
+  const events = ((eventsData?.length ? eventsData : EVENTS_FALLBACK)) as FestivalEvent[];
   const vendors = (vendorsData ?? []) as FestivalVendor[];
   const foraging = (foragingData?.length ? foragingData : FORAGING_FALLBACK) as ForagingCondition[];
   const totalVendorShows = vendors.reduce((sum, v) => sum + (v.upcoming_shows_count ?? 0), 0);
@@ -147,12 +209,7 @@ export default async function FeedPage() {
         <div className="lg:col-span-2 space-y-6">
           <h2 className="font-bebas text-4xl tracking-wide">Upcoming Festivals</h2>
 
-          {events.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-neutral-500">
-              No upcoming events yet — check back soon.
-            </div>
-          ) : (
-            events.map((event) => (
+          {events.map((event) => (
               <div
                 key={event.id}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:bg-white/[0.05]"
@@ -192,8 +249,7 @@ export default async function FeedPage() {
 
                 <WeatherStrip lat={event.lat} lng={event.lng} />
               </div>
-            ))
-          )}
+            ))}
         </div>
 
         {/* Vendors — right 1/3 */}
@@ -226,6 +282,50 @@ export default async function FeedPage() {
           )}
         </div>
       </div>
+
+      {/* Local Shows & Venue Nights */}
+      <section className="border-t border-white/10">
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#FF5C3A]">
+                Local Scene
+              </p>
+              <h2 className="mt-1 font-bebas text-4xl tracking-wide">Venue Nights &amp; Shows</h2>
+              <p className="mt-1 text-sm text-neutral-500">
+                Recurring venue programming across the Northeast corridor.
+              </p>
+            </div>
+            <Link
+              href="/forum"
+              className="shrink-0 rounded-xl border border-white/10 px-4 py-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-400 transition hover:text-white"
+            >
+              Submit a show →
+            </Link>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {LOCAL_SHOWS.map((show) => (
+              <div
+                key={show.venue}
+                className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:bg-white/[0.04]"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold leading-tight">{show.venue}</p>
+                    <p className="font-dm-mono text-xs text-neutral-500">{show.city}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[#FF5C3A]/10 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest text-[#FF5C3A]">
+                    {show.night}
+                  </span>
+                </div>
+                <p className="mt-2 font-dm-mono text-xs text-neutral-400">{show.genre}</p>
+                <p className="mt-1 text-xs text-neutral-600">{show.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Foraging Conditions */}
       <section className="border-t border-white/10">
