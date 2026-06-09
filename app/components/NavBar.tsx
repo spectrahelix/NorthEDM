@@ -20,9 +20,11 @@ const NAV_LINKS = [
 export function NavBar({
   userId,
   showAdmin,
+  showVendorDash = false,
 }: {
   userId: string | null;
   showAdmin: boolean;
+  showVendorDash?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -75,6 +77,14 @@ export function NavBar({
             <Link href={`/profile/${userId}`} className="transition hover:text-white">
               Profile
             </Link>
+            {showVendorDash && (
+              <Link
+                href="/vendor"
+                className="font-dm-mono text-xs uppercase tracking-widest text-[#3AFFD4]/80 transition hover:text-[#3AFFD4]"
+              >
+                My Shop
+              </Link>
+            )}
             {showAdmin && (
               <Link
                 href="/admin"
@@ -190,6 +200,14 @@ export function NavBar({
                     >
                       Messages
                     </Link>
+                    {showVendorDash && (
+                      <Link
+                        href="/vendor"
+                        className="flex items-center rounded-xl px-4 py-3.5 text-base font-medium text-[#3AFFD4]/80 transition hover:bg-[#3AFFD4]/5 hover:text-[#3AFFD4]"
+                      >
+                        My Shop
+                      </Link>
+                    )}
                     {showAdmin && (
                       <Link
                         href="/admin"

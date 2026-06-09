@@ -79,6 +79,13 @@ export default async function AdminPage() {
             </h2>
             <div className="grid gap-4 md:grid-cols-3">
               <Link
+                href="/admin/create-user"
+                className="rounded-2xl border border-white/10 p-6 transition hover:bg-white/5"
+              >
+                <h2 className="font-bebas text-xl tracking-wide">Create User</h2>
+                <p className="mt-1 text-sm text-neutral-400">Create vendor or admin accounts</p>
+              </Link>
+              <Link
                 href="/admin/bookings"
                 className="rounded-2xl border border-white/10 p-6 transition hover:bg-white/5"
               >
