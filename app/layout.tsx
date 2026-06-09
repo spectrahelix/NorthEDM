@@ -72,13 +72,14 @@ export default async function RootLayout({
   } = await supabase.auth.getUser();
 
   let forumRole: string | null = null;
+  let hasVendor = false;
   if (user) {
-    const { data: userProfile } = await supabase
-      .from("user_profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    const [{ data: userProfile }, { data: profileData }] = await Promise.all([
+      supabase.from("user_profiles").select("role").eq("id", user.id).single(),
+      supabase.from("profiles").select("vendor_id").eq("id", user.id).single(),
+    ]);
     forumRole = userProfile?.role ?? null;
+    hasVendor = !!profileData?.vendor_id;
   }
 
   const ADMIN_EMAIL = "cjblue27@gmail.com";
@@ -102,7 +103,7 @@ export default async function RootLayout({
               </div>
             </Link>
 
-            <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} />
+            <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} showVendorDash={hasVendor} />
           </div>
         </header>
 
