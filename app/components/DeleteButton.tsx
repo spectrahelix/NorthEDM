@@ -20,7 +20,13 @@ export function DeleteButton({
 
   async function handleDelete() {
     const supabase = createClient();
-    await supabase.from(table).delete().eq("id", id);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Ownership is enforced by filtering on user_id — only the owner's row is deleted
+    await supabase.from(table).delete().eq("id", id).eq("user_id", user.id);
     if (redirectTo) {
       router.push(redirectTo);
     } else {

@@ -4,12 +4,33 @@ import { createClient } from "@/utils/supabase/server";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const data = await req.json();
+    const vendorId = Number(data.vendorId);
+
+    // Verify the requesting user owns the vendor, or is archon/warden
+    const [{ data: vendor }, { data: profile }] = await Promise.all([
+      supabase.from("vendors").select("user_id").eq("id", vendorId).single(),
+      supabase.from("user_profiles").select("role").eq("id", user.id).single(),
+    ]);
+
+    const isAdmin = profile?.role === "archon" || profile?.role === "warden";
+    if (!isAdmin && vendor?.user_id !== user.id) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
 
     const { error } = await supabase.from("products").insert([
       {
-        vendor_id: Number(data.vendorId),
-        name: data.name,
+        vendor_id: vendorId,
+        name: String(data.name ?? "").trim(),
         category: data.category,
         description: data.description,
         price: Number(data.price),

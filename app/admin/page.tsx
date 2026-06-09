@@ -18,7 +18,6 @@ export default async function AdminPage() {
 
   const forumAdmin = profile?.role === "archon" || profile?.role === "warden";
 
-  // Legacy check: also allow original admin email for legacy panel sections
   const ADMIN_EMAIL = "cjblue27@gmail.com";
   const isLegacyAdmin = user.email === ADMIN_EMAIL;
 
