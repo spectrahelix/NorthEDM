@@ -256,6 +256,28 @@ export default async function FeedPage() {
         <div className="mt-12 lg:mt-0 space-y-5">
           <h2 className="font-bebas text-4xl tracking-wide">Trending Vendors</h2>
 
+          {/* Homestead Life — permanent founder pin */}
+          <a
+            href="https://homestead-life.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-2xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.04] p-5 transition hover:bg-[#3AFFD4]/[0.07]"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🌿</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold leading-tight">Homestead Life</p>
+                <p className="text-xs text-neutral-500">Holistic Goods · Millville, PA</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#E8FF47]/15 px-2 py-0.5 font-dm-mono text-[10px] text-[#E8FF47]">
+                Founder
+              </span>
+            </div>
+            <p className="mt-2 font-dm-mono text-xs text-neutral-500">
+              Everything Balm · Essential Oils · Natural Skincare
+            </p>
+          </a>
+
           {vendors.length === 0 ? (
             <p className="text-sm text-neutral-500">No vendors yet.</p>
           ) : (
