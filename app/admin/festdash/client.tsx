@@ -8,13 +8,25 @@ type Application = {
   vendor_id: number | null; created_at: string;
 };
 type ActiveVendor = {
-  id: number; vendor_id: number; joined_at: string;
-  vendors: { name: string; category: string } | null;
+  id: number; vendor_id: number; is_active: boolean; joined_at: string;
+  vendors: { name: string; category: string } | { name: string; category: string }[] | null;
 };
+
+function vendorName(v: ActiveVendor): string {
+  if (!v.vendors) return `Vendor #${v.vendor_id}`;
+  if (Array.isArray(v.vendors)) return v.vendors[0]?.name ?? `Vendor #${v.vendor_id}`;
+  return v.vendors.name;
+}
+function vendorCategory(v: ActiveVendor): string {
+  if (!v.vendors) return "";
+  if (Array.isArray(v.vendors)) return v.vendors[0]?.category ?? "";
+  return v.vendors.category;
+}
 type Order = {
   id: string; customer_name: string; event_name: string;
   status: string; total_cents: number; created_at: string;
 };
+type UnenrolledVendor = { id: number; name: string; category: string };
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    "bg-yellow-500/20 text-yellow-400",
@@ -28,15 +40,21 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function FestDashAdminClient({
   applications: initial,
-  activeVendors,
+  activeVendors: initialActiveVendors,
   recentOrders,
+  unenrolledVendors: initialUnenrolled,
 }: {
   applications: Application[];
   activeVendors: ActiveVendor[];
   recentOrders: Order[];
+  unenrolledVendors: UnenrolledVendor[];
 }) {
   const [applications, setApplications] = useState(initial);
+  const [activeVendors, setActiveVendors] = useState(initialActiveVendors);
+  const [unenrolled, setUnenrolled] = useState(initialUnenrolled);
   const [acting, setActing] = useState<string | null>(null);
+  const [enrolling, setEnrolling] = useState<number | null>(null);
+  const [toggling, setToggling] = useState<number | null>(null);
 
   async function act(id: string, action: "approve" | "reject") {
     setActing(id);
@@ -53,8 +71,45 @@ export default function FestDashAdminClient({
     setActing(null);
   }
 
+  async function enrollVendor(vendor: UnenrolledVendor) {
+    setEnrolling(vendor.id);
+    const res = await fetch("/api/festdash/admin/vendors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vendorId: vendor.id }),
+    });
+    if (res.ok) {
+      setUnenrolled((prev) => prev.filter((v) => v.id !== vendor.id));
+      setActiveVendors((prev) => [...prev, {
+        id: Date.now(),
+        vendor_id: vendor.id,
+        is_active: true,
+        joined_at: new Date().toISOString(),
+        vendors: { name: vendor.name, category: vendor.category },
+      }]);
+    }
+    setEnrolling(null);
+  }
+
+  async function toggleVendor(fdVendorId: number, isActive: boolean) {
+    setToggling(fdVendorId);
+    const res = await fetch("/api/festdash/admin/vendors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ festdashVendorId: fdVendorId, isActive }),
+    });
+    if (res.ok) {
+      setActiveVendors((prev) =>
+        prev.map((v) => v.id === fdVendorId ? { ...v, is_active: isActive } : v)
+      );
+    }
+    setToggling(null);
+  }
+
   const pending = applications.filter((a) => a.status === "pending");
   const reviewed = applications.filter((a) => a.status !== "pending");
+  const enrolledActive = activeVendors.filter((v) => v.is_active);
+  const enrolledInactive = activeVendors.filter((v) => !v.is_active);
 
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-16">
@@ -65,9 +120,9 @@ export default function FestDashAdminClient({
         {/* Stats */}
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
-            { label: "Active Vendors", value: activeVendors.length },
+            { label: "Active Vendors", value: enrolledActive.length },
             { label: "Pending Applications", value: pending.length },
-            { label: "Total Orders", value: recentOrders.length },
+            { label: "Recent Orders", value: recentOrders.length },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl border border-white/8 bg-white/3 p-5 text-center">
               <div className="font-bebas text-4xl text-orange-400">{s.value}</div>
@@ -75,6 +130,33 @@ export default function FestDashAdminClient({
             </div>
           ))}
         </div>
+
+        {/* Direct Enrollment */}
+        {unenrolled.length > 0 && (
+          <>
+            <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-blue-400">
+              Direct Enroll — Approved Vendors ({unenrolled.length})
+            </h2>
+            <p className="mb-4 text-xs text-neutral-600">Add any approved vendor to FestDash without requiring an application.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {unenrolled.map((v) => (
+                <div key={v.id} className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-950/10 px-4 py-3">
+                  <div>
+                    <p className="font-semibold text-white">{v.name}</p>
+                    <p className="text-xs text-neutral-500">{v.category}</p>
+                  </div>
+                  <button
+                    onClick={() => enrollVendor(v)}
+                    disabled={enrolling === v.id}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    {enrolling === v.id ? "Adding…" : "Enroll"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Pending applications */}
         <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
@@ -124,24 +206,59 @@ export default function FestDashAdminClient({
           </div>
         )}
 
-        {/* Active vendors */}
+        {/* Active FestDash vendors */}
         <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-          Active FestDash Vendors ({activeVendors.length})
+          Active FestDash Vendors ({enrolledActive.length})
         </h2>
-        {activeVendors.length === 0 ? (
-          <p className="text-sm text-neutral-600">No approved vendors yet.</p>
+        {enrolledActive.length === 0 ? (
+          <p className="text-sm text-neutral-600">No active vendors yet.</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {activeVendors.map((v) => (
-              <div key={v.id} className="rounded-xl border border-white/8 bg-white/3 p-4">
-                <p className="font-semibold text-white">{v.vendors?.name ?? `Vendor #${v.vendor_id}`}</p>
-                <p className="text-xs text-neutral-500">{v.vendors?.category}</p>
-                <p className="mt-1 text-xs text-neutral-600">
-                  Joined {new Date(v.joined_at).toLocaleDateString()}
-                </p>
+            {enrolledActive.map((v) => (
+              <div key={v.id} className="flex items-center justify-between rounded-xl border border-white/8 bg-white/3 p-4">
+                <div>
+                  <p className="font-semibold text-white">{vendorName(v)}</p>
+                  <p className="text-xs text-neutral-500">{vendorCategory(v)}</p>
+                  <p className="mt-1 text-xs text-neutral-600">
+                    Joined {new Date(v.joined_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggleVendor(v.id, false)}
+                  disabled={toggling === v.id}
+                  className="rounded-xl border border-red-500/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-950/20 disabled:opacity-50"
+                >
+                  {toggling === v.id ? "…" : "Deactivate"}
+                </button>
               </div>
             ))}
           </div>
+        )}
+
+        {/* Inactive vendors */}
+        {enrolledInactive.length > 0 && (
+          <>
+            <h2 className="mt-8 mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-700">
+              Inactive ({enrolledInactive.length})
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {enrolledInactive.map((v) => (
+                <div key={v.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/2 p-4 opacity-60">
+                  <div>
+                    <p className="text-neutral-400">{vendorName(v)}</p>
+                    <p className="text-xs text-neutral-600">{vendorCategory(v)}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleVendor(v.id, true)}
+                    disabled={toggling === v.id}
+                    className="rounded-xl border border-green-500/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-950/20 disabled:opacity-50"
+                  >
+                    {toggling === v.id ? "…" : "Reactivate"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Recent orders */}

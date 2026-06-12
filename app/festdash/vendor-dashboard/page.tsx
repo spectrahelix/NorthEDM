@@ -36,11 +36,12 @@ export default function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [notEnrolled, setNotEnrolled] = useState(false);
   const supabase = createClient();
 
   const loadOrders = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setNotEnrolled(true); setLoading(false); return; }
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -48,7 +49,7 @@ export default function VendorDashboard() {
       .eq("id", user.id)
       .single();
 
-    if (!profile?.vendor_id) return;
+    if (!profile?.vendor_id) { setNotEnrolled(true); setLoading(false); return; }
 
     const { data } = await supabase
       .from("festdash_orders")
@@ -99,6 +100,21 @@ export default function VendorDashboard() {
       <div className="flex min-h-screen items-center justify-center bg-neutral-950">
         <div className="font-dm-mono text-sm text-neutral-500">Loading orders…</div>
       </div>
+    );
+  }
+
+  if (notEnrolled) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+        <div className="max-w-sm text-center">
+          <div className="mb-4 text-4xl">🎪</div>
+          <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Not Yet Enrolled</h2>
+          <p className="mb-6 text-neutral-500">Your account isn&apos;t linked to a FestDash vendor profile. Apply to join the network or contact an admin to be directly enrolled.</p>
+          <a href="/festdash/vendor-signup" className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
+            Apply to FestDash
+          </a>
+        </div>
+      </main>
     );
   }
 

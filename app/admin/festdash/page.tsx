@@ -22,8 +22,8 @@ export default async function FestDashAdminPage() {
 
   const { data: activeVendors } = await supabase
     .from("festdash_vendors")
-    .select("id, vendor_id, joined_at, vendors(name, category)")
-    .eq("is_active", true);
+    .select("id, vendor_id, is_active, joined_at, vendors(name, category)")
+    .order("joined_at", { ascending: false });
 
   const { data: recentOrders } = await supabase
     .from("festdash_orders")
@@ -31,11 +31,21 @@ export default async function FestDashAdminPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
+  // All approved vendors not yet enrolled in FestDash
+  const enrolledIds = (activeVendors ?? []).map((v) => v.vendor_id);
+  const { data: unenrolledVendors } = await supabase
+    .from("vendors")
+    .select("id, name, category")
+    .eq("status", "approved")
+    .not("id", "in", `(${enrolledIds.length ? enrolledIds.join(",") : "0"})`)
+    .order("name");
+
   return (
     <FestDashAdminClient
       applications={applications ?? []}
       activeVendors={activeVendors ?? []}
       recentOrders={recentOrders ?? []}
+      unenrolledVendors={unenrolledVendors ?? []}
     />
   );
 }

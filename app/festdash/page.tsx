@@ -58,21 +58,29 @@ export default async function FestDashPage() {
             >
               Order Now
             </Link>
+            {user && (
+              <Link
+                href="/festdash/orders"
+                className="rounded-2xl border border-white/15 px-6 py-3 font-semibold text-neutral-300 transition hover:bg-white/5"
+              >
+                My Orders
+              </Link>
+            )}
             {isFestDashVendor ? (
               <Link
                 href="/festdash/vendor-dashboard"
                 className="rounded-2xl border border-orange-500/40 px-6 py-3 font-semibold text-orange-400 transition hover:bg-orange-500/10"
               >
-                My Vendor Dashboard
+                Vendor Dashboard
               </Link>
-            ) : (
+            ) : user ? (
               <Link
                 href="/festdash/vendor-signup"
-                className="rounded-2xl border border-white/15 px-6 py-3 font-semibold text-neutral-300 transition hover:bg-white/5"
+                className="rounded-2xl border border-white/10 px-6 py-3 font-semibold text-neutral-500 transition hover:bg-white/5 text-sm"
               >
-                Join as a Vendor
+                Join as Vendor
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </section>
