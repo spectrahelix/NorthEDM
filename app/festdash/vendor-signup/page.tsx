@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 export default function FestDashVendorSignup() {
   const router = useRouter();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -17,6 +19,14 @@ export default function FestDashVendorSignup() {
     hasTablet: "",
     notes: "",
   });
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setForm((f) => ({ ...f, email: f.email || user.email! }));
+      }
+    });
+  }, [supabase]);
 
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));

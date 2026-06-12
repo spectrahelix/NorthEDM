@@ -36,6 +36,7 @@ export default function OrderPage() {
   const supabase = createClient();
 
   const [step, setStep] = useState(1);
+  const [authed, setAuthed] = useState<boolean | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -58,7 +59,9 @@ export default function OrderPage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) setCustomerName(user.email.split("@")[0]);
+      if (!user) { setAuthed(false); setLoadingVendors(false); return; }
+      setAuthed(true);
+      if (user.email) setCustomerName(user.email.split("@")[0]);
 
       const res = await fetch("/api/festdash/vendors");
       const json = await res.json();
@@ -142,6 +145,36 @@ export default function OrderPage() {
     }
 
     router.push(`/festdash/track/${json.order.id}`);
+  }
+
+  // ── Auth gate ────────────────────────────────────────────────────
+  if (authed === false) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+        <div className="max-w-sm text-center">
+          <div className="mb-4 text-4xl">🎪</div>
+          <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Sign in to Order</h2>
+          <p className="mb-6 text-neutral-500">You need a NorthEDM account to place a FestDash order.</p>
+          <a
+            href={`/login?next=${encodeURIComponent("/festdash/order")}`}
+            className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400"
+          >
+            Sign In
+          </a>
+          <a href="/signup" className="mt-3 block text-sm text-neutral-500 hover:text-neutral-300">
+            Don&apos;t have an account? Sign up →
+          </a>
+        </div>
+      </main>
+    );
+  }
+
+  if (authed === null) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+        <p className="font-dm-mono text-sm text-neutral-500">Loading…</p>
+      </main>
+    );
   }
 
   // ── Step 1: Choose vendor ───────────────────────────────────────
