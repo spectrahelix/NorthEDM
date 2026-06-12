@@ -72,6 +72,28 @@ export default async function AdminPage() {
           </>
         )}
 
+        {(forumAdmin || isLegacyAdmin) && (
+          <>
+            <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-orange-500/70">
+              FestDash
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Link
+                href="/admin/festdash"
+                className="group rounded-2xl border border-orange-500/20 bg-orange-950/10 p-6 transition hover:border-orange-500/40 hover:bg-orange-950/20"
+              >
+                <div className="mb-3 text-2xl">🎪</div>
+                <h2 className="font-bebas text-2xl tracking-wide text-white group-hover:text-orange-400">
+                  FestDash Control
+                </h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Approve vendors, manage orders, view the network
+                </p>
+              </Link>
+            </div>
+          </>
+        )}
+
         {isLegacyAdmin && (
           <>
             <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">

@@ -121,3 +121,20 @@ CREATE POLICY "Vendors update their order status"
 CREATE INDEX IF NOT EXISTS festdash_orders_vendor_id_idx ON festdash_orders (vendor_id);
 CREATE INDEX IF NOT EXISTS festdash_orders_customer_id_idx ON festdash_orders (customer_id);
 CREATE INDEX IF NOT EXISTS festdash_orders_status_idx ON festdash_orders (status);
+
+-- ============================================================
+-- Storage bucket for campsite photos
+-- Run in Supabase dashboard: Storage → New Bucket
+--   Name: festdash-campsites
+--   Public: true
+-- Then add this policy:
+-- ============================================================
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('festdash-campsites', 'festdash-campsites', true)
+--   ON CONFLICT (id) DO NOTHING;
+--
+-- CREATE POLICY "Authenticated users can upload campsite photos"
+--   ON storage.objects FOR INSERT TO authenticated
+--   WITH CHECK (bucket_id = 'festdash-campsites' AND auth.uid()::text = (storage.foldername(name))[1]);
+--
+-- CREATE POLICY "Campsite photos are publicly readable"
+--   ON storage.objects FOR SELECT USING (bucket_id = 'festdash-campsites');

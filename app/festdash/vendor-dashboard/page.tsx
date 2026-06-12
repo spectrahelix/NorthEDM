@@ -111,7 +111,10 @@ export default function VendorDashboard() {
             <h1 className="font-bebas text-3xl tracking-wide text-white">
               Fest<span className="text-orange-400">Dash</span> Orders
             </h1>
-            <p className="font-dm-mono text-xs text-neutral-500">Vendor Dashboard</p>
+            <div className="flex items-center gap-3">
+              <p className="font-dm-mono text-xs text-neutral-500">Vendor Dashboard</p>
+              <a href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Driver View →</a>
+            </div>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
