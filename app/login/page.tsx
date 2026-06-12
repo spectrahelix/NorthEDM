@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { SocialAuth } from "@/app/components/SocialAuth";
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/feed";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/feed");
+    router.push(next);
     router.refresh();
   }
 
@@ -55,7 +57,7 @@ export default function LoginPage() {
             Sign in to post, reply, and connect with the community.
           </p>
 
-          <SocialAuth next="/feed" />
+          <SocialAuth next={next} />
 
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/10" />
