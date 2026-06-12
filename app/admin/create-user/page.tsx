@@ -117,15 +117,18 @@ export default function AdminCreateUserPage() {
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
                 Vendor ID
-                <span className="ml-1 normal-case tracking-normal text-neutral-700">(from vendors table)</span>
+                <span className="ml-1 normal-case tracking-normal text-neutral-700">(from vendors table — leave blank for non-vendor)</span>
               </label>
               <input
                 type="number"
                 value={vendorId}
                 onChange={(e) => setVendorId(e.target.value)}
-                placeholder="e.g. 12"
+                placeholder="e.g. 6"
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
               />
+              <p className="mt-1 font-dm-mono text-[10px] text-neutral-600">
+                Find it: Supabase → Table Editor → vendors → look up the ID for the vendor name
+              </p>
             </div>
 
             <div>
