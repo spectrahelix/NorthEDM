@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 type Order = {
@@ -37,6 +37,8 @@ export default function VendorDashboard() {
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [notEnrolled, setNotEnrolled] = useState(false);
+  const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const prevPendingCount = useRef(0);
   const supabase = createClient();
 
   const loadOrders = useCallback(async () => {
@@ -57,14 +59,34 @@ export default function VendorDashboard() {
       .eq("vendor_id", profile.vendor_id)
       .order("created_at", { ascending: false });
 
-    setOrders((data as Order[]) ?? []);
+    const freshOrders = (data as Order[]) ?? [];
+    setOrders(freshOrders);
     setLoading(false);
+
+    const pendingCount = freshOrders.filter((o) => o.status === "pending").length;
+    if (pendingCount > prevPendingCount.current) {
+      setNewOrderAlert(true);
+      setTimeout(() => setNewOrderAlert(false), 4000);
+      try {
+        const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      } catch {}
+    }
+    prevPendingCount.current = pendingCount;
   }, [supabase]);
 
   useEffect(() => {
     loadOrders();
 
-    // Real-time subscription for new orders
     const channel = supabase
       .channel("festdash_orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "festdash_orders" }, () => {
@@ -137,6 +159,13 @@ export default function VendorDashboard() {
             <span className="font-dm-mono text-xs text-green-400">Live</span>
           </div>
         </div>
+
+        {/* New order alert banner */}
+        {newOrderAlert && (
+          <div className="mb-4 animate-pulse rounded-2xl border border-orange-500/50 bg-orange-500/10 px-5 py-3 text-center font-semibold text-orange-300">
+            🔔 New order incoming!
+          </div>
+        )}
 
         {/* Pending — most prominent */}
         {pending.length > 0 && (
