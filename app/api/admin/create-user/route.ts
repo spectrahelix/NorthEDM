@@ -41,7 +41,8 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Create the auth user
+    // Try to create the auth user; if already exists, look up their ID instead
+    let uid: string;
     const { data: newUser, error: createError } =
       await adminClient.auth.admin.createUser({
         email,
@@ -49,14 +50,28 @@ export async function POST(req: Request) {
         email_confirm: true,
       });
 
-    if (createError || !newUser.user) {
-      return NextResponse.json(
-        { error: createError?.message ?? "Failed to create user" },
-        { status: 500 }
-      );
+    if (createError) {
+      // User already exists — find their ID via admin user list
+      if (createError.message?.toLowerCase().includes("already been registered") ||
+          createError.message?.toLowerCase().includes("already exists")) {
+        const { data: listData, error: listError } =
+          await adminClient.auth.admin.listUsers({ perPage: 1000 });
+        if (listError || !listData) {
+          return NextResponse.json({ error: "User exists but could not retrieve ID" }, { status: 500 });
+        }
+        const existing = listData.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+        if (!existing) {
+          return NextResponse.json({ error: "User exists but was not found in user list" }, { status: 500 });
+        }
+        uid = existing.id;
+      } else {
+        return NextResponse.json({ error: createError.message ?? "Failed to create user" }, { status: 500 });
+      }
+    } else if (!newUser.user) {
+      return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+    } else {
+      uid = newUser.user.id;
     }
-
-    const uid = newUser.user.id;
 
     // Create both profile rows in parallel
     const [{ error: profileError }, { error: upError }] = await Promise.all([
