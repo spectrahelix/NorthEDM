@@ -73,23 +73,29 @@ export async function POST(req: Request) {
       uid = newUser.user.id;
     }
 
-    // Create both profile rows in parallel
+    // Upsert both profile rows
     const [{ error: profileError }, { error: upError }] = await Promise.all([
-      adminClient.from("profiles").upsert({
-        id: uid,
-        role: "vendor",
-        username,
-        vendor_id: vendorId ?? null,
-      }),
-      adminClient.from("user_profiles").upsert({
-        id: uid,
-        display_name: displayName,
-        role: forumRole ?? "merchant",
-        bio: "",
-        home_city: "",
-        avatar_border: "moss",
-        avatar_url: null,
-      }),
+      adminClient.from("profiles").upsert(
+        {
+          id: uid,
+          role: vendorId ? "vendor" : "user",
+          username,
+          vendor_id: vendorId ?? null,
+        },
+        { onConflict: "id" }
+      ),
+      adminClient.from("user_profiles").upsert(
+        {
+          id: uid,
+          display_name: displayName,
+          role: forumRole ?? "merchant",
+          bio: "",
+          home_city: "",
+          avatar_border: "moss",
+          avatar_url: null,
+        },
+        { onConflict: "id" }
+      ),
     ]);
 
     if (profileError || upError) {
@@ -97,6 +103,14 @@ export async function POST(req: Request) {
         { error: profileError?.message ?? upError?.message },
         { status: 500 }
       );
+    }
+
+    // If a vendor_id was provided, also link the user to that vendor row
+    if (vendorId) {
+      await adminClient
+        .from("vendors")
+        .update({ user_id: uid })
+        .eq("id", vendorId);
     }
 
     return NextResponse.json({ success: true, userId: uid });
