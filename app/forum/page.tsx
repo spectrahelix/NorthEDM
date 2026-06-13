@@ -180,7 +180,7 @@ export default async function ForumPage({
                 href="/forum"
                 className={`rounded-lg px-3 py-2 text-sm transition ${
                   !category
-                    ? "bg-[#E8FF47]/10 text-[#E8FF47]"
+                    ? "bg-[#39FF14]/10 text-[#39FF14]"
                     : "text-neutral-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
@@ -200,7 +200,7 @@ export default async function ForumPage({
                     href={`/forum?category=${encodeURIComponent(cat.name)}`}
                     className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
                       isActive
-                        ? "bg-[#E8FF47]/10 text-[#E8FF47]"
+                        ? "bg-[#39FF14]/10 text-[#39FF14]"
                         : "text-neutral-400 hover:bg-white/5 hover:text-white"
                     }`}
                   >
@@ -230,7 +230,7 @@ export default async function ForumPage({
                         href={`/forum?category=${encodeURIComponent(cat.name)}`}
                         className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
                           isActive
-                            ? "bg-[#E8FF47]/10 text-[#E8FF47]"
+                            ? "bg-[#39FF14]/10 text-[#39FF14]"
                             : "text-neutral-400 hover:bg-white/5 hover:text-white"
                         }`}
                       >
@@ -314,88 +314,83 @@ export default async function ForumPage({
                   const bordered = CATEGORY_BORDER[thread.category];
 
                   return (
-                    <div
+                    <Link
                       key={thread.id}
-                      className={`group relative rounded-2xl border border-white/10 border-l-4 bg-white/[0.03] p-5 transition hover:bg-white/[0.05] ${bordered ?? "border-l-white/10"}`}
+                      href={`/forum/${thread.id}`}
+                      className={`group block rounded-2xl border border-white/10 border-l-4 bg-white/[0.03] p-5 transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.998] ${bordered ?? "border-l-white/10"}`}
                     >
-                      <Link
-                        href={`/forum/${thread.id}`}
-                        className="absolute inset-0 rounded-2xl"
-                        aria-label={thread.title}
-                      />
-                      <div className="relative flex items-start gap-4">
-                        {/* Author avatar */}
-                        {authorProfile ? (
-                          <UserPopover profile={authorProfile}>
-                            <AvatarBorder
-                              border={authorProfile.avatar_border}
-                              size={36}
-                            >
-                              {authorProfile.avatar_url ? (
-                                <img
-                                  src={authorProfile.avatar_url}
-                                  alt={authorName}
-                                  className="rounded-full object-cover"
-                                  style={{ width: 36, height: 36 }}
-                                />
-                              ) : (
-                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3AFFD4]/10 font-dm-mono text-xs text-[#3AFFD4]">
-                                  {authorInitials}
-                                </div>
-                              )}
-                            </AvatarBorder>
-                          </UserPopover>
-                        ) : (
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 font-dm-mono text-xs text-neutral-500">
-                            {authorInitials}
-                          </div>
-                        )}
+                      <div className="flex items-start gap-4">
+                        {/* Author avatar — stop propagation so popover works */}
+                        <span onClick={(e) => e.preventDefault()}>
+                          {authorProfile ? (
+                            <UserPopover profile={authorProfile}>
+                              <AvatarBorder border={authorProfile.avatar_border} size={36}>
+                                {authorProfile.avatar_url ? (
+                                  <img
+                                    src={authorProfile.avatar_url}
+                                    alt={authorName}
+                                    className="rounded-full object-cover"
+                                    style={{ width: 36, height: 36 }}
+                                  />
+                                ) : (
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3AFFD4]/10 font-dm-mono text-xs text-[#3AFFD4]">
+                                    {authorInitials}
+                                  </div>
+                                )}
+                              </AvatarBorder>
+                            </UserPopover>
+                          ) : (
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 font-dm-mono text-xs text-neutral-500">
+                              {authorInitials}
+                            </div>
+                          )}
+                        </span>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                CATEGORY_COLORS[thread.category] ??
-                                "bg-white/10 text-neutral-400"
-                              }`}
-                            >
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[thread.category] ?? "bg-white/10 text-neutral-400"}`}>
                               {thread.category}
                             </span>
                             <span className="font-dm-mono text-xs text-neutral-600">
                               {timeAgo(thread.created_at)}
                             </span>
                             {authorProfile && (
-                              <span className="relative z-10">
-                                <RankBadge
-                                  role={authorProfile.role}
-                                  name={authorName}
-                                />
-                              </span>
+                              <RankBadge role={authorProfile.role} name={authorName} />
                             )}
                           </div>
-                          <h3 className="mt-1.5 font-semibold leading-snug text-neutral-100">
+                          <h3 className="mt-1.5 font-semibold leading-snug text-neutral-100 group-hover:text-white">
                             {thread.title}
                           </h3>
-                          <p className="mt-1 line-clamp-2 text-sm text-neutral-400">
+                          <p className="mt-1 line-clamp-2 text-sm text-neutral-500">
                             {thread.body}
                           </p>
-                          <div className="relative z-10 mt-3 flex items-center gap-4 font-dm-mono text-xs text-neutral-600">
-                            <span>{thread.reply_count} replies</span>
-                            <HeartButton
-                              threadId={thread.id}
-                              initialCount={thread.heart_count}
-                              initialHearted={heartedSet.has(thread.id)}
-                              userId={user?.id ?? null}
-                            />
-                            <ReportButton
-                              reporterId={user?.id ?? null}
-                              reportedUserId={thread.user_id}
-                              threadId={thread.id}
-                            />
+                          <div className="mt-3 flex items-center gap-4 font-dm-mono text-xs text-neutral-600">
+                            <span className="flex items-center gap-1">
+                              <span>💬</span>
+                              {thread.reply_count} {thread.reply_count === 1 ? "reply" : "replies"}
+                            </span>
+                            <span onClick={(e) => e.preventDefault()}>
+                              <HeartButton
+                                threadId={thread.id}
+                                initialCount={thread.heart_count}
+                                initialHearted={heartedSet.has(thread.id)}
+                                userId={user?.id ?? null}
+                              />
+                            </span>
+                            <span onClick={(e) => e.preventDefault()}>
+                              <ReportButton
+                                reporterId={user?.id ?? null}
+                                reportedUserId={thread.user_id}
+                                threadId={thread.id}
+                              />
+                            </span>
+                            <span className="ml-auto font-dm-mono text-xs text-neutral-700 transition group-hover:text-neutral-400">
+                              Read →
+                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })
               )}
