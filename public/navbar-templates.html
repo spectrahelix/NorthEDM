@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NorthEDM — Navbar Templates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #e5e5e5;
+      font-family: 'DM Sans', sans-serif;
+      padding: 48px 24px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 0.1em;
+      color: #E8FF47;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: #555;
+      margin-bottom: 56px;
+    }
+
+    .template-block {
+      margin-bottom: 64px;
+    }
+
+    .template-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: #E8FF47;
+      margin-bottom: 12px;
+    }
+
+    .template-desc {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 16px;
+    }
+
+    /* ─── Shared nav structure ─────────────────────────────────── */
+    .nav-shell {
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .nav-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+    }
+
+    .logo-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+
+    .logo-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      margin-top: 2px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 13px;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      cursor: default;
+    }
+
+    .pill {
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 13px;
+    }
+
+    .btn-outline {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: default;
+    }
+
+    /* Page body preview */
+    .page-preview {
+      background: #0a0a0a;
+      padding: 32px 24px 24px;
+      border-radius: 0 0 12px 12px;
+    }
+
+    .page-preview-content {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .page-hero-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: #444;
+      margin-bottom: 8px;
+    }
+
+    .page-hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 42px;
+      letter-spacing: 0.05em;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .page-hero-body {
+      font-size: 14px;
+      color: #555;
+      max-width: 420px;
+      line-height: 1.6;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       OPTION A — Accent Border + Split Logo
+    ══════════════════════════════════════════════════════════ */
+    .nav-a {
+      background: rgba(10,10,10,0.92);
+      box-shadow: 0 1px 0 0 rgba(232,255,71,0.3), 0 2px 24px rgba(0,0,0,0.5);
+      backdrop-filter: blur(12px);
+    }
+
+    .nav-a .logo-name .north { color: #fff; }
+    .nav-a .logo-name .edm  { color: #E8FF47; }
+    .nav-a .logo-sub        { color: #444; }
+
+    .nav-a .nav-links a        { color: #aaa; }
+    .nav-a .nav-links a:hover  { color: #fff; }
+    .nav-a .forum-pill {
+      background: rgba(232,255,71,0.1);
+      color: #E8FF47;
+    }
+    .nav-a .btn-outline {
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #ccc;
+      background: transparent;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       OPTION B — Frosted Glass / Teal Border
+    ══════════════════════════════════════════════════════════ */
+    .nav-b {
+      background: rgba(20,20,20,0.65);
+      border: 1px solid rgba(58,255,212,0.2);
+      box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+      backdrop-filter: blur(20px);
+    }
+
+    .nav-b .logo-name { color: #fff; }
+    .nav-b .logo-sub  { color: rgba(58,255,212,0.5); }
+
+    .nav-b .nav-links a        { color: #aaa; }
+    .nav-b .forum-pill {
+      background: rgba(232,255,71,0.1);
+      color: #E8FF47;
+    }
+    .nav-b .btn-outline {
+      border: 1px solid rgba(58,255,212,0.3);
+      color: #3AFFD4;
+      background: transparent;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       OPTION C — Top Neon Stripe
+    ══════════════════════════════════════════════════════════ */
+    .nav-c {
+      background: rgba(10,10,10,0.96);
+      border-top: 2px solid #E8FF47;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+    }
+
+    .nav-c .logo-name {
+      color: #fff;
+      text-shadow: 0 0 20px rgba(232,255,71,0.5);
+    }
+    .nav-c .logo-sub { color: #444; }
+
+    .nav-c .nav-links a        { color: #aaa; }
+    .nav-c .forum-pill {
+      background: rgba(232,255,71,0.1);
+      color: #E8FF47;
+    }
+    .nav-c .btn-outline {
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #ccc;
+      background: transparent;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       OPTION D — Elevated Panel + Active Link
+    ══════════════════════════════════════════════════════════ */
+    .nav-d {
+      background: #141414;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.7);
+    }
+
+    .nav-d .logo-name { color: #fff; }
+    .nav-d .logo-sub  { color: #444; }
+
+    .nav-d .nav-links a         { color: #666; }
+    .nav-d .nav-links a.active  {
+      color: #fff;
+      border-bottom: 1.5px solid #E8FF47;
+      padding-bottom: 2px;
+    }
+    .nav-d .forum-pill {
+      background: rgba(232,255,71,0.1);
+      color: #E8FF47;
+    }
+    .nav-d .btn-outline {
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #888;
+      background: transparent;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       OPTION E — Full Neon Green & Black (BOLD)
+    ══════════════════════════════════════════════════════════ */
+    .nav-e {
+      background: #000;
+      border-bottom: 1px solid rgba(232,255,71,0.15);
+      box-shadow: 0 0 40px rgba(232,255,71,0.05);
+    }
+
+    .nav-e .logo-name {
+      color: #E8FF47;
+      text-shadow: 0 0 30px rgba(232,255,71,0.6);
+    }
+    .nav-e .logo-sub {
+      color: rgba(232,255,71,0.35);
+    }
+
+    .nav-e .nav-links a {
+      color: rgba(232,255,71,0.5);
+    }
+    .nav-e .nav-links a.active,
+    .nav-e .nav-links a:hover {
+      color: #E8FF47;
+    }
+    .nav-e .forum-pill {
+      background: rgba(232,255,71,0.12);
+      color: #E8FF47;
+      border: 1px solid rgba(232,255,71,0.25);
+    }
+    .nav-e .btn-outline {
+      border: 1px solid rgba(232,255,71,0.4);
+      color: #E8FF47;
+      background: transparent;
+    }
+
+
+    /* ══════════════════════════════════════════════════════════
+       OPTION F — Neon Green Glow Bar (Most Intense)
+    ══════════════════════════════════════════════════════════ */
+    .nav-f {
+      background: #050505;
+      border-bottom: 1px solid rgba(232,255,71,0.2);
+      box-shadow:
+        inset 0 -1px 0 rgba(232,255,71,0.08),
+        0 4px 40px rgba(232,255,71,0.08),
+        0 1px 0 rgba(232,255,71,0.15);
+    }
+
+    .nav-f .logo-name { color: #E8FF47; letter-spacing: 0.12em; }
+    .nav-f .logo-sub  { color: rgba(232,255,71,0.3); }
+
+    .nav-f .nav-links a { color: #666; }
+    .nav-f .nav-links a.active { color: #E8FF47; }
+    .nav-f .nav-links a:hover  { color: #ccc; }
+
+    .nav-f .forum-pill {
+      background: rgba(232,255,71,0.08);
+      color: #E8FF47;
+      box-shadow: 0 0 12px rgba(232,255,71,0.15);
+    }
+    .nav-f .btn-outline {
+      border: 1px solid rgba(232,255,71,0.3);
+      color: #E8FF47;
+      background: transparent;
+      box-shadow: 0 0 12px rgba(232,255,71,0.08);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      margin: 0 0 64px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>NorthEDM</h1>
+  <p class="subtitle">Header / Navbar Template Gallery</p>
+
+  <!-- ═══ OPTION A ═══════════════════════════════════════════ -->
+  <div class="template-block">
+    <div class="template-label">Option A — Accent Border + Split Logo</div>
+    <div class="template-desc">Yellow glow border underneath. "North" stays white, "EDM" goes neon. Minimal change, maximum brand clarity.</div>
+    <div class="nav-shell">
+      <div class="nav-a">
+        <div class="nav-inner">
+          <div>
+            <div class="logo-name"><span class="north">North</span><span class="edm">EDM</span></div>
+            <div class="logo-sub">Unite the Northeast</div>
+          </div>
+          <nav class="nav-links">
+            <a href="#">Home</a>
+            <a href="#" class="pill forum-pill">Forum</a>
+            <a href="#">Feed</a>
+            <a href="#">Marketplace</a>
+            <a href="#">Vendors</a>
+            <a href="#">Foraging</a>
+            <a href="#" class="btn-outline">Log In</a>
+          </nav>
+        </div>
+      </div>
+      <div class="page-preview">
+        <div class="page-preview-content">
+          <div class="page-hero-label">NorthEDM Community</div>
+          <div class="page-hero-title">Unite the Northeast</div>
+          <div class="page-hero-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══ OPTION B ═══════════════════════════════════════════ -->
+  <div class="template-block">
+    <div class="template-label">Option B — Frosted Glass + Teal Border</div>
+    <div class="template-desc">Semi-transparent glassmorphism. Header visibly floats above the page. Teal border and logo subtitle tie in the secondary brand color.</div>
+    <div class="nav-shell">
+      <div class="nav-b">
+        <div class="nav-inner">
+          <div>
+            <div class="logo-name">NorthEDM</div>
+            <div class="logo-sub">Unite the Northeast</div>
+          </div>
+          <nav class="nav-links">
+            <a href="#">Home</a>
+            <a href="#" class="pill forum-pill">Forum</a>
+            <a href="#">Feed</a>
+            <a href="#">Marketplace</a>
+            <a href="#">Vendors</a>
+            <a href="#">Foraging</a>
+            <a href="#" class="btn-outline">Log In</a>
+          </nav>
+        </div>
+      </div>
+      <div class="page-preview">
+        <div class="page-preview-content">
+          <div class="page-hero-label">NorthEDM Community</div>
+          <div class="page-hero-title">Unite the Northeast</div>
+          <div class="page-hero-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══ OPTION C ═══════════════════════════════════════════ -->
+  <div class="template-block">
+    <div class="template-label">Option C — Top Neon Stripe</div>
+    <div class="template-desc">2px neon yellow stripe at the very top. Logo glows. Feels like a festival wristband — subtle but immediately distinct.</div>
+    <div class="nav-shell">
+      <div class="nav-c">
+        <div class="nav-inner">
+          <div>
+            <div class="logo-name">NorthEDM</div>
+            <div class="logo-sub">Unite the Northeast</div>
+          </div>
+          <nav class="nav-links">
+            <a href="#">Home</a>
+            <a href="#" class="pill forum-pill">Forum</a>
+            <a href="#">Feed</a>
+            <a href="#">Marketplace</a>
+            <a href="#">Vendors</a>
+            <a href="#">Foraging</a>
+            <a href="#" class="btn-outline">Log In</a>
+          </nav>
+        </div>
+      </div>
+      <div class="page-preview">
+        <div class="page-preview-content">
+          <div class="page-hero-label">NorthEDM Community</div>
+          <div class="page-hero-title">Unite the Northeast</div>
+          <div class="page-hero-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══ OPTION D ═══════════════════════════════════════════ -->
+  <div class="template-block">
+    <div class="template-label">Option D — Elevated Panel + Active Link Indicator</div>
+    <div class="template-desc">Header is slightly lighter than the page body, creating a real depth separation. Active page link gets a neon yellow underline.</div>
+    <div class="nav-shell">
+      <div class="nav-d">
+        <div class="nav-inner">
+          <div>
+            <div class="logo-name">NorthEDM</div>
+            <div class="logo-sub">Unite the Northeast</div>
+          </div>
+          <nav class="nav-links">
+            <a href="#" class="active">Home</a>
+            <a href="#" class="pill forum-pill">Forum</a>
+            <a href="#">Feed</a>
+            <a href="#">Marketplace</a>
+            <a href="#">Vendors</a>
+            <a href="#">Foraging</a>
+            <a href="#" class="btn-outline">Log In</a>
+          </nav>
+        </div>
+      </div>
+      <div class="page-preview">
+        <div class="page-preview-content">
+          <div class="page-hero-label">NorthEDM Community</div>
+          <div class="page-hero-title">Unite the Northeast</div>
+          <div class="page-hero-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══ OPTION E ═══════════════════════════════════════════ -->
+  <div class="template-block">
+    <div class="template-label">Option E — Full Neon Green & Black (Core Theme)</div>
+    <div class="template-desc">Pure black background. All brand elements in neon yellow. Logo glows. Nav links are muted yellow, brightening on hover. This IS the neon green and black identity.</div>
+    <div class="nav-shell">
+      <div class="nav-e">
+        <div class="nav-inner">
+          <div>
+            <div class="logo-name">NorthEDM</div>
+            <div class="logo-sub">Unite the Northeast</div>
+          </div>
+          <nav class="nav-links">
+            <a href="#" class="active">Home</a>
+            <a href="#" class="pill forum-pill">Forum</a>
+            <a href="#">Feed</a>
+            <a href="#">Marketplace</a>
+            <a href="#">Vendors</a>
+            <a href="#">Foraging</a>
+            <a href="#" class="btn-outline">Log In</a>
+          </nav>
+        </div>
+      </div>
+      <div class="page-preview" style="background:#000;">
+        <div class="page-preview-content">
+          <div class="page-hero-label" style="color:#333;">NorthEDM Community</div>
+          <div class="page-hero-title" style="color:#E8FF47; text-shadow: 0 0 30px rgba(232,255,71,0.3);">Unite the Northeast</div>
+          <div class="page-hero-body" style="color:#444;">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══ OPTION F ═══════════════════════════════════════════ -->
+  <div class="template-block">
+    <div class="template-label">Option F — Neon Glow Bar (Most Intense)</div>
+    <div class="template-desc">Near-black background with a neon glow diffusing up from the bottom border. Logo and active links in full neon. Buttons glow softly. Maximum festival energy.</div>
+    <div class="nav-shell">
+      <div class="nav-f">
+        <div class="nav-inner">
+          <div>
+            <div class="logo-name">NorthEDM</div>
+            <div class="logo-sub">Unite the Northeast</div>
+          </div>
+          <nav class="nav-links">
+            <a href="#" class="active">Home</a>
+            <a href="#" class="pill forum-pill">Forum</a>
+            <a href="#">Feed</a>
+            <a href="#">Marketplace</a>
+            <a href="#">Vendors</a>
+            <a href="#">Foraging</a>
+            <a href="#" class="btn-outline">Log In</a>
+          </nav>
+        </div>
+      </div>
+      <div class="page-preview" style="background:#050505;">
+        <div class="page-preview-content">
+          <div class="page-hero-label" style="color:#2a2a2a;">NorthEDM Community</div>
+          <div class="page-hero-title" style="color:#E8FF47; text-shadow: 0 0 40px rgba(232,255,71,0.25);">Unite the Northeast</div>
+          <div class="page-hero-body" style="color:#3a3a3a;">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
