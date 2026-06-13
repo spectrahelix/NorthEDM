@@ -51,7 +51,7 @@ export default function MyOrdersPage() {
 
   if (!authed) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="text-center">
           <p className="mb-4 text-neutral-400">Sign in to view your orders.</p>
           <Link href="/login" className="rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
@@ -66,7 +66,7 @@ export default function MyOrdersPage() {
   const past   = orders.filter((o) => o.status === "delivered" || o.status === "declined");
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16">
+    <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-lg">
         <Link href="/festdash" className="mb-6 block font-dm-mono text-xs text-neutral-500 hover:text-white">
           ← FestDash

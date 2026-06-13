@@ -108,7 +108,7 @@ export default async function CrowdWaveFeedPage() {
   const carpoolGroups = carpoolData?.length ?? 0;
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       {/* Hero */}
       <section className="border-b border-white/10">
         <div className="mx-auto max-w-6xl px-6 py-14">

@@ -24,7 +24,7 @@ export default async function AdminPage() {
   if (!forumAdmin && !isLegacyAdmin) redirect("/");
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16 text-neutral-100 admin-surface">
+    <main className="min-h-screen px-6 py-16 text-neutral-100 admin-surface">
       <div className="mx-auto max-w-5xl">
         <p className="font-dm-mono text-sm uppercase tracking-[0.3em] text-[#FF5C3A]">
           Admin

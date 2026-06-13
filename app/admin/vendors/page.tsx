@@ -50,7 +50,7 @@ export default async function AdminVendorsPage() {
   if (error) {
     console.error(error);
     return (
-      <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white">
+      <main className="min-h-screen px-6 py-16 text-white">
         <div className="mx-auto max-w-6xl">
           <h1 className="text-4xl font-semibold">Vendor Applications</h1>
           <p className="mt-4 text-red-300">Error loading vendors.</p>
@@ -60,7 +60,7 @@ export default async function AdminVendorsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white">
+    <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-6xl">
         <p className="text-sm uppercase tracking-[0.3em] text-green-300">
           Admin

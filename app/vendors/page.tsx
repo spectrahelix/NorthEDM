@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function VendorsPage() {
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       <div className="mx-auto max-w-5xl px-6 py-20">
         <p className="text-sm uppercase tracking-[0.3em] text-green-300">
           Vendors

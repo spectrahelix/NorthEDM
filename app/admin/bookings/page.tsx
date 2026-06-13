@@ -32,7 +32,7 @@ export default async function AdminBookingsPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16 text-neutral-100">
+    <main className="min-h-screen px-6 py-16 text-neutral-100">
       <div className="mx-auto max-w-6xl">
         <p className="text-sm uppercase tracking-[0.3em] text-green-300">
           Admin

@@ -84,7 +84,7 @@ export default async function ProfilePage({
   };
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       {/* Banner */}
       <div
         className="h-28 border-b border-white/5"

@@ -103,7 +103,7 @@ export default async function ThreadDetailPage({
   const threadAuthorInitials = threadAuthorName.slice(0, 2).toUpperCase();
 
   return (
-    <main className="relative min-h-screen bg-neutral-950 text-neutral-100 spore-bg">
+    <main className="relative min-h-screen text-neutral-100 spore-bg">
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-10">
         <Link
           href="/forum"

@@ -146,14 +146,14 @@ export default function AdminReportsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <p className="font-dm-mono text-sm text-neutral-500">Loading reports…</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 admin-surface">
+    <main className="min-h-screen text-neutral-100 admin-surface">
       <div className="border-b border-white/10">
         <div className="mx-auto max-w-4xl px-6 py-5">
           <div className="flex items-center gap-4">

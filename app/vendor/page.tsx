@@ -222,14 +222,14 @@ export default function VendorDashboard() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <p className="font-dm-mono text-sm text-neutral-500">Loading…</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       {/* Header */}
       <div className="border-b border-white/10 bg-neutral-950/90">
         <div className="mx-auto max-w-5xl px-6 py-5">

@@ -156,7 +156,7 @@ export default async function ForumPage({
   const communityCategories = categories.filter((c) => !c.is_default);
 
   return (
-    <main className="relative min-h-screen bg-neutral-950 text-neutral-100 spore-bg">
+    <main className="relative min-h-screen text-neutral-100 spore-bg">
       <div className="relative z-10">
         <section className="border-b border-white/10">
           <div className="mx-auto max-w-6xl px-6 py-10">

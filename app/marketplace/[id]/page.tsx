@@ -74,7 +74,7 @@ export default async function VendorDetailPage({
   const products = (productData ?? []) as Product[];
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white">
+    <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-5xl">
         <Link href="/marketplace" className="text-sm text-neutral-400 hover:text-white">
           ← Back to Marketplace

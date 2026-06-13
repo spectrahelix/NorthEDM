@@ -127,7 +127,7 @@ export default function VendorDashboard() {
 
   if (notEnrolled) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="max-w-sm text-center">
           <div className="mb-4 text-4xl">🎪</div>
           <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Not Yet Enrolled</h2>
@@ -141,7 +141,7 @@ export default function VendorDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 p-4 lg:p-6">
+    <main className="min-h-screen p-4 lg:p-6">
       <div className="mx-auto max-w-4xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">

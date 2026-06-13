@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/",            label: "Home" },
   { href: "/forum",       label: "Forum",       highlight: true },
   { href: "/feed",        label: "Feed" },
+  { href: "/crowdwave",   label: "CrowdWave",   crowdwave: true },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/vendors",     label: "Vendors" },
   { href: "/foraging",    label: "Foraging" },
@@ -61,6 +62,15 @@ export function NavBar({
               key={l.href}
               href={l.href}
               className="rounded-full bg-orange-500/15 px-3 py-1 font-semibold text-orange-400 transition hover:bg-orange-500/25 hover:text-orange-300"
+            >
+              {l.label}
+            </Link>
+          ) : l.crowdwave ? (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="rounded-full px-3 py-1 transition"
+              style={{ background: "rgba(58,255,212,0.08)", color: "#3AFFD4", border: "1px solid rgba(58,255,212,0.25)" }}
             >
               {l.label}
             </Link>
@@ -189,6 +199,8 @@ export function NavBar({
                     className={`flex items-center rounded-xl px-4 py-3.5 text-base font-medium transition ${
                       l.festdash
                         ? "my-1 bg-orange-500/10 font-semibold text-orange-400 hover:bg-orange-500/20"
+                        : l.crowdwave
+                        ? "my-1 bg-[#3AFFD4]/8 text-[#3AFFD4] hover:bg-[#3AFFD4]/15"
                         : l.highlight
                         ? "my-1 bg-[#CC00FF]/10 text-[#CC00FF] hover:bg-[#CC00FF]/20"
                         : "text-neutral-200 hover:bg-white/5 hover:text-white"

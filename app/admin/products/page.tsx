@@ -35,7 +35,7 @@ export default async function AdminProductsPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white">
+      <main className="min-h-screen px-6 py-16 text-white">
         <div className="mx-auto max-w-6xl">
           <h1 className="text-4xl font-semibold">Products</h1>
           <p className="mt-4 text-red-300">Error loading products.</p>
@@ -45,7 +45,7 @@ export default async function AdminProductsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white">
+    <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-6xl">
         <p className="text-sm uppercase tracking-[0.3em] text-green-300">
           Admin

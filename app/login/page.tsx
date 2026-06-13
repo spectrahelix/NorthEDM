@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 py-16">
+    <main className="flex min-h-screen items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
         {/* Wordmark */}
         <div className="mb-8 text-center">

@@ -56,7 +56,7 @@ export default function FestDashVendorSignup() {
 
   if (success) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="max-w-md text-center">
           <div className="mb-4 text-5xl">🎪</div>
           <h1 className="mb-3 font-bebas text-4xl tracking-wide text-white">
@@ -78,7 +78,7 @@ export default function FestDashVendorSignup() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16">
+    <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-xl">
         <div className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
           FestDash Vendor Network

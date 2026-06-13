@@ -32,7 +32,7 @@ export default async function FestDashPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950">
+    <main className="min-h-screen">
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-orange-950/40 to-neutral-950 px-6 py-24 text-center">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-500/10 via-transparent to-transparent" />

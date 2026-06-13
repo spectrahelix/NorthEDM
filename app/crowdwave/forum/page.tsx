@@ -77,7 +77,7 @@ export default async function ForumPage({
   const postCategories = CATEGORIES.filter((c) => c !== "All Posts");
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       <section className="border-b border-white/10">
         <div className="mx-auto max-w-6xl px-6 py-10">
           <p className="mb-2 font-dm-mono text-sm uppercase tracking-[0.3em] text-[#3AFFD4]">

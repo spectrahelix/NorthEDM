@@ -112,7 +112,7 @@ export default function FestDashAdminClient({
   const enrolledInactive = activeVendors.filter((v) => !v.is_active);
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16">
+    <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-5xl">
         <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-400">Admin</p>
         <h1 className="mt-2 font-bebas text-5xl tracking-wide text-white">FestDash Control</h1>

@@ -79,7 +79,7 @@ export default function DriverPage() {
 
   if (unauthorized) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="text-center">
           <p className="text-neutral-400">Driver access requires a linked vendor account.</p>
         </div>
@@ -89,14 +89,14 @@ export default function DriverPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <p className="font-dm-mono text-sm text-neutral-500">Loading deliveries…</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 p-4">
+    <main className="min-h-screen p-4">
       <div className="mx-auto max-w-lg">
         <div className="mb-6 flex items-center justify-between">
           <div>

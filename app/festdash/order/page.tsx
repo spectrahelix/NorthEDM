@@ -150,7 +150,7 @@ export default function OrderPage() {
   // ── Auth gate ────────────────────────────────────────────────────
   if (authed === false) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="max-w-sm text-center">
           <div className="mb-4 text-4xl">🎪</div>
           <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Sign in to Order</h2>
@@ -171,7 +171,7 @@ export default function OrderPage() {
 
   if (authed === null) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <p className="font-dm-mono text-sm text-neutral-500">Loading…</p>
       </main>
     );
@@ -180,7 +180,7 @@ export default function OrderPage() {
   // ── Step 1: Choose vendor ───────────────────────────────────────
   if (step === 1) {
     return (
-      <main className="min-h-screen bg-neutral-950 px-6 py-16">
+      <main className="min-h-screen px-6 py-16">
         <div className="mx-auto max-w-2xl">
           <button onClick={() => router.push("/festdash")} className="mb-6 font-dm-mono text-xs text-neutral-500 hover:text-white">
             ← Back to FestDash
@@ -230,7 +230,7 @@ export default function OrderPage() {
   if (step === 2) {
     const categories = [...new Set(menuItems.map((i) => i.category))];
     return (
-      <main className="min-h-screen bg-neutral-950 px-6 pb-40 pt-16">
+      <main className="min-h-screen px-6 pb-40 pt-16">
         <div className="mx-auto max-w-2xl">
           <button onClick={() => setStep(1)} className="mb-6 font-dm-mono text-xs text-neutral-500 hover:text-white">
             ← Back
@@ -309,7 +309,7 @@ export default function OrderPage() {
   // ── Step 3: Delivery info ───────────────────────────────────────
   if (step === 3) {
     return (
-      <main className="min-h-screen bg-neutral-950 px-6 py-16">
+      <main className="min-h-screen px-6 py-16">
         <div className="mx-auto max-w-lg">
           <button onClick={() => setStep(2)} className="mb-6 font-dm-mono text-xs text-neutral-500 hover:text-white">
             ← Back to menu
@@ -426,7 +426,7 @@ export default function OrderPage() {
 
   // ── Step 4: Review + pay ────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16">
+    <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-lg">
         <button onClick={() => setStep(3)} className="mb-6 font-dm-mono text-xs text-neutral-500 hover:text-white">
           ← Back

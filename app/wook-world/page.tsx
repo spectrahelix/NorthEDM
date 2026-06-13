@@ -1,6 +1,6 @@
 export default function WookWorldPage() {
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16 text-neutral-100">
+    <main className="min-h-screen px-6 py-16 text-neutral-100">
       <div className="mx-auto max-w-4xl rounded-[2rem] border border-purple-400/20 bg-purple-400/5 p-8">
         <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
           Wook World

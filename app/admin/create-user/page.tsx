@@ -41,7 +41,7 @@ export default function AdminCreateUserPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       <div className="border-b border-white/10 bg-neutral-950/90">
         <div className="mx-auto max-w-2xl px-6 py-5">
           <Link href="/admin" className="font-dm-mono text-xs text-neutral-600 hover:text-neutral-400">

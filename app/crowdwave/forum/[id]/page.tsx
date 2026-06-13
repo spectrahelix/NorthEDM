@@ -75,7 +75,7 @@ export default async function ThreadDetailPage({
   const replies = (repliesData ?? []) as Reply[];
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       <div className="mx-auto max-w-3xl px-6 py-10">
         <Link
           href="/crowdwave/forum"

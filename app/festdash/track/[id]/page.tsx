@@ -62,7 +62,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <p className="font-dm-mono text-sm text-neutral-500">Loading order…</p>
       </main>
     );
@@ -70,7 +70,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 
   if (!order) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-400">Order not found.</p>
           <Link href="/festdash" className="mt-4 block text-orange-400 hover:underline">Back to FestDash</Link>
@@ -83,7 +83,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
   const isDeclined = order.status === "declined";
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-16">
+    <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-md">
         <Link href="/festdash" className="mb-6 block font-dm-mono text-xs text-neutral-500 hover:text-white">
           ← FestDash

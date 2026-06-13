@@ -102,7 +102,7 @@ export default function AdminUsersPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 admin-surface">
+      <main className="flex min-h-screen items-center justify-center admin-surface">
         <p className="font-dm-mono text-sm text-neutral-500">Loading users…</p>
       </main>
     );
@@ -111,7 +111,7 @@ export default function AdminUsersPage() {
   const availableRoles = myRole === "archon" ? ROLES : ROLES.filter((r) => r !== "archon");
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 admin-surface">
+    <main className="min-h-screen text-neutral-100 admin-surface">
       <div className="border-b border-white/10 bg-neutral-950/90">
         <div className="mx-auto max-w-6xl px-6 py-5">
           <div className="flex items-center gap-4">

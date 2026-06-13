@@ -113,7 +113,7 @@ export default function EditProfilePage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950">
+      <main className="flex min-h-screen items-center justify-center">
         <div className="font-dm-mono text-sm text-neutral-500">Loading…</div>
       </main>
     );
@@ -122,7 +122,7 @@ export default function EditProfilePage() {
   const initials = displayName.slice(0, 2).toUpperCase() || "??";
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <p className="mb-2 font-dm-mono text-sm uppercase tracking-[0.3em] text-[#3AFFD4]">
           Profile
