@@ -314,14 +314,19 @@ export default async function ForumPage({
                   const bordered = CATEGORY_BORDER[thread.category];
 
                   return (
-                    <Link
+                    <div
                       key={thread.id}
-                      href={`/forum/${thread.id}`}
-                      className={`group block rounded-2xl border border-white/10 border-l-4 bg-white/[0.03] p-5 transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.998] ${bordered ?? "border-l-white/10"}`}
+                      className={`group relative rounded-2xl border border-white/10 border-l-4 bg-white/[0.03] p-5 transition hover:border-white/20 hover:bg-white/[0.06] ${bordered ?? "border-l-white/10"}`}
                     >
+                      {/* Full-card link sits at z-[1], above static content but below interactive elements */}
+                      <Link
+                        href={`/forum/${thread.id}`}
+                        className="absolute inset-0 z-[1] rounded-2xl"
+                        aria-label={thread.title}
+                      />
                       <div className="flex items-start gap-4">
-                        {/* Author avatar — stop propagation so popover works */}
-                        <span onClick={(e) => e.preventDefault()}>
+                        {/* Avatar — z-[2] so it stays above the card link */}
+                        <div className="relative z-[2]">
                           {authorProfile ? (
                             <UserPopover profile={authorProfile}>
                               <AvatarBorder border={authorProfile.avatar_border} size={36}>
@@ -344,7 +349,7 @@ export default async function ForumPage({
                               {authorInitials}
                             </div>
                           )}
-                        </span>
+                        </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -364,33 +369,30 @@ export default async function ForumPage({
                           <p className="mt-1 line-clamp-2 text-sm text-neutral-500">
                             {thread.body}
                           </p>
-                          <div className="mt-3 flex items-center gap-4 font-dm-mono text-xs text-neutral-600">
+                          {/* Action row — z-[2] so heart/report buttons are above the card link */}
+                          <div className="relative z-[2] mt-3 flex items-center gap-4 font-dm-mono text-xs text-neutral-600">
                             <span className="flex items-center gap-1">
                               <span>💬</span>
                               {thread.reply_count} {thread.reply_count === 1 ? "reply" : "replies"}
                             </span>
-                            <span onClick={(e) => e.preventDefault()}>
-                              <HeartButton
-                                threadId={thread.id}
-                                initialCount={thread.heart_count}
-                                initialHearted={heartedSet.has(thread.id)}
-                                userId={user?.id ?? null}
-                              />
-                            </span>
-                            <span onClick={(e) => e.preventDefault()}>
-                              <ReportButton
-                                reporterId={user?.id ?? null}
-                                reportedUserId={thread.user_id}
-                                threadId={thread.id}
-                              />
-                            </span>
-                            <span className="ml-auto font-dm-mono text-xs text-neutral-700 transition group-hover:text-neutral-400">
+                            <HeartButton
+                              threadId={thread.id}
+                              initialCount={thread.heart_count}
+                              initialHearted={heartedSet.has(thread.id)}
+                              userId={user?.id ?? null}
+                            />
+                            <ReportButton
+                              reporterId={user?.id ?? null}
+                              reportedUserId={thread.user_id}
+                              threadId={thread.id}
+                            />
+                            <span className="ml-auto text-neutral-700 transition group-hover:text-neutral-400">
                               Read →
                             </span>
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })
               )}
