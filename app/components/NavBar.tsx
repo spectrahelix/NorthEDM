@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { NotificationBell } from "./NotificationBell";
 import { MessagesNavLink } from "./MessagesBadge";
+import { GlobalSearch } from "./GlobalSearch";
 
 type NavLink = {
   href: string;
@@ -130,6 +131,8 @@ export function NavBar({
           );
         })}
 
+        <GlobalSearch userId={userId} />
+
         {userId ? (
           <>
             <MessagesNavLink userId={userId} />
@@ -183,6 +186,7 @@ export function NavBar({
 
       {/* ── Mobile right-side icons + hamburger ───────────────── */}
       <div className="flex items-center gap-3 lg:hidden">
+        <GlobalSearch userId={userId} />
         {userId && (
           <>
             <MessagesNavLink userId={userId} />
