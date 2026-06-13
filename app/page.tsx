@@ -336,7 +336,7 @@ export default async function HomePage() {
             <Link
               key={vendor.id}
               href={`/marketplace/${vendor.id}`}
-              className="group flex flex-col rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
+              className="group flex flex-col rounded-3xl border border-[#39FF14]/20 bg-[#39FF14]/[0.03] p-6 transition hover:border-[#39FF14]/40 hover:bg-[#39FF14]/[0.06] active:scale-[0.99]"
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <h3 className="font-bebas text-xl leading-snug tracking-wide">
@@ -355,7 +355,7 @@ export default async function HomePage() {
                 {vendor.description || "No description available."}
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/10 px-3 py-1 font-dm-mono text-xs text-neutral-400">
+                <span className="rounded-full bg-[#39FF14]/10 px-3 py-1 font-dm-mono text-xs text-[#39FF14]">
                   {vendor.vendor_type || "listed"}
                 </span>
                 {vendor.is_founder && (
