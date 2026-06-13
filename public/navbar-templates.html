@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NorthEDM — Navbar Templates (Chromatic)</title>
+  <title>NorthEDM — Navbar Merge</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -14,14 +14,14 @@
       background: #060606;
       color: #e5e5e5;
       font-family: 'DM Sans', sans-serif;
-      padding: 48px 24px;
+      padding: 60px 32px;
     }
 
     h1 {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 2rem;
-      letter-spacing: 0.1em;
-      background: linear-gradient(90deg, #3AFFD4, #E8FF47, #FF5C3A);
+      font-size: 2.2rem;
+      letter-spacing: 0.12em;
+      background: linear-gradient(90deg, #39FF14, #00D4FF, #CC00FF);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -33,44 +33,75 @@
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.3em;
-      color: #444;
-      margin-bottom: 56px;
+      color: #333;
+      margin-bottom: 64px;
     }
 
-    .template-block { margin-bottom: 72px; }
-
-    .template-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.25em;
-      color: #3AFFD4;
-      margin-bottom: 10px;
+    /* ── nav shell ─────────────────────────────────── */
+    .nav-shell {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.9);
     }
 
-    .template-desc {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 18px;
-      line-height: 1.5;
+    /* ── THE HEADER ─────────────────────────────────── */
+    .header {
+      background: #030303;
+      position: relative;
     }
 
-    .nav-shell { border-radius: 14px; overflow: hidden; }
+    /* Stark spectral line — sharp gradient, no blur */
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1.5px;
+      background: linear-gradient(90deg,
+        transparent  0%,
+        #39FF14     18%,
+        #00D4FF     50%,
+        #CC00FF     82%,
+        transparent 100%
+      );
+      box-shadow:
+        0 0  6px 1px rgba(57,255,20,0.7),
+        0 0 16px 3px rgba(0,212,255,0.5),
+        0 0 30px 6px rgba(204,0,255,0.35);
+    }
+
+    /* Stage-light radial color wash bleeding UP from bottom */
+    .header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 35% 180% at 18% 120%, rgba(57,255,20,0.09)  0%, transparent 65%),
+        radial-gradient(ellipse 35% 180% at 50% 120%, rgba(0,212,255,0.07)  0%, transparent 65%),
+        radial-gradient(ellipse 35% 180% at 82% 120%, rgba(204,0,255,0.09)  0%, transparent 65%);
+      pointer-events: none;
+    }
 
     .nav-inner {
-      max-width: 960px;
+      position: relative;
+      max-width: 1040px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 15px 28px;
+      padding: 16px 32px;
     }
 
+    /* Logo */
     .logo-name {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 23px;
-      letter-spacing: 0.08em;
+      font-size: 24px;
+      letter-spacing: 0.12em;
       line-height: 1;
+      background: linear-gradient(90deg, #39FF14 0%, #00D4FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 10px rgba(57,255,20,0.55)) drop-shadow(0 0 24px rgba(0,212,255,0.35));
     }
 
     .logo-sub {
@@ -79,8 +110,10 @@
       text-transform: uppercase;
       letter-spacing: 0.3em;
       margin-top: 3px;
+      color: rgba(57,255,20,0.3);
     }
 
+    /* Nav links */
     .nav-links {
       display: flex;
       align-items: center;
@@ -88,436 +121,135 @@
       font-size: 13px;
     }
 
-    .nav-links a { text-decoration: none; cursor: default; }
+    .nav-links a {
+      text-decoration: none;
+      cursor: default;
+      color: #444;
+      transition: color 0.15s;
+    }
 
-    .pill { padding: 4px 13px; border-radius: 99px; font-size: 13px; }
+    .nav-links a.active { color: #39FF14; text-shadow: 0 0 10px rgba(57,255,20,0.5); }
 
-    .btn {
+    /* Forum pill — neon purple accent */
+    .forum-pill {
+      padding: 4px 13px;
+      border-radius: 99px;
+      background: rgba(204,0,255,0.1);
+      color: #CC00FF;
+      border: 1px solid rgba(204,0,255,0.28);
+      box-shadow: 0 0 10px rgba(204,0,255,0.12);
+    }
+
+    /* Log In button — neon blue */
+    .btn-login {
       padding: 6px 18px;
       border-radius: 20px;
-      font-size: 13px;
+      border: 1px solid rgba(0,212,255,0.4);
+      color: #00D4FF;
+      background: transparent;
+      box-shadow: 0 0 12px rgba(0,212,255,0.1);
       cursor: default;
+      font-size: 13px;
     }
 
-    /* page body preview */
+    /* ── PAGE PREVIEW ─────────────────────────────────── */
     .page-preview {
-      padding: 36px 28px 28px;
-      border-radius: 0 0 14px 14px;
+      background: #030303;
+      padding: 44px 32px 36px;
+      border-radius: 0 0 16px 16px;
     }
 
-    .page-preview-content { max-width: 960px; margin: 0 auto; }
+    .page-preview-content { max-width: 1040px; margin: 0 auto; }
 
     .page-label {
       font-family: 'DM Mono', monospace;
       font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.3em;
-      color: #333;
-      margin-bottom: 10px;
+      color: #2a2a2a;
+      margin-bottom: 12px;
     }
 
+    /* Headline — teal-to-purple gradient text */
     .page-title {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 48px;
+      font-size: 56px;
       letter-spacing: 0.05em;
       line-height: 1;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
+      background: linear-gradient(90deg, #39FF14 0%, #00D4FF 45%, #CC00FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 24px rgba(0,212,255,0.2));
     }
 
     .page-body {
       font-size: 14px;
-      color: #444;
-      max-width: 440px;
-      line-height: 1.65;
+      color: #3a3a3a;
+      max-width: 480px;
+      line-height: 1.7;
+      margin-bottom: 24px;
     }
 
-    .pills-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
+    /* Three stat pills */
+    .pills-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
     .stat-pill {
       font-family: 'DM Mono', monospace;
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      padding: 5px 12px;
+      padding: 5px 14px;
       border-radius: 99px;
     }
 
-    .divider {
-      border: none;
-      border-top: 1px solid #161616;
-      margin: 0 0 72px;
-    }
-
-
-    /* ══════════════════════════════════════════════════════════
-       OPTION 1 — Gradient Underline Burst
-       Teal → Yellow → Orange gradient border-bottom.
-       Teal leads, accent colors radiate outward.
-    ══════════════════════════════════════════════════════════ */
-    .nav-1 {
-      background: #050505;
-      position: relative;
-    }
-    .nav-1::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 1.5px;
-      background: linear-gradient(90deg,
-        transparent 0%,
-        #3AFFD4 20%,
-        #E8FF47 50%,
-        #FF5C3A 80%,
-        transparent 100%);
-    }
-
-    .nav-1 .logo-name { color: #3AFFD4; text-shadow: 0 0 22px rgba(58,255,212,0.6); }
-    .nav-1 .logo-sub  { color: rgba(58,255,212,0.3); }
-    .nav-1 .nav-links a { color: #555; }
-    .nav-1 .nav-links a.active { color: #3AFFD4; }
-    .nav-1 .forum-pill {
-      background: rgba(232,255,71,0.08);
-      color: #E8FF47;
-      border: 1px solid rgba(232,255,71,0.2);
-    }
-    .nav-1 .btn {
-      border: 1px solid rgba(58,255,212,0.35);
-      color: #3AFFD4;
-      background: transparent;
-    }
-    .nav-1 .page-preview { background: #050505; }
-    .nav-1 .page-title {
-      color: #3AFFD4;
-      text-shadow: 0 0 30px rgba(58,255,212,0.3);
-    }
-    .nav-1 .stat-pill-teal   { background: rgba(58,255,212,0.08);  color: #3AFFD4;  border: 1px solid rgba(58,255,212,0.2); }
-    .nav-1 .stat-pill-yellow { background: rgba(232,255,71,0.08);  color: #E8FF47;  border: 1px solid rgba(232,255,71,0.2); }
-    .nav-1 .stat-pill-orange { background: rgba(255,92,58,0.08);   color: #FF5C3A;  border: 1px solid rgba(255,92,58,0.2); }
-
-
-    /* ══════════════════════════════════════════════════════════
-       OPTION 2 — Chromatic Aura
-       Each color bleeds in from a corner — teal left, yellow top,
-       orange right. Header has a live festival-stage feel.
-    ══════════════════════════════════════════════════════════ */
-    .nav-2 {
-      background: #050505;
-      position: relative;
-      border-bottom: 1px solid rgba(58,255,212,0.15);
-      overflow: visible;
-    }
-    .nav-2::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 30% 120% at 0% 50%,   rgba(58,255,212,0.12) 0%, transparent 70%),
-        radial-gradient(ellipse 30% 120% at 100% 50%,  rgba(255,92,58,0.1)  0%, transparent 70%),
-        radial-gradient(ellipse 60% 100% at 50% -20%,  rgba(232,255,71,0.06) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .nav-2 .logo-name { color: #3AFFD4; text-shadow: 0 0 28px rgba(58,255,212,0.7); }
-    .nav-2 .logo-sub  { color: rgba(58,255,212,0.35); }
-    .nav-2 .nav-links a { color: #666; }
-    .nav-2 .nav-links a.active { color: #3AFFD4; text-shadow: 0 0 12px rgba(58,255,212,0.5); }
-    .nav-2 .forum-pill {
-      background: rgba(232,255,71,0.1);
-      color: #E8FF47;
-      border: 1px solid rgba(232,255,71,0.22);
-      box-shadow: 0 0 10px rgba(232,255,71,0.08);
-    }
-    .nav-2 .btn {
-      border: 1px solid rgba(58,255,212,0.4);
-      color: #3AFFD4;
-      background: transparent;
-      box-shadow: 0 0 14px rgba(58,255,212,0.1);
-    }
-    .nav-2 .page-preview {
-      background: #050505;
-      position: relative;
-    }
-    .nav-2 .page-title {
-      color: #3AFFD4;
-      text-shadow: 0 0 40px rgba(58,255,212,0.35);
-    }
-    .nav-2 .stat-pill-teal   { background: rgba(58,255,212,0.08);  color: #3AFFD4;  border: 1px solid rgba(58,255,212,0.2); }
-    .nav-2 .stat-pill-yellow { background: rgba(232,255,71,0.08);  color: #E8FF47;  border: 1px solid rgba(232,255,71,0.2); }
-    .nav-2 .stat-pill-orange { background: rgba(255,92,58,0.08);   color: #FF5C3A;  border: 1px solid rgba(255,92,58,0.2); }
-
-
-    /* ══════════════════════════════════════════════════════════
-       OPTION 3 — Tricolor Nav Links
-       Logo full teal glow. Each nav link gets its own accent.
-       Forum=yellow, Feed=teal, Marketplace=orange.
-       Full identity through color differentiation.
-    ══════════════════════════════════════════════════════════ */
-    .nav-3 {
-      background: #040404;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      box-shadow:
-        0 1px 0 rgba(58,255,212,0.08),
-        0 6px 40px rgba(0,0,0,0.8);
-    }
-
-    .nav-3 .logo-name { color: #3AFFD4; text-shadow: 0 0 28px rgba(58,255,212,0.65); letter-spacing: 0.12em; }
-    .nav-3 .logo-sub  { color: rgba(58,255,212,0.3); }
-    .nav-3 .nav-links a { color: #555; }
-    .nav-3 .nav-links a.active { color: #3AFFD4; }
-    .nav-3 .link-home        { color: #555; }
-    .nav-3 .link-forum       { background: rgba(232,255,71,0.1); color: #E8FF47; border: 1px solid rgba(232,255,71,0.22); }
-    .nav-3 .link-feed        { color: #3AFFD4 !important; }
-    .nav-3 .link-marketplace { color: #FF5C3A !important; }
-    .nav-3 .link-vendors     { color: #555; }
-    .nav-3 .link-foraging    { color: #4ade80 !important; }
-    .nav-3 .btn {
-      border: 1px solid rgba(58,255,212,0.35);
-      color: #3AFFD4;
-      background: transparent;
-      box-shadow: 0 0 12px rgba(58,255,212,0.08);
-    }
-    .nav-3 .page-preview { background: #040404; }
-    .nav-3 .page-title { color: #3AFFD4; text-shadow: 0 0 35px rgba(58,255,212,0.35); }
-    .nav-3 .stat-pill-teal   { background: rgba(58,255,212,0.08);  color: #3AFFD4;  border: 1px solid rgba(58,255,212,0.2); }
-    .nav-3 .stat-pill-yellow { background: rgba(232,255,71,0.08);  color: #E8FF47;  border: 1px solid rgba(232,255,71,0.2); }
-    .nav-3 .stat-pill-orange { background: rgba(255,92,58,0.08);   color: #FF5C3A;  border: 1px solid rgba(255,92,58,0.2); }
-
-
-    /* ══════════════════════════════════════════════════════════
-       OPTION 4 — Spectrum Glow Burst (Most Intense)
-       Deep bottom glow that blends all three colors.
-       The header radiates like a stage light array.
-    ══════════════════════════════════════════════════════════ */
-    .nav-4 {
-      background: #030303;
-      position: relative;
-    }
-    .nav-4::after {
-      content: '';
-      position: absolute;
-      bottom: -1px; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg,
-        transparent 0%,
-        #3AFFD4 25%,
-        #E8FF47 50%,
-        #FF5C3A 75%,
-        transparent 100%);
-      box-shadow:
-        0 0 8px 1px rgba(58,255,212,0.6),
-        0 0 20px 4px rgba(232,255,71,0.3),
-        0 0 40px 8px rgba(255,92,58,0.2);
-    }
-    .nav-4::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 40% 200% at 15% 100%, rgba(58,255,212,0.07) 0%, transparent 60%),
-        radial-gradient(ellipse 40% 200% at 50% 100%, rgba(232,255,71,0.05) 0%, transparent 60%),
-        radial-gradient(ellipse 40% 200% at 85% 100%, rgba(255,92,58,0.07) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .nav-4 .logo-name {
-      color: #3AFFD4;
-      letter-spacing: 0.12em;
-      text-shadow:
-        0 0 20px rgba(58,255,212,0.8),
-        0 0 40px rgba(58,255,212,0.4);
-    }
-    .nav-4 .logo-sub { color: rgba(58,255,212,0.3); }
-    .nav-4 .nav-links a { color: #555; }
-    .nav-4 .nav-links a.active { color: #3AFFD4; text-shadow: 0 0 10px rgba(58,255,212,0.6); }
-    .nav-4 .forum-pill {
-      background: rgba(232,255,71,0.1);
-      color: #E8FF47;
-      border: 1px solid rgba(232,255,71,0.25);
-      box-shadow: 0 0 12px rgba(232,255,71,0.15);
-    }
-    .nav-4 .btn {
-      border: 1px solid rgba(58,255,212,0.4);
-      color: #3AFFD4;
-      background: transparent;
-      box-shadow: 0 0 14px rgba(58,255,212,0.12);
-    }
-    .nav-4 .page-preview {
-      background: #030303;
-    }
-    .nav-4 .page-title {
-      background: linear-gradient(90deg, #3AFFD4, #E8FF47);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .nav-4 .stat-pill-teal   { background: rgba(58,255,212,0.08);  color: #3AFFD4;  border: 1px solid rgba(58,255,212,0.22); box-shadow: 0 0 8px rgba(58,255,212,0.1); }
-    .nav-4 .stat-pill-yellow { background: rgba(232,255,71,0.08);  color: #E8FF47;  border: 1px solid rgba(232,255,71,0.22); box-shadow: 0 0 8px rgba(232,255,71,0.1); }
-    .nav-4 .stat-pill-orange { background: rgba(255,92,58,0.08);   color: #FF5C3A;  border: 1px solid rgba(255,92,58,0.22);  box-shadow: 0 0 8px rgba(255,92,58,0.1); }
+    .pill-green  { background: rgba(57,255,20,0.07);  color: #39FF14; border: 1px solid rgba(57,255,20,0.22);  box-shadow: 0 0 8px rgba(57,255,20,0.1); }
+    .pill-blue   { background: rgba(0,212,255,0.07);  color: #00D4FF; border: 1px solid rgba(0,212,255,0.22);  box-shadow: 0 0 8px rgba(0,212,255,0.1); }
+    .pill-purple { background: rgba(204,0,255,0.07);  color: #CC00FF; border: 1px solid rgba(204,0,255,0.22);  box-shadow: 0 0 8px rgba(204,0,255,0.1); }
 
   </style>
 </head>
 <body>
 
   <h1>NorthEDM</h1>
-  <p class="subtitle">Navbar Templates — Teal-Led, Chromatic Burst</p>
+  <p class="subtitle">Navbar — Spectral Gradient Merge</p>
 
+  <div class="nav-shell">
 
-  <!-- ═══ OPTION 1 ═══════════════════════════════════════════ -->
-  <div class="template-block">
-    <div class="template-label">Option 1 — Gradient Underline Burst</div>
-    <div class="template-desc">Teal-dominant header. The bottom border flows teal → yellow → orange like a spectrum. Logo glows teal, Forum pill accents in yellow, page body shows all three color pills below the hero text.</div>
-    <div class="nav-shell">
-      <div class="nav-1">
-        <div class="nav-inner">
-          <div>
-            <div class="logo-name">NorthEDM</div>
-            <div class="logo-sub">Unite the Northeast</div>
-          </div>
-          <nav class="nav-links">
-            <a href="#" class="active">Home</a>
-            <a href="#" class="pill forum-pill">Forum</a>
-            <a href="#">Feed</a>
-            <a href="#">Marketplace</a>
-            <a href="#">Vendors</a>
-            <a href="#">Foraging</a>
-            <a href="#" class="btn">Log In</a>
-          </nav>
+    <!-- HEADER -->
+    <div class="header">
+      <div class="nav-inner">
+        <div>
+          <div class="logo-name">NorthEDM</div>
+          <div class="logo-sub">Unite the Northeast</div>
         </div>
+        <nav class="nav-links">
+          <a href="#" class="active">Home</a>
+          <a href="#" class="forum-pill">Forum</a>
+          <a href="#">Feed</a>
+          <a href="#">Marketplace</a>
+          <a href="#">Vendors</a>
+          <a href="#">Foraging</a>
+          <a href="#" class="btn-login">Log In</a>
+        </nav>
       </div>
-      <div class="page-preview nav-1">
-        <div class="page-preview-content">
-          <div class="page-label">NorthEDM Community</div>
-          <div class="page-title nav-1">Unite the Northeast</div>
-          <div class="page-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
-          <div class="pills-row">
-            <span class="stat-pill stat-pill-teal">Festival Community</span>
-            <span class="stat-pill stat-pill-yellow">Vendor Network</span>
-            <span class="stat-pill stat-pill-orange">Foraging Guides</span>
-          </div>
+    </div>
+
+    <!-- PAGE BODY PREVIEW -->
+    <div class="page-preview">
+      <div class="page-preview-content">
+        <div class="page-label">NorthEDM Community</div>
+        <div class="page-title">Unite the Northeast</div>
+        <div class="page-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+        <div class="pills-row">
+          <span class="stat-pill pill-green">Festival Community</span>
+          <span class="stat-pill pill-blue">Vendor Network</span>
+          <span class="stat-pill pill-purple">Foraging Guides</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <hr class="divider" />
-
-  <!-- ═══ OPTION 2 ═══════════════════════════════════════════ -->
-  <div class="template-block">
-    <div class="template-label">Option 2 — Chromatic Aura</div>
-    <div class="template-desc">Teal bleeds in from the left, orange from the right, yellow from above — all subtly. Header feels like it's lit by stage lights. The most atmospheric option.</div>
-    <div class="nav-shell">
-      <div class="nav-2">
-        <div class="nav-inner">
-          <div>
-            <div class="logo-name">NorthEDM</div>
-            <div class="logo-sub">Unite the Northeast</div>
-          </div>
-          <nav class="nav-links">
-            <a href="#" class="active">Home</a>
-            <a href="#" class="pill forum-pill">Forum</a>
-            <a href="#">Feed</a>
-            <a href="#">Marketplace</a>
-            <a href="#">Vendors</a>
-            <a href="#">Foraging</a>
-            <a href="#" class="btn">Log In</a>
-          </nav>
-        </div>
-      </div>
-      <div class="page-preview nav-2">
-        <div class="page-preview-content">
-          <div class="page-label">NorthEDM Community</div>
-          <div class="page-title nav-2">Unite the Northeast</div>
-          <div class="page-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
-          <div class="pills-row">
-            <span class="stat-pill stat-pill-teal">Festival Community</span>
-            <span class="stat-pill stat-pill-yellow">Vendor Network</span>
-            <span class="stat-pill stat-pill-orange">Foraging Guides</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <hr class="divider" />
-
-  <!-- ═══ OPTION 3 ═══════════════════════════════════════════ -->
-  <div class="template-block">
-    <div class="template-label">Option 3 — Tricolor Nav Links</div>
-    <div class="template-desc">Teal logo glow. Each nav section is color-coded: Forum=yellow, Feed=teal, Marketplace=orange, Foraging=green. The nav itself becomes a visual map of the platform.</div>
-    <div class="nav-shell">
-      <div class="nav-3">
-        <div class="nav-inner">
-          <div>
-            <div class="logo-name">NorthEDM</div>
-            <div class="logo-sub">Unite the Northeast</div>
-          </div>
-          <nav class="nav-links">
-            <a href="#" class="link-home">Home</a>
-            <a href="#" class="pill link-forum">Forum</a>
-            <a href="#" class="link-feed">Feed</a>
-            <a href="#" class="link-marketplace">Marketplace</a>
-            <a href="#" class="link-vendors">Vendors</a>
-            <a href="#" class="link-foraging">Foraging</a>
-            <a href="#" class="btn">Log In</a>
-          </nav>
-        </div>
-      </div>
-      <div class="page-preview nav-3">
-        <div class="page-preview-content">
-          <div class="page-label">NorthEDM Community</div>
-          <div class="page-title nav-3">Unite the Northeast</div>
-          <div class="page-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
-          <div class="pills-row">
-            <span class="stat-pill stat-pill-teal">Festival Community</span>
-            <span class="stat-pill stat-pill-yellow">Vendor Network</span>
-            <span class="stat-pill stat-pill-orange">Foraging Guides</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <hr class="divider" />
-
-  <!-- ═══ OPTION 4 ═══════════════════════════════════════════ -->
-  <div class="template-block">
-    <div class="template-label">Option 4 — Spectrum Glow Burst (Most Intense)</div>
-    <div class="template-desc">Teal leads the logo with a strong glow. The bottom border glows all three colors simultaneously — like stage lights aimed at the floor. Hero headline is a teal-to-yellow gradient. Maximum festival energy.</div>
-    <div class="nav-shell">
-      <div class="nav-4">
-        <div class="nav-inner">
-          <div>
-            <div class="logo-name">NorthEDM</div>
-            <div class="logo-sub">Unite the Northeast</div>
-          </div>
-          <nav class="nav-links">
-            <a href="#" class="active">Home</a>
-            <a href="#" class="pill forum-pill">Forum</a>
-            <a href="#">Feed</a>
-            <a href="#">Marketplace</a>
-            <a href="#">Vendors</a>
-            <a href="#">Foraging</a>
-            <a href="#" class="btn">Log In</a>
-          </nav>
-        </div>
-      </div>
-      <div class="page-preview nav-4">
-        <div class="page-preview-content">
-          <div class="page-label">NorthEDM Community</div>
-          <div class="page-title nav-4">Unite the Northeast</div>
-          <div class="page-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
-          <div class="pills-row">
-            <span class="stat-pill stat-pill-teal">Festival Community</span>
-            <span class="stat-pill stat-pill-yellow">Vendor Network</span>
-            <span class="stat-pill stat-pill-orange">Foraging Guides</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
 </body>
