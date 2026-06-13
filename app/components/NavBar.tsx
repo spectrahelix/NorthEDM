@@ -59,12 +59,18 @@ export function NavBar({
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-full bg-[#E8FF47]/10 px-3 py-1 text-[#E8FF47] transition hover:bg-[#E8FF47]/20"
+              className="rounded-full px-3 py-1 transition"
+              style={{ background: "rgba(204,0,255,0.1)", color: "#CC00FF", border: "1px solid rgba(204,0,255,0.28)" }}
             >
               {l.label}
             </Link>
           ) : (
-            <Link key={l.href} href={l.href} className="transition hover:text-white">
+            <Link
+              key={l.href}
+              href={l.href}
+              className="transition"
+              style={{ color: pathname === l.href ? "#39FF14" : "#555" }}
+            >
               {l.label}
             </Link>
           )
@@ -105,7 +111,8 @@ export function NavBar({
             <Link href="/signup" className="transition hover:text-white">Signup</Link>
             <Link
               href="/login"
-              className="rounded-2xl border border-white/15 px-4 py-1.5 transition hover:bg-white/5"
+              className="rounded-2xl px-4 py-1.5 transition"
+              style={{ border: "1px solid rgba(0,212,255,0.4)", color: "#00D4FF" }}
             >
               Log In
             </Link>

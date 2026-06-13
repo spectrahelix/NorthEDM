@@ -20,6 +20,11 @@
   --color-cw-yellow: #E8FF47;
   --color-cw-coral: #FF5C3A;
   --color-cw-teal: #3AFFD4;
+
+  /* Brand neon palette */
+  --color-neon-green:  #39FF14;
+  --color-neon-blue:   #00D4FF;
+  --color-neon-purple: #CC00FF;
 }
 
 @media (prefers-color-scheme: dark) {

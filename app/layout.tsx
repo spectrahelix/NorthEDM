@@ -94,11 +94,26 @@ export default async function RootLayout({
       className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable}`}
     >
       <body className="bg-neutral-950 text-neutral-100">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-neutral-950/90 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <header className="sticky top-0 z-30 bg-[#030303]" style={{ position: "sticky" }}>
+          {/* Spectral gradient line */}
+          <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent 0%, #39FF14 18%, #00D4FF 50%, #CC00FF 82%, transparent 100%)" }} />
+          {/* Stage-light aura */}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 35% 180% at 18% 120%, rgba(57,255,20,0.09) 0%, transparent 65%), radial-gradient(ellipse 35% 180% at 50% 120%, rgba(0,212,255,0.07) 0%, transparent 65%), radial-gradient(ellipse 35% 180% at 82% 120%, rgba(204,0,255,0.09) 0%, transparent 65%)" }} />
+          <div className="relative mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
             <Link href="/" className="block shrink-0">
-              <div className="font-bebas text-xl tracking-wide">NorthEDM</div>
-              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em] text-neutral-500">
+              <div
+                className="font-bebas text-xl tracking-wide"
+                style={{
+                  background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
+                }}
+              >
+                NorthEDM
+              </div>
+              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
                 Unite the Northeast
               </div>
             </Link>
@@ -106,6 +121,7 @@ export default async function RootLayout({
             <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} showVendorDash={hasVendor} />
           </div>
         </header>
+
 
         {children}
       </body>
