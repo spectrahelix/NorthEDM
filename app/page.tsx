@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { SocialAuth } from "@/app/components/SocialAuth";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -49,12 +50,18 @@ const FEATURES = [
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("vendors")
-    .select("id, name, category, description, vendor_type, is_founder")
-    .eq("status", "approved")
-    .eq("is_public", true)
-    .order("created_at", { ascending: false });
+  const [
+    { data: { user } },
+    { data },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("vendors")
+      .select("id, name, category, description, vendor_type, is_founder")
+      .eq("status", "approved")
+      .eq("is_public", true)
+      .order("created_at", { ascending: false }),
+  ]);
 
   const vendors = ((data ?? []) as Vendor[])
     .filter((v) => v.name !== "Homestead Life")
@@ -122,6 +129,70 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Guest sign-in panel (hidden for logged-in users) ─── */}
+      {!user && (
+        <section className="mx-auto max-w-6xl px-6 pb-6">
+          <div className="relative overflow-hidden rounded-[2rem] border border-[#39FF14]/20 bg-[#39FF14]/[0.03] p-8 sm:p-10">
+            {/* Glow */}
+            <div
+              className="pointer-events-none absolute -top-16 left-1/2 h-48 w-96 -translate-x-1/2 opacity-20"
+              style={{ background: "radial-gradient(ellipse, #39FF14 0%, transparent 70%)" }}
+            />
+            <div className="relative lg:flex lg:items-center lg:gap-12">
+              {/* Left copy */}
+              <div className="mb-8 lg:mb-0 lg:flex-1">
+                <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#39FF14]">
+                  Join NorthEDM
+                </p>
+                <h2 className="mt-3 font-bebas text-3xl tracking-wide sm:text-4xl">
+                  Your festival community starts here
+                </h2>
+                <p className="mt-3 max-w-md text-sm leading-6 text-neutral-400">
+                  Post to the forum, follow festivals, connect with vendors,
+                  book foraging tours, and unlock Wook World. One account for
+                  everything NorthEDM.
+                </p>
+                <ul className="mt-5 space-y-2">
+                  {[
+                    "Forum, replies & community groups",
+                    "Vendor marketplace & direct messaging",
+                    "Festival tracker & carpool boards",
+                    "Wook World collectibles & quests",
+                  ].map((benefit) => (
+                    <li key={benefit} className="flex items-center gap-2 text-sm text-neutral-300">
+                      <span className="text-[#39FF14]">✦</span>
+                      {benefit}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Right: auth buttons */}
+              <div className="w-full lg:w-80 lg:shrink-0">
+                <SocialAuth next="/feed" />
+                <div className="my-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">or</span>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+                <Link
+                  href="/signup"
+                  className="flex w-full items-center justify-center rounded-xl border border-white/15 py-3 text-sm font-medium text-neutral-300 transition hover:bg-white/5 hover:text-white"
+                >
+                  Sign up with email
+                </Link>
+                <p className="mt-4 text-center font-dm-mono text-xs text-neutral-600">
+                  Already a member?{" "}
+                  <Link href="/login" className="text-[#3AFFD4] transition hover:opacity-80">
+                    Log in
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Feature cards ─────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 py-14">
