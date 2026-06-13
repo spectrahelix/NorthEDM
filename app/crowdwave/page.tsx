@@ -12,6 +12,7 @@ type FestivalEvent = {
   lng: number;
   ticket_status: string;
   badge: string | null;
+  href: string;
 };
 
 type FestivalVendor = {
@@ -22,6 +23,21 @@ type FestivalVendor = {
   upcoming_shows_count: number;
   growth_percent: number;
 };
+
+const PINNED_EVENTS: FestivalEvent[] = [
+  {
+    id: -1,
+    name: "Elements Festival 2026",
+    location: "Lake Harmony, PA (Pocono Mountains)",
+    start_date: "2026-08-27",
+    end_date: "2026-08-30",
+    lat: 41.0534,
+    lng: -75.6052,
+    ticket_status: "available",
+    badge: "hot",
+    href: "/crowdwave/festival/elements-2026",
+  },
+];
 
 const BADGE_STYLES: Record<string, string> = {
   hot: "bg-[#FF5C3A]/20 text-[#FF5C3A]",
@@ -99,7 +115,10 @@ export default async function CrowdWaveFeedPage() {
       .eq("category", "Carpool"),
   ]);
 
-  const events = (eventsData ?? []) as FestivalEvent[];
+  const dbEvents = ((eventsData ?? []) as Omit<FestivalEvent, "href">[])
+    .filter((e) => !PINNED_EVENTS.some((p) => p.name === e.name))
+    .map((e) => ({ ...e, href: `/crowdwave/festival/${e.id}` }));
+  const events: FestivalEvent[] = [...PINNED_EVENTS, ...dbEvents];
   const vendors = (vendorsData ?? []) as FestivalVendor[];
   const totalVendorShows = vendors.reduce(
     (sum, v) => sum + (v.upcoming_shows_count ?? 0),
@@ -186,9 +205,10 @@ export default async function CrowdWaveFeedPage() {
             </div>
           ) : (
             events.map((event) => (
-              <div
+              <Link
                 key={event.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:bg-white/[0.05]"
+                href={event.href}
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.995]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -199,15 +219,18 @@ export default async function CrowdWaveFeedPage() {
                       {event.location}
                     </p>
                   </div>
-                  {event.badge && (
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 font-dm-mono text-xs uppercase tracking-widest ${
-                        BADGE_STYLES[event.badge] ?? "bg-white/10 text-neutral-300"
-                      }`}
-                    >
-                      {event.badge}
-                    </span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {event.badge && (
+                      <span
+                        className={`rounded-full px-3 py-1 font-dm-mono text-xs uppercase tracking-widest ${
+                          BADGE_STYLES[event.badge] ?? "bg-white/10 text-neutral-300"
+                        }`}
+                      >
+                        {event.badge}
+                      </span>
+                    )}
+                    <span className="font-dm-mono text-xs text-neutral-600">→</span>
+                  </div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
@@ -219,7 +242,7 @@ export default async function CrowdWaveFeedPage() {
                       event.ticket_status === "available"
                         ? "text-[#3AFFD4]"
                         : event.ticket_status === "limited"
-                        ? "text-[#E8FF47]"
+                        ? "text-[#FFB347]"
                         : "text-neutral-500 line-through"
                     }`}
                   >
@@ -228,7 +251,7 @@ export default async function CrowdWaveFeedPage() {
                 </div>
 
                 <WeatherStrip lat={event.lat} lng={event.lng} />
-              </div>
+              </Link>
             ))
           )}
         </div>
