@@ -47,6 +47,7 @@ export default async function ProfilePage({
     { data: threadsData, count: threadCount },
     { data: repliesData, count: replyCount },
     { data: groupsData, count: groupCount },
+    { data: nameHistoryData },
   ] = await Promise.all([
     supabase
       .from("threads")
@@ -64,7 +65,15 @@ export default async function ProfilePage({
       .from("group_members")
       .select("*", { count: "exact", head: true })
       .eq("user_id", id),
+    supabase
+      .from("display_name_history")
+      .select("display_name, changed_at")
+      .eq("user_id", id)
+      .order("changed_at", { ascending: false })
+      .limit(5),
   ]);
+
+  const nameHistory = (nameHistoryData ?? []) as { display_name: string; changed_at: string }[];
 
   const isOwn = currentUser?.id === id;
   const roleColor = getRoleColor(profile.role);
@@ -155,6 +164,23 @@ export default async function ProfilePage({
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-neutral-300">
               {profile.bio}
             </p>
+          )}
+          {nameHistory.length > 0 && (
+            <div className="mt-3">
+              <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-700">
+                Previously known as
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {nameHistory.map((h) => (
+                  <span
+                    key={h.changed_at}
+                    className="rounded-full border border-white/10 bg-white/[0.02] px-2.5 py-0.5 font-dm-mono text-xs text-neutral-600"
+                  >
+                    {h.display_name}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 

@@ -80,7 +80,7 @@ export default function EditProfilePage() {
   }
 
   async function save() {
-    if (!userId) return;
+    if (!userId || !profile) return;
     if (!displayName.trim()) {
       setError("Display name is required.");
       return;
@@ -92,6 +92,16 @@ export default function EditProfilePage() {
     setSaving(true);
     setError("");
     const supabase = createClient();
+
+    // Record old name in history before overwriting
+    if (displayName.trim() !== profile.display_name) {
+      await supabase.from("display_name_history").insert({
+        user_id: userId,
+        display_name: profile.display_name,
+      });
+      setProfile({ ...profile, display_name: displayName.trim() });
+    }
+
     const { error: upsertError } = await supabase
       .from("user_profiles")
       .upsert({

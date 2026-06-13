@@ -160,7 +160,7 @@ export default function MessagesPage() {
               }}
               className={`px-5 py-2.5 font-dm-mono text-xs uppercase tracking-widest transition ${
                 tab === t
-                  ? "border-b-2 border-[#E8FF47] text-[#E8FF47]"
+                  ? "border-b-2 border-[#39FF14] text-[#39FF14]"
                   : "text-neutral-500 hover:text-neutral-300"
               }`}
             >
