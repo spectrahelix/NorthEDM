@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NorthEDM — Merged Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #030303;
+      font-family: 'DM Sans', sans-serif;
+      color: #e5e5e5;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Wave Field canvas fills the entire page background ── */
+    #wave-bg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Everything above the canvas ── */
+    .site-wrap { position: relative; z-index: 1; }
+
+    /* ══════════════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════════════ */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(3,3,3,0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    /* Spectral gradient line */
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent  0%,
+        #39FF14     18%,
+        #00D4FF     50%,
+        #CC00FF     82%,
+        transparent 100%
+      );
+    }
+
+    /* Stage-light aura rising from the line */
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 35% 180% at 18% 120%, rgba(57,255,20,0.09)  0%, transparent 65%),
+        radial-gradient(ellipse 35% 180% at 50% 120%, rgba(0,212,255,0.07)  0%, transparent 65%),
+        radial-gradient(ellipse 35% 180% at 82% 120%, rgba(204,0,255,0.09)  0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .nav-inner {
+      position: relative;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+    }
+
+    .logo-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
+      letter-spacing: 0.12em;
+      line-height: 1;
+      background: linear-gradient(90deg, #39FF14 0%, #00D4FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3));
+    }
+
+    .logo-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      margin-top: 3px;
+      color: rgba(57,255,20,0.3);
+    }
+
+    nav { display: flex; align-items: center; gap: 22px; font-size: 13px; }
+    nav a { text-decoration: none; color: #444; cursor: default; }
+    nav a.active { color: #39FF14; text-shadow: 0 0 10px rgba(57,255,20,0.5); }
+
+    .forum-pill {
+      padding: 4px 13px;
+      border-radius: 99px;
+      background: rgba(204,0,255,0.1);
+      color: #CC00FF;
+      border: 1px solid rgba(204,0,255,0.28);
+    }
+
+    .btn-login {
+      padding: 6px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,212,255,0.4);
+      color: #00D4FF;
+      background: transparent;
+      font-size: 13px;
+      cursor: default;
+    }
+
+    /* ══════════════════════════════════════════════
+       HERO SECTION
+    ══════════════════════════════════════════════ */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 100px 32px 80px;
+    }
+
+    .hero-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.35em;
+      color: rgba(255,255,255,0.18);
+      margin-bottom: 18px;
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 96px;
+      letter-spacing: 0.04em;
+      line-height: 0.92;
+      margin-bottom: 24px;
+      background: linear-gradient(90deg, #39FF14 0%, #00D4FF 50%, #CC00FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(0,212,255,0.2));
+    }
+
+    .hero-body {
+      font-size: 15px;
+      color: rgba(255,255,255,0.28);
+      max-width: 460px;
+      line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    .pills-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 40px; }
+
+    .stat-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      padding: 5px 14px;
+      border-radius: 99px;
+    }
+
+    .pill-green  { background: rgba(57,255,20,0.07);  color: #39FF14; border: 1px solid rgba(57,255,20,0.22); }
+    .pill-blue   { background: rgba(0,212,255,0.07);  color: #00D4FF; border: 1px solid rgba(0,212,255,0.22); }
+    .pill-purple { background: rgba(204,0,255,0.07);  color: #CC00FF; border: 1px solid rgba(204,0,255,0.22); }
+
+    .cta-row { display: flex; gap: 14px; align-items: center; }
+
+    .btn-primary {
+      padding: 12px 28px;
+      border-radius: 8px;
+      background: #39FF14;
+      color: #000;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: default;
+    }
+
+    .btn-secondary {
+      padding: 12px 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,212,255,0.35);
+      color: #00D4FF;
+      font-size: 14px;
+      cursor: default;
+    }
+
+    /* ══════════════════════════════════════════════
+       FEATURE CARDS ROW
+    ══════════════════════════════════════════════ */
+    .cards {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 32px 100px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      border-radius: 16px;
+      padding: 28px;
+      background: rgba(255,255,255,0.02);
+      backdrop-filter: blur(8px);
+    }
+
+    .card-green  { border: 1px solid rgba(57,255,20,0.15);  }
+    .card-blue   { border: 1px solid rgba(0,212,255,0.15);  }
+    .card-purple { border: 1px solid rgba(204,0,255,0.15);  }
+
+    .card-icon {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 14px;
+    }
+    .card-green  .card-icon { color: #39FF14; }
+    .card-blue   .card-icon { color: #00D4FF; }
+    .card-purple .card-icon { color: #CC00FF; }
+
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 0.06em;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .card-body { font-size: 13px; color: #444; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <!-- Wave Field canvas — full page background -->
+  <canvas id="wave-bg"></canvas>
+
+  <div class="site-wrap">
+
+    <!-- HEADER -->
+    <header>
+      <div class="nav-inner">
+        <div>
+          <div class="logo-name">NorthEDM</div>
+          <div class="logo-sub">Unite the Northeast</div>
+        </div>
+        <nav>
+          <a href="#" class="active">Home</a>
+          <a href="#" class="forum-pill">Forum</a>
+          <a href="#">Feed</a>
+          <a href="#">Marketplace</a>
+          <a href="#">Vendors</a>
+          <a href="#">Foraging</a>
+          <a href="#" class="btn-login">Log In</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-label">NorthEDM — Northeast Festival Community</div>
+      <div class="hero-title">Unite the<br>Northeast</div>
+      <div class="hero-body">Appalachian-rooted festival culture, vendor community, mushroom foraging, holistic goods, and the future home of Wook World.</div>
+      <div class="pills-row">
+        <span class="stat-pill pill-green">Festival Community</span>
+        <span class="stat-pill pill-blue">Vendor Network</span>
+        <span class="stat-pill pill-purple">Foraging Guides</span>
+      </div>
+      <div class="cta-row">
+        <span class="btn-primary">Join the Community</span>
+        <span class="btn-secondary">Book a Foraging Tour</span>
+      </div>
+    </section>
+
+    <!-- FEATURE CARDS -->
+    <div class="cards">
+      <div class="card card-green">
+        <div class="card-icon">Music + Events</div>
+        <div class="card-title">Festival Culture</div>
+        <div class="card-body">A regional hub for festival culture, local artists, promotion, and community energy across the Northeast.</div>
+      </div>
+      <div class="card card-blue">
+        <div class="card-icon">Marketplace + Vendors</div>
+        <div class="card-title">Vendor Platform</div>
+        <div class="card-body">A vendor platform for mushrooms, art, holistic goods, services, and festival culture across the region.</div>
+      </div>
+      <div class="card card-purple">
+        <div class="card-icon">Foraging + Culture</div>
+        <div class="card-title">Woodland Knowledge</div>
+        <div class="card-body">Guided mushroom foraging tours, culinary fungi, educational experiences, and Appalachian woodland knowledge.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+  (function() {
+    const canvas = document.getElementById('wave-bg');
+
+    function draw() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width  = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      ctx.fillStyle = '#030303';
+      ctx.fillRect(0, 0, W, H);
+
+      const step = 18;
+
+      function lerpColor(c1, c2, t) {
+        return [
+          Math.round(c1[0] + (c2[0]-c1[0])*t),
+          Math.round(c1[1] + (c2[1]-c1[1])*t),
+          Math.round(c1[2] + (c2[2]-c1[2])*t),
+        ];
+      }
+
+      function triColor(t) {
+        const green  = [57,  255, 20];
+        const blue   = [0,   212, 255];
+        const purple = [204, 0,   255];
+        t = Math.max(0, Math.min(1, t));
+        if (t < 0.5) return lerpColor(green, blue,   t * 2);
+        else         return lerpColor(blue,  purple, (t - 0.5) * 2);
+      }
+
+      for (let x = step/2; x < W; x += step) {
+        for (let y = step/2; y < H; y += step) {
+          const wave1 = Math.sin((x / W) * Math.PI * 6 + (y / H) * Math.PI * 2.5);
+          const wave2 = Math.cos((y / H) * Math.PI * 5 + (x / W) * Math.PI * 1.8);
+          const wave3 = Math.sin((x / W + y / H) * Math.PI * 3);
+          const combined = (wave1 + wave2 + wave3 * 0.5) / 2.5;
+          const brightness = (combined + 1) / 2;
+          if (brightness < 0.18) continue;
+          const t = Math.max(0, Math.min(1, (x / W * 0.5) + (combined + 1) / 2 * 0.5));
+          const col = triColor(t);
+          const r = 1.2 * (0.4 + brightness * 0.8);
+          ctx.globalAlpha = brightness * 0.55;
+          ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    draw();
+    window.addEventListener('resize', draw);
+  })();
+  </script>
+</body>
+</html>
