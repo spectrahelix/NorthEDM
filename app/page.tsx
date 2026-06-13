@@ -1,5 +1,18 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "NorthEDM — Unite the Northeast",
+  description:
+    "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, vendor marketplace, and Wook World. Your regional home base.",
+  openGraph: {
+    title: "NorthEDM — Unite the Northeast",
+    description:
+      "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, vendor marketplace, and Wook World.",
+    url: "https://northedm.com",
+  },
+};
 
 type Vendor = {
   id: number;
@@ -43,7 +56,7 @@ export default async function HomePage() {
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
-  const vendors = ((data ?? []) as Vendor[]).slice(0, 3);
+  const vendors = ((data ?? []) as Vendor[]).slice(0, 2);
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -180,47 +193,73 @@ export default async function HomePage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {vendors.length > 0 ? (
-            vendors.map((vendor) => (
-              <Link
-                key={vendor.id}
-                href={`/marketplace/${vendor.id}`}
-                className="group flex flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
-              >
-                <div className="mb-3 flex items-start justify-between gap-2">
-                  <h3 className="font-bebas text-xl leading-snug tracking-wide">
-                    {vendor.name || "Unnamed Vendor"}
-                  </h3>
-                  {vendor.vendor_type === "featured" && (
-                    <span className="shrink-0 rounded-full bg-purple-500/20 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-purple-300">
-                      Featured
-                    </span>
-                  )}
-                </div>
-                <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
-                  {vendor.category || "uncategorized"}
-                </p>
-                <p className="mt-3 flex-1 text-sm leading-6 text-neutral-400">
-                  {vendor.description || "No description available."}
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white/10 px-3 py-1 font-dm-mono text-xs text-neutral-400">
-                    {vendor.vendor_type || "listed"}
-                  </span>
-                  {vendor.is_founder && (
-                    <span className="rounded-full bg-[#E8FF47]/10 px-3 py-1 font-dm-mono text-xs text-[#E8FF47]">
-                      Founder
-                    </span>
-                  )}
-                </div>
-              </Link>
-            ))
-          ) : (
-            <div className="col-span-full rounded-3xl border border-white/10 bg-white/[0.02] py-12 text-center">
-              <p className="text-2xl mb-2">🌿</p>
-              <p className="text-sm text-neutral-500">No featured vendors yet — check back soon.</p>
+          {/* Homestead Life — permanent founder vendor */}
+          <a
+            href="https://homestead-life.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex flex-col rounded-3xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.04] p-6 transition hover:border-[#3AFFD4]/60 hover:bg-[#3AFFD4]/[0.07] active:scale-[0.99]"
+          >
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <h3 className="font-bebas text-xl leading-snug tracking-wide">
+                Homestead Life
+              </h3>
+              <span className="shrink-0 rounded-full bg-[#E8FF47]/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-[#E8FF47]">
+                Founder
+              </span>
             </div>
-          )}
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
+              Holistic Goods
+            </p>
+            <p className="mt-3 flex-1 text-sm leading-6 text-neutral-400">
+              All-natural handmade products from a family farm in Millville, PA.
+              Healing balms, essential oils, and nature-rooted wellness goods
+              crafted with therapeutic-grade ingredients.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full bg-[#3AFFD4]/10 px-3 py-1 font-dm-mono text-xs text-[#3AFFD4]">
+                featured
+              </span>
+              <span className="rounded-full bg-[#E8FF47]/10 px-3 py-1 font-dm-mono text-xs text-[#E8FF47]">
+                Founder
+              </span>
+            </div>
+          </a>
+
+          {vendors.map((vendor) => (
+            <Link
+              key={vendor.id}
+              href={`/marketplace/${vendor.id}`}
+              className="group flex flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
+            >
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <h3 className="font-bebas text-xl leading-snug tracking-wide">
+                  {vendor.name || "Unnamed Vendor"}
+                </h3>
+                {vendor.vendor_type === "featured" && (
+                  <span className="shrink-0 rounded-full bg-purple-500/20 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-purple-300">
+                    Featured
+                  </span>
+                )}
+              </div>
+              <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
+                {vendor.category || "uncategorized"}
+              </p>
+              <p className="mt-3 flex-1 text-sm leading-6 text-neutral-400">
+                {vendor.description || "No description available."}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1 font-dm-mono text-xs text-neutral-400">
+                  {vendor.vendor_type || "listed"}
+                </span>
+                {vendor.is_founder && (
+                  <span className="rounded-full bg-[#E8FF47]/10 px-3 py-1 font-dm-mono text-xs text-[#E8FF47]">
+                    Founder
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 

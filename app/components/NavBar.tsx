@@ -15,14 +15,17 @@ const NAV_LINKS = [
   { href: "/marketplace", label: "Marketplace" },
   { href: "/vendors",     label: "Vendors" },
   { href: "/foraging",    label: "Foraging" },
+  { href: "/festdash",    label: "FestDash",    festdash: true },
 ];
 
 export function NavBar({
   userId,
   showAdmin,
+  showVendorDash = false,
 }: {
   userId: string | null;
   showAdmin: boolean;
+  showVendorDash?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -53,7 +56,15 @@ export function NavBar({
       {/* ── Desktop nav ───────────────────────────────────────── */}
       <nav className="hidden items-center gap-4 text-sm text-neutral-300 lg:flex">
         {NAV_LINKS.map((l) =>
-          l.highlight ? (
+          l.festdash ? (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="rounded-full bg-orange-500/15 px-3 py-1 font-semibold text-orange-400 transition hover:bg-orange-500/25 hover:text-orange-300"
+            >
+              {l.label}
+            </Link>
+          ) : l.highlight ? (
             <Link
               key={l.href}
               href={l.href}
@@ -75,6 +86,14 @@ export function NavBar({
             <Link href={`/profile/${userId}`} className="transition hover:text-white">
               Profile
             </Link>
+            {showVendorDash && (
+              <Link
+                href="/vendor"
+                className="font-dm-mono text-xs uppercase tracking-widest text-[#3AFFD4]/80 transition hover:text-[#3AFFD4]"
+              >
+                My Shop
+              </Link>
+            )}
             {showAdmin && (
               <Link
                 href="/admin"
@@ -161,7 +180,9 @@ export function NavBar({
                     key={l.href}
                     href={l.href}
                     className={`flex items-center rounded-xl px-4 py-3.5 text-base font-medium transition ${
-                      l.highlight
+                      l.festdash
+                        ? "my-1 bg-orange-500/10 font-semibold text-orange-400 hover:bg-orange-500/20"
+                        : l.highlight
                         ? "my-1 bg-[#E8FF47]/10 text-[#E8FF47] hover:bg-[#E8FF47]/20"
                         : "text-neutral-200 hover:bg-white/5 hover:text-white"
                     }`}
@@ -190,6 +211,14 @@ export function NavBar({
                     >
                       Messages
                     </Link>
+                    {showVendorDash && (
+                      <Link
+                        href="/vendor"
+                        className="flex items-center rounded-xl px-4 py-3.5 text-base font-medium text-[#3AFFD4]/80 transition hover:bg-[#3AFFD4]/5 hover:text-[#3AFFD4]"
+                      >
+                        My Shop
+                      </Link>
+                    )}
                     {showAdmin && (
                       <Link
                         href="/admin"

@@ -78,13 +78,24 @@ export default function SignupPage() {
       return;
     }
 
-    // Upsert profile with username right away
+    // Upsert both profile tables for the new user
     if (signupData.user) {
-      await supabase.from("profiles").upsert({
-        id: signupData.user.id,
-        role: "user",
-        username,
-      });
+      await Promise.all([
+        supabase.from("profiles").upsert({
+          id: signupData.user.id,
+          role: "user",
+          username,
+        }),
+        supabase.from("user_profiles").upsert({
+          id: signupData.user.id,
+          display_name: username,
+          role: "drifter",
+          bio: "",
+          home_city: "",
+          avatar_border: "moss",
+          avatar_url: null,
+        }),
+      ]);
     }
 
     setSuccess(true);

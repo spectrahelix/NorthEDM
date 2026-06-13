@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import type { Metadata } from "next";
 import { ForumFilters } from "./components/ForumFilters";
+
+export const metadata: Metadata = {
+  title: "Forum",
+  description:
+    "The NorthEDM community forum — festival lineups, carpool rides, vendor talk, foraging reports, and everything in between.",
+  openGraph: {
+    title: "NorthEDM Forum",
+    description:
+      "Festival lineups, carpool rides, vendor talk, foraging reports, and community discussion.",
+    url: "https://northedm.com/forum",
+  },
+};
 import { ForumComposer } from "./components/ForumComposer";
 import { CategoryModal } from "./components/CategoryModal";
 import { HeartButton } from "@/app/components/HeartButton";

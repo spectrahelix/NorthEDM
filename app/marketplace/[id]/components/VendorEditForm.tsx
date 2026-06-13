@@ -37,6 +37,18 @@ export function VendorEditForm({
     setError("");
     setSaving(true);
     const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("You must be logged in to edit this listing.");
+      setSaving(false);
+      return;
+    }
+
+    // Only update the vendor row that belongs to the current user
     const { error: dbError } = await supabase
       .from("vendors")
       .update({
@@ -46,7 +58,8 @@ export function VendorEditForm({
         contact: fields.contact.trim(),
         email: fields.email.trim(),
       })
-      .eq("id", vendorId);
+      .eq("id", vendorId)
+      .eq("user_id", user.id);
     setSaving(false);
     if (dbError) {
       setError(dbError.message);
