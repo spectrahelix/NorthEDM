@@ -170,7 +170,7 @@ export function CategoryModal({ userId }: { userId: string }) {
                 <button
                   onClick={submit}
                   disabled={submitting}
-                  className="rounded-xl bg-[#E8FF47] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+                  className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting ? "Creating…" : "Create Category"}
                 </button>

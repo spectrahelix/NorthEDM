@@ -206,12 +206,12 @@ export default async function FestDashPage() {
                       <p className="text-xs text-neutral-500">Window: {order.time}</p>
                       {order.status === "new" && (
                         <div className="mt-2 flex gap-2">
-                          <button className="flex-1 rounded-lg bg-orange-500 py-1.5 text-xs font-semibold text-white">
+                          <div className="flex-1 rounded-lg bg-orange-500 py-1.5 text-xs font-semibold text-white text-center opacity-50 cursor-not-allowed">
                             Accept
-                          </button>
-                          <button className="flex-1 rounded-lg border border-white/10 py-1.5 text-xs text-neutral-400">
+                          </div>
+                          <div className="flex-1 rounded-lg border border-white/10 py-1.5 text-xs text-neutral-400 text-center opacity-50 cursor-not-allowed">
                             Decline
-                          </button>
+                          </div>
                         </div>
                       )}
                     </div>

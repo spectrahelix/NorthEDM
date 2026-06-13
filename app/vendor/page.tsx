@@ -244,7 +244,7 @@ export default function VendorDashboard() {
             </div>
             <button
               onClick={openAdd}
-              className="rounded-xl bg-[#E8FF47] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
+              className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
             >
               + Add Product
             </button>
@@ -449,7 +449,7 @@ export default function VendorDashboard() {
                 <button
                   type="submit"
                   disabled={saving || uploading}
-                  className="rounded-xl bg-[#E8FF47] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+                  className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
                 >
                   {saving ? "Saving…" : editId ? "Save Changes" : "Add Product"}
                 </button>
@@ -465,7 +465,7 @@ export default function VendorDashboard() {
             <p className="text-neutral-400">No products yet.</p>
             <button
               onClick={openAdd}
-              className="mt-5 rounded-xl bg-[#E8FF47] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
+              className="mt-5 rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
             >
               Add your first product
             </button>

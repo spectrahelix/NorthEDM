@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
           </p>
           <Link
             href="/login"
-            className="mt-7 inline-block rounded-xl bg-[#E8FF47] px-6 py-3 font-semibold text-black transition hover:opacity-90"
+            className="mt-7 inline-block rounded-xl bg-[#39FF14] px-6 py-3 font-semibold text-black transition hover:opacity-90"
           >
             Back to Login
           </Link>
@@ -94,7 +94,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#E8FF47] py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-xl bg-[#39FF14] py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Sending…" : "Send Reset Link"}
             </button>
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
 
         <p className="mt-6 text-center text-sm text-neutral-500">
           Remember your password?{" "}
-          <Link href="/login" className="text-[#E8FF47] transition hover:opacity-80">
+          <Link href="/login" className="text-[#3AFFD4] transition hover:opacity-80">
             Sign in
           </Link>
         </p>

@@ -26,7 +26,7 @@ export default function SignupPage() {
       : 3;
 
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][strength];
-  const strengthColor = ["", "bg-[#FF5C3A]", "bg-orange-400", "bg-[#E8FF47]", "bg-[#3AFFD4]"][strength];
+  const strengthColor = ["", "bg-[#FF5C3A]", "bg-orange-400", "bg-[#39FF14]", "bg-[#3AFFD4]"][strength];
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -115,7 +115,7 @@ export default function SignupPage() {
           </p>
           <Link
             href="/login"
-            className="mt-7 inline-block rounded-xl bg-[#E8FF47] px-6 py-3 font-semibold text-black transition hover:opacity-90"
+            className="mt-7 inline-block rounded-xl bg-[#39FF14] px-6 py-3 font-semibold text-black transition hover:opacity-90"
           >
             Back to Login
           </Link>
@@ -244,7 +244,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#E8FF47] py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-xl bg-[#39FF14] py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Creating account…" : "Create Account"}
             </button>
@@ -253,7 +253,7 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-sm text-neutral-500">
           Already have an account?{" "}
-          <Link href="/login" className="text-[#E8FF47] transition hover:opacity-80">
+          <Link href="/login" className="text-[#3AFFD4] transition hover:opacity-80">
             Sign in
           </Link>
         </p>

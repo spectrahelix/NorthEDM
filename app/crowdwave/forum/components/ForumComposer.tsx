@@ -64,7 +64,7 @@ export function ForumComposer({
     <>
       <button
         onClick={openModal}
-        className="shrink-0 rounded-xl bg-[#E8FF47] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
+        className="shrink-0 rounded-xl bg-[#39FF14] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
       >
         + New Post
       </button>
@@ -143,7 +143,7 @@ export function ForumComposer({
                 <button
                   onClick={submit}
                   disabled={submitting}
-                  className="rounded-xl bg-[#E8FF47] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+                  className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting ? "Posting…" : "Post Thread"}
                 </button>

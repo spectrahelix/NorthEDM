@@ -259,7 +259,7 @@ export default function EditProfilePage() {
             <button
               onClick={save}
               disabled={saving || saved}
-              className="rounded-xl bg-[#E8FF47] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Profile"}
             </button>

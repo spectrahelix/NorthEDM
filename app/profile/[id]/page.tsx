@@ -188,10 +188,10 @@ export default async function ProfilePage({
               href={`/profile/${id}?tab=${t}`}
               className={`px-4 py-2.5 font-dm-mono text-xs uppercase tracking-widest transition ${
                 activeTab === t
-                  ? "border-b-2 text-[#E8FF47]"
+                  ? "border-b-2 text-[#39FF14]"
                   : "text-neutral-500 hover:text-neutral-300"
               }`}
-              style={activeTab === t ? { borderColor: "#E8FF47" } : {}}
+              style={activeTab === t ? { borderColor: "#39FF14" } : {}}
             >
               {t === "threads" ? "Threads" : "Replies"}
             </Link>

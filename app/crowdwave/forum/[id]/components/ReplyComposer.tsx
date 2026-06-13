@@ -25,7 +25,7 @@ export function ReplyComposer({
         </p>
         <a
           href="/login"
-          className="inline-block rounded-xl bg-[#E8FF47] px-5 py-2 text-sm font-semibold text-black hover:opacity-90"
+          className="inline-block rounded-xl bg-[#39FF14] px-5 py-2 text-sm font-semibold text-black hover:opacity-90"
         >
           Log in to reply
         </a>
@@ -69,7 +69,7 @@ export function ReplyComposer({
         <button
           onClick={submit}
           disabled={submitting || !body.trim()}
-          className="rounded-xl bg-[#E8FF47] px-5 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+          className="rounded-xl bg-[#39FF14] px-5 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
         >
           {submitting ? "Posting…" : "Post Reply"}
         </button>

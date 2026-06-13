@@ -120,7 +120,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#E8FF47] py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-xl bg-[#39FF14] py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Signing in…" : "Sign In"}
             </button>
@@ -129,7 +129,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-neutral-500">
           New to NorthEDM?{" "}
-          <Link href="/signup" className="text-[#E8FF47] transition hover:opacity-80">
+          <Link href="/signup" className="text-[#3AFFD4] transition hover:opacity-80">
             Create an account
           </Link>
         </p>

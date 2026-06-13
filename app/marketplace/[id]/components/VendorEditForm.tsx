@@ -136,7 +136,7 @@ export function VendorEditForm({
           <button
             onClick={save}
             disabled={saving}
-            className="rounded-xl bg-[#E8FF47] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-50"
+            className="rounded-xl bg-[#39FF14] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

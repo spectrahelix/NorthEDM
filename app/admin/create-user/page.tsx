@@ -167,7 +167,7 @@ export default function AdminCreateUserPage() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-xl bg-[#E8FF47] px-6 py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl bg-[#39FF14] px-6 py-3 font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {loading ? "Creating…" : "Create Account"}
             </button>

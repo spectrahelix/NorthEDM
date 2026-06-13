@@ -138,7 +138,7 @@ export default function MessagesPage() {
             <h1 className="font-bebas text-6xl tracking-wide">Messages</h1>
             <button
               onClick={() => setCompose(true)}
-              className="mb-1 rounded-xl bg-[#E8FF47] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
+              className="mb-1 rounded-xl bg-[#39FF14] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
             >
               + Compose
             </button>
