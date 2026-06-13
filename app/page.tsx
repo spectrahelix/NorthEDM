@@ -72,7 +72,7 @@ export default async function HomePage() {
           }}
         />
         <div className="relative mx-auto max-w-6xl px-6 py-14 sm:py-20">
-          <p className="mb-3 font-dm-mono text-xs uppercase tracking-[0.3em] text-[#E8FF47]">
+          <p className="mb-3 font-dm-mono text-xs uppercase tracking-[0.3em] text-[#39FF14]">
             NorthEDM
           </p>
           <h1 className="font-bebas text-[clamp(3rem,12vw,6rem)] leading-none tracking-wide">
@@ -86,7 +86,7 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
             <Link
               href="/forum"
-              className="flex items-center justify-center rounded-2xl bg-[#E8FF47] px-6 py-4 text-base font-semibold text-black transition hover:opacity-90 active:scale-[0.98]"
+              className="flex items-center justify-center rounded-2xl bg-[#39FF14] px-6 py-4 text-base font-semibold text-black transition hover:opacity-90 active:scale-[0.98]"
             >
               Join the Community
             </Link>
@@ -177,7 +177,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-6 pb-14">
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#E8FF47]">
+            <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#39FF14]">
               Featured Vendors
             </p>
             <h2 className="mt-1 font-bebas text-3xl tracking-wide">
@@ -204,7 +204,7 @@ export default async function HomePage() {
               <h3 className="font-bebas text-xl leading-snug tracking-wide">
                 Homestead Life
               </h3>
-              <span className="shrink-0 rounded-full bg-[#E8FF47]/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-[#E8FF47]">
+              <span className="shrink-0 rounded-full bg-[#CC00FF]/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-[#CC00FF]">
                 Founder
               </span>
             </div>
@@ -220,7 +220,7 @@ export default async function HomePage() {
               <span className="rounded-full bg-[#3AFFD4]/10 px-3 py-1 font-dm-mono text-xs text-[#3AFFD4]">
                 featured
               </span>
-              <span className="rounded-full bg-[#E8FF47]/10 px-3 py-1 font-dm-mono text-xs text-[#E8FF47]">
+              <span className="rounded-full bg-[#CC00FF]/10 px-3 py-1 font-dm-mono text-xs text-[#CC00FF]">
                 Founder
               </span>
             </div>
@@ -253,7 +253,7 @@ export default async function HomePage() {
                   {vendor.vendor_type || "listed"}
                 </span>
                 {vendor.is_founder && (
-                  <span className="rounded-full bg-[#E8FF47]/10 px-3 py-1 font-dm-mono text-xs text-[#E8FF47]">
+                  <span className="rounded-full bg-[#CC00FF]/10 px-3 py-1 font-dm-mono text-xs text-[#CC00FF]">
                     Founder
                   </span>
                 )}

@@ -190,7 +190,7 @@ export function NavBar({
                       l.festdash
                         ? "my-1 bg-orange-500/10 font-semibold text-orange-400 hover:bg-orange-500/20"
                         : l.highlight
-                        ? "my-1 bg-[#E8FF47]/10 text-[#E8FF47] hover:bg-[#E8FF47]/20"
+                        ? "my-1 bg-[#CC00FF]/10 text-[#CC00FF] hover:bg-[#CC00FF]/20"
                         : "text-neutral-200 hover:bg-white/5 hover:text-white"
                     }`}
                   >
@@ -245,7 +245,7 @@ export function NavBar({
                   <>
                     <Link
                       href="/signup"
-                      className="flex items-center justify-center rounded-xl bg-[#E8FF47] px-4 py-3.5 text-base font-semibold text-black transition hover:opacity-90"
+                      className="flex items-center justify-center rounded-xl bg-[#39FF14] px-4 py-3.5 text-base font-semibold text-black transition hover:opacity-90"
                     >
                       Create Account
                     </Link>
