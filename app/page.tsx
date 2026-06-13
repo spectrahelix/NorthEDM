@@ -56,7 +56,9 @@ export default async function HomePage() {
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
-  const vendors = ((data ?? []) as Vendor[]).slice(0, 2);
+  const vendors = ((data ?? []) as Vendor[])
+    .filter((v) => v.name !== "Homestead Life")
+    .slice(0, 1);
 
   return (
     <main className="min-h-screen text-neutral-100">
@@ -229,6 +231,37 @@ export default async function HomePage() {
               </span>
             </div>
           </a>
+
+          {/* CJ's Foraging Tours — permanent founder vendor */}
+          <Link
+            href="/foraging"
+            className="group flex flex-col rounded-3xl border border-[#FFB347]/30 bg-[#FFB347]/[0.04] p-6 transition hover:border-[#FFB347]/60 hover:bg-[#FFB347]/[0.07] active:scale-[0.99]"
+          >
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <h3 className="font-bebas text-xl leading-snug tracking-wide">
+                CJ&apos;s Foraging Tours
+              </h3>
+              <span className="shrink-0 rounded-full bg-[#CC00FF]/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-[#CC00FF]">
+                Founder
+              </span>
+            </div>
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
+              Foraging &amp; Guided Tours
+            </p>
+            <p className="mt-3 flex-1 text-sm leading-6 text-neutral-400">
+              Guided mushroom foraging experiences deep in the Appalachian
+              woodlands. Learn to identify wild edibles, chanterelles, hen of
+              the woods, and more with an experienced local guide.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full bg-[#FFB347]/10 px-3 py-1 font-dm-mono text-xs text-[#FFB347]">
+                book a tour
+              </span>
+              <span className="rounded-full bg-[#CC00FF]/10 px-3 py-1 font-dm-mono text-xs text-[#CC00FF]">
+                Founder
+              </span>
+            </div>
+          </Link>
 
           {vendors.map((vendor) => (
             <Link
