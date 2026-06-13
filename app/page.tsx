@@ -99,16 +99,20 @@ export default async function HomePage() {
           </div>
 
           {/* Stat pills */}
-          <div className="mt-10 flex flex-wrap gap-3">
+          <div className="mt-10 flex flex-wrap gap-2">
             {[
               { label: "Festival Community", accent: "#39FF14" },
               { label: "Vendor Network",     accent: "#00D4FF" },
               { label: "Foraging Guides",    accent: "#CC00FF" },
+              { label: "Website Creation",   accent: "#3AFFD4" },
+              { label: "Security Auditing",  accent: "#FF5C3A" },
+              { label: "FestDash Platform",  accent: "#FB923C" },
+              { label: "Wook World",         accent: "#a855f7" },
             ].map((s) => (
               <span
                 key={s.label}
                 className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 font-dm-mono text-xs uppercase tracking-widest"
-                style={{ color: s.accent }}
+                style={{ color: s.accent, borderColor: s.accent + "33" }}
               >
                 {s.label}
               </span>

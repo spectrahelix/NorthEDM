@@ -19,6 +19,13 @@ type NavLink = {
 
 const NAV_LINKS: NavLink[] = [
   {
+    href: "/",
+    label: "Home",
+    color: "#aaaaaa",
+    bg: "rgba(255,255,255,0.04)",
+    border: "rgba(255,255,255,0.10)",
+  },
+  {
     href: "/forum",
     label: "Forum",
     color: "#CC00FF",
@@ -103,24 +110,17 @@ export function NavBar({
     <>
       {/* ── Desktop nav ───────────────────────────────────────── */}
       <nav className="hidden items-center gap-2 text-sm lg:flex">
-        {/* Home — plain, dimmed unless active */}
-        <Link
-          href="/"
-          className="px-2 transition"
-          style={{ color: pathname === "/" ? "#39FF14" : "#555" }}
-        >
-          Home
-        </Link>
-
         {NAV_LINKS.map((l) => {
-          const isActive = pathname === l.href || pathname.startsWith(l.href + "/");
+          const isActive = l.href === "/"
+            ? pathname === "/"
+            : pathname === l.href || pathname.startsWith(l.href + "/");
           return (
             <Link
               key={l.href}
               href={l.href}
               className={`rounded-full px-3 py-1 transition ${l.bold ? "font-semibold" : ""}`}
               style={{
-                color: l.color,
+                color: isActive ? l.color : l.color + "bb",
                 background: isActive ? l.bg.replace(/[\d.]+\)$/, "0.18)") : l.bg,
                 border: `1px solid ${isActive ? l.border.replace(/[\d.]+\)$/, "0.55)") : l.border}`,
               }}
@@ -161,18 +161,23 @@ export function NavBar({
             </button>
           </>
         ) : (
-          <>
-            <Link href="/signup" className="px-2 text-neutral-500 transition hover:text-white">
+          /* Signup + Login merged into one pill unit */
+          <div className="flex items-center overflow-hidden rounded-full border border-white/15">
+            <Link
+              href="/signup"
+              className="px-4 py-1.5 text-sm text-neutral-400 transition hover:bg-white/5 hover:text-white"
+            >
               Signup
             </Link>
+            <div className="h-4 w-px bg-white/15" />
             <Link
               href="/login"
-              className="rounded-2xl px-4 py-1.5 transition"
-              style={{ border: "1px solid rgba(0,212,255,0.4)", color: "#00D4FF" }}
+              className="px-4 py-1.5 text-sm transition hover:bg-white/5"
+              style={{ color: "#00D4FF" }}
             >
               Log In
             </Link>
-          </>
+          </div>
         )}
       </nav>
 
@@ -226,16 +231,10 @@ export function NavBar({
             {/* Links */}
             <div className="flex-1 overflow-y-auto py-4">
               <div className="px-3">
-                {/* Home */}
-                <Link
-                  href="/"
-                  className="flex items-center rounded-xl px-4 py-3 text-base font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white"
-                >
-                  Home
-                </Link>
-
                 {NAV_LINKS.map((l) => {
-                  const isActive = pathname === l.href || pathname.startsWith(l.href + "/");
+                  const isActive = l.href === "/"
+                    ? pathname === "/"
+                    : pathname === l.href || pathname.startsWith(l.href + "/");
                   return (
                     <Link
                       key={l.href}
