@@ -59,16 +59,16 @@ export default async function HomePage() {
   const vendors = ((data ?? []) as Vendor[]).slice(0, 2);
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+    <main className="min-h-screen text-neutral-100">
 
       {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-white/10">
-        {/* Subtle radial glow */}
+      <section className="relative overflow-hidden">
+        {/* Brand color radial glows */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse at 60% 0%, rgba(232,255,71,0.07) 0%, transparent 60%), radial-gradient(ellipse at 10% 80%, rgba(58,255,212,0.05) 0%, transparent 50%)",
+              "radial-gradient(ellipse at 60% 0%, rgba(57,255,20,0.06) 0%, transparent 60%), radial-gradient(ellipse at 10% 80%, rgba(0,212,255,0.04) 0%, transparent 50%)",
           }}
         />
         <div className="relative mx-auto max-w-6xl px-6 py-14 sm:py-20">
@@ -101,9 +101,9 @@ export default async function HomePage() {
           {/* Stat pills */}
           <div className="mt-10 flex flex-wrap gap-3">
             {[
-              { label: "Festival Community", accent: "#E8FF47" },
-              { label: "Vendor Network",     accent: "#3AFFD4" },
-              { label: "Foraging Guides",    accent: "#FF5C3A" },
+              { label: "Festival Community", accent: "#39FF14" },
+              { label: "Vendor Network",     accent: "#00D4FF" },
+              { label: "Foraging Guides",    accent: "#CC00FF" },
             ].map((s) => (
               <span
                 key={s.label}
@@ -124,7 +124,7 @@ export default async function HomePage() {
             <Link
               key={f.href}
               href={f.href}
-              className="group flex flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
+              className="group flex flex-col rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
             >
               <span className="mb-3 text-3xl">{f.icon}</span>
               <h2 className="font-bebas text-2xl tracking-wide">{f.title}</h2>
@@ -230,7 +230,7 @@ export default async function HomePage() {
             <Link
               key={vendor.id}
               href={`/marketplace/${vendor.id}`}
-              className="group flex flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
+              className="group flex flex-col rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <h3 className="font-bebas text-xl leading-snug tracking-wide">
