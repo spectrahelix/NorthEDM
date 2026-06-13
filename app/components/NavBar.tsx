@@ -8,15 +8,66 @@ import { createClient } from "@/utils/supabase/client";
 import { NotificationBell } from "./NotificationBell";
 import { MessagesNavLink } from "./MessagesBadge";
 
-const NAV_LINKS = [
-  { href: "/",            label: "Home" },
-  { href: "/forum",       label: "Forum",       highlight: true },
-  { href: "/feed",        label: "Feed" },
-  { href: "/crowdwave",   label: "CrowdWave",   crowdwave: true },
-  { href: "/marketplace", label: "Marketplace" },
-  { href: "/vendors",     label: "Vendors" },
-  { href: "/foraging",    label: "Foraging" },
-  { href: "/festdash",    label: "FestDash",    festdash: true },
+type NavLink = {
+  href: string;
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  bold?: boolean;
+};
+
+const NAV_LINKS: NavLink[] = [
+  {
+    href: "/forum",
+    label: "Forum",
+    color: "#CC00FF",
+    bg: "rgba(204,0,255,0.10)",
+    border: "rgba(204,0,255,0.30)",
+  },
+  {
+    href: "/feed",
+    label: "Feed",
+    color: "#00D4FF",
+    bg: "rgba(0,212,255,0.08)",
+    border: "rgba(0,212,255,0.28)",
+  },
+  {
+    href: "/crowdwave",
+    label: "CrowdWave",
+    color: "#3AFFD4",
+    bg: "rgba(58,255,212,0.08)",
+    border: "rgba(58,255,212,0.28)",
+  },
+  {
+    href: "/marketplace",
+    label: "Marketplace",
+    color: "#39FF14",
+    bg: "rgba(57,255,20,0.08)",
+    border: "rgba(57,255,20,0.28)",
+  },
+  {
+    href: "/vendors",
+    label: "Vendors",
+    color: "#FF5C3A",
+    bg: "rgba(255,92,58,0.08)",
+    border: "rgba(255,92,58,0.28)",
+  },
+  {
+    href: "/foraging",
+    label: "Foraging",
+    color: "#FFB347",
+    bg: "rgba(255,179,71,0.08)",
+    border: "rgba(255,179,71,0.28)",
+  },
+  {
+    href: "/festdash",
+    label: "FestDash",
+    color: "#FB923C",
+    bg: "rgba(251,146,60,0.12)",
+    border: "rgba(251,146,60,0.35)",
+    bold: true,
+  },
 ];
 
 export function NavBar({
@@ -34,11 +85,7 @@ export function NavBar({
   const router = useRouter();
 
   useEffect(() => { setMounted(true); }, []);
-
-  // Close drawer on route change
   useEffect(() => { setOpen(false); }, [pathname]);
-
-  // Prevent body scroll when menu is open
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -55,51 +102,39 @@ export function NavBar({
   return (
     <>
       {/* ── Desktop nav ───────────────────────────────────────── */}
-      <nav className="hidden items-center gap-4 text-sm text-neutral-300 lg:flex">
-        {NAV_LINKS.map((l) =>
-          l.festdash ? (
+      <nav className="hidden items-center gap-2 text-sm lg:flex">
+        {/* Home — plain, dimmed unless active */}
+        <Link
+          href="/"
+          className="px-2 transition"
+          style={{ color: pathname === "/" ? "#39FF14" : "#555" }}
+        >
+          Home
+        </Link>
+
+        {NAV_LINKS.map((l) => {
+          const isActive = pathname === l.href || pathname.startsWith(l.href + "/");
+          return (
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-full bg-orange-500/15 px-3 py-1 font-semibold text-orange-400 transition hover:bg-orange-500/25 hover:text-orange-300"
+              className={`rounded-full px-3 py-1 transition ${l.bold ? "font-semibold" : ""}`}
+              style={{
+                color: l.color,
+                background: isActive ? l.bg.replace(/[\d.]+\)$/, "0.18)") : l.bg,
+                border: `1px solid ${isActive ? l.border.replace(/[\d.]+\)$/, "0.55)") : l.border}`,
+              }}
             >
               {l.label}
             </Link>
-          ) : l.crowdwave ? (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="rounded-full px-3 py-1 transition"
-              style={{ background: "rgba(58,255,212,0.08)", color: "#3AFFD4", border: "1px solid rgba(58,255,212,0.25)" }}
-            >
-              {l.label}
-            </Link>
-          ) : l.highlight ? (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="rounded-full px-3 py-1 transition"
-              style={{ background: "rgba(204,0,255,0.1)", color: "#CC00FF", border: "1px solid rgba(204,0,255,0.28)" }}
-            >
-              {l.label}
-            </Link>
-          ) : (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="transition"
-              style={{ color: pathname === l.href ? "#39FF14" : "#555" }}
-            >
-              {l.label}
-            </Link>
-          )
-        )}
+          );
+        })}
 
         {userId ? (
           <>
             <MessagesNavLink userId={userId} />
             <NotificationBell userId={userId} />
-            <Link href={`/profile/${userId}`} className="transition hover:text-white">
+            <Link href={`/profile/${userId}`} className="px-2 text-neutral-500 transition hover:text-white">
               Profile
             </Link>
             {showVendorDash && (
@@ -120,14 +155,16 @@ export function NavBar({
             )}
             <button
               onClick={signOut}
-              className="rounded-2xl border border-white/15 px-4 py-1.5 text-sm transition hover:bg-white/5"
+              className="rounded-2xl border border-white/15 px-4 py-1.5 text-sm text-neutral-400 transition hover:bg-white/5 hover:text-white"
             >
               Sign Out
             </button>
           </>
         ) : (
           <>
-            <Link href="/signup" className="transition hover:text-white">Signup</Link>
+            <Link href="/signup" className="px-2 text-neutral-500 transition hover:text-white">
+              Signup
+            </Link>
             <Link
               href="/login"
               className="rounded-2xl px-4 py-1.5 transition"
@@ -160,16 +197,14 @@ export function NavBar({
         </button>
       </div>
 
-      {/* ── Mobile drawer — portaled to body so backdrop-blur on header can't trap it ── */}
+      {/* ── Mobile drawer ─────────────────────────────────────── */}
       {mounted && open && createPortal(
         <div className="fixed inset-0 z-[9999] lg:hidden">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
 
-          {/* Drawer panel */}
           <div className="absolute right-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-neutral-950 shadow-2xl">
             {/* Drawer header */}
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
@@ -190,31 +225,38 @@ export function NavBar({
 
             {/* Links */}
             <div className="flex-1 overflow-y-auto py-4">
-              {/* Main nav links */}
               <div className="px-3">
-                {NAV_LINKS.map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    className={`flex items-center rounded-xl px-4 py-3.5 text-base font-medium transition ${
-                      l.festdash
-                        ? "my-1 bg-orange-500/10 font-semibold text-orange-400 hover:bg-orange-500/20"
-                        : l.crowdwave
-                        ? "my-1 bg-[#3AFFD4]/8 text-[#3AFFD4] hover:bg-[#3AFFD4]/15"
-                        : l.highlight
-                        ? "my-1 bg-[#CC00FF]/10 text-[#CC00FF] hover:bg-[#CC00FF]/20"
-                        : "text-neutral-200 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    {l.label}
-                  </Link>
-                ))}
+                {/* Home */}
+                <Link
+                  href="/"
+                  className="flex items-center rounded-xl px-4 py-3 text-base font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white"
+                >
+                  Home
+                </Link>
+
+                {NAV_LINKS.map((l) => {
+                  const isActive = pathname === l.href || pathname.startsWith(l.href + "/");
+                  return (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      className={`mt-1 flex items-center rounded-xl px-4 py-3 text-base transition ${l.bold ? "font-semibold" : "font-medium"}`}
+                      style={{
+                        color: l.color,
+                        background: isActive
+                          ? l.bg.replace(/[\d.]+\)$/, "0.18)")
+                          : l.bg.replace(/[\d.]+\)$/, "0.05)"),
+                        borderLeft: `2px solid ${isActive ? l.border.replace(/[\d.]+\)$/, "0.6)") : l.border}`,
+                      }}
+                    >
+                      {l.label}
+                    </Link>
+                  );
+                })}
               </div>
 
-              {/* Divider */}
               <div className="my-4 border-t border-white/10" />
 
-              {/* Auth links */}
               <div className="px-3">
                 {userId ? (
                   <>
