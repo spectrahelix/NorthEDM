@@ -6,11 +6,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "NorthEDM — Unite the Northeast",
   description:
-    "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, vendor marketplace, and Wook World. Your regional home base.",
+    "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, and a vendor marketplace. Your regional home base.",
   openGraph: {
     title: "NorthEDM — Unite the Northeast",
     description:
-      "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, vendor marketplace, and Wook World.",
+      "Appalachian festival culture, Northeast EDM community, mushroom foraging tours, and vendor marketplace.",
     url: "https://northedm.com",
   },
 };
@@ -89,7 +89,7 @@ export default async function HomePage() {
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-neutral-300 sm:text-lg">
             Appalachian-rooted festival culture, vendor community, mushroom
-            foraging, holistic goods, and the future home of Wook World.
+            foraging, holistic goods, and a growing regional ecosystem.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
@@ -116,7 +116,6 @@ export default async function HomePage() {
               { label: "Website Creation",   accent: "#3AFFD4" },
               { label: "Security Auditing",  accent: "#FF5C3A" },
               { label: "FestDash Platform",  accent: "#FB923C" },
-              { label: "Wook World",         accent: "#a855f7" },
             ].map((s) => (
               <span
                 key={s.label}
@@ -150,15 +149,14 @@ export default async function HomePage() {
                 </h2>
                 <p className="mt-3 max-w-md text-sm leading-6 text-neutral-400">
                   Post to the forum, follow festivals, connect with vendors,
-                  book foraging tours, and unlock Wook World. One account for
-                  everything NorthEDM.
+                  book foraging tours, and connect with the full NorthEDM
+                  ecosystem. One account for everything.
                 </p>
                 <ul className="mt-5 space-y-2">
                   {[
                     "Forum, replies & community groups",
                     "Vendor marketplace & direct messaging",
                     "Festival tracker & carpool boards",
-                    "Wook World collectibles & quests",
                   ].map((benefit) => (
                     <li key={benefit} className="flex items-center gap-2 text-sm text-neutral-300">
                       <span className="text-[#39FF14]">✦</span>
@@ -371,36 +369,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Wook World ────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="relative overflow-hidden rounded-[2rem] border border-purple-400/20 bg-purple-400/[0.04] p-8 sm:p-10">
-          <div
-            className="pointer-events-none absolute left-1/2 top-0 h-48 w-96 -translate-x-1/2 opacity-15"
-            style={{
-              background: "radial-gradient(ellipse, #a855f7 0%, transparent 70%)",
-            }}
-          />
-          <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-purple-400">
-            Wook World
-          </p>
-          <h2 className="mt-3 font-bebas text-3xl tracking-wide sm:text-4xl">
-            A digital festival universe is coming.
-          </h2>
-          <p className="mt-3 max-w-lg text-sm leading-6 text-neutral-300 sm:text-base">
-            Collectibles, quests, rewards, and identity built around the
-            culture you already live.
-          </p>
-          <div className="mt-6">
-            <Link
-              href="/wook-world"
-              className="inline-flex items-center justify-center rounded-2xl bg-purple-400 px-6 py-3.5 text-sm font-semibold text-black transition hover:opacity-90 active:scale-[0.98]"
-            >
-              Enter Wook World
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* ── Footer ────────────────────────────────────────────── */}
       <footer className="border-t border-white/10">
         <div className="mx-auto max-w-6xl px-6 py-10">
@@ -438,7 +406,6 @@ export default async function HomePage() {
               <ul className="space-y-2 text-sm text-neutral-400">
                 <li><Link href="/signup" className="hover:text-white">Create Account</Link></li>
                 <li><Link href="/login" className="hover:text-white">Log In</Link></li>
-                <li><Link href="/wook-world" className="hover:text-white">Wook World</Link></li>
               </ul>
             </div>
           </div>

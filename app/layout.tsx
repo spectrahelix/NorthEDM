@@ -29,7 +29,7 @@ export const metadata = {
     template: "%s | NorthEDM",
   },
   description:
-    "NorthEDM is the hub for Appalachian festival culture, Northeast EDM community, mushroom foraging tours, a vendor marketplace, and Wook World. Join the movement.",
+    "NorthEDM is the hub for Appalachian festival culture, Northeast EDM community, mushroom foraging tours, and a vendor marketplace. Join the movement.",
   keywords: [
     "NorthEDM",
     "Northeast EDM",
@@ -38,7 +38,6 @@ export const metadata = {
     "Appalachian culture",
     "electronic music northeast",
     "EDM marketplace",
-    "wook world",
     "foraging tours",
   ],
   openGraph: {
@@ -48,13 +47,13 @@ export const metadata = {
     siteName: "NorthEDM",
     title: "NorthEDM — Unite the Northeast",
     description:
-      "Appalachian-rooted festival culture, Northeast EDM community, mushroom foraging, vendor marketplace, and Wook World.",
+      "Appalachian-rooted festival culture, Northeast EDM community, mushroom foraging, and vendor marketplace.",
   },
   twitter: {
     card: "summary_large_image",
     title: "NorthEDM — Unite the Northeast",
     description:
-      "Appalachian-rooted festival culture, Northeast EDM community, mushroom foraging, vendor marketplace, and Wook World.",
+      "Appalachian-rooted festival culture, Northeast EDM community, mushroom foraging, and vendor marketplace.",
   },
   robots: {
     index: true,
