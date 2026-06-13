@@ -86,8 +86,8 @@ const EVENTS_FALLBACK: FestivalEvent[] = [
     start_date: "2026-08-07",
     end_date: "2026-08-09",
     lat: 41.0559,
-    lng: -75.7129,
-    ticket_status: "limited",
+    lng: -75.5103,
+    ticket_status: "available",
     badge: "hot",
   },
 ];

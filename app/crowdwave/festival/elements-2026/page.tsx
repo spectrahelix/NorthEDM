@@ -5,28 +5,31 @@ import { WeatherStrip } from "../../components/WeatherStrip";
 export const metadata: Metadata = {
   title: "Elements Festival 2026",
   description:
-    "Elements Music & Arts Festival 2026 — Aug 27–30 at Lake Harmony, PA. Tickets available. Northeast EDM's marquee summer gathering.",
+    "Elements Music & Arts Festival 2026 — Aug 7–9 at Pocono Raceway, Long Pond, PA. The Northeast's premier boutique EDM festival with car camping, art installations, and 3D projection mapping.",
 };
 
 const EVENT = {
-  name: "Elements Festival 2026",
-  subtitle: "Music · Arts · Community",
-  location: "Lake Harmony, PA — Pocono Mountains",
-  dates: "Thursday Aug 27 – Sunday Aug 30, 2026",
-  lat: 41.0534,
-  lng: -75.6052,
+  name: "Elements Music & Arts Festival",
+  year: "2026",
+  subtitle: "Music · Art · Camping · Community",
+  location: "Pocono Raceway, Long Pond, PA",
+  dates: "Friday Aug 7 – Sunday Aug 9, 2026",
+  lat: 41.0559,
+  lng: -75.5103,
   ticket_status: "available",
   badge: "hot",
   description:
-    "Elements is the Northeast's premier electronic music and arts festival, set against the backdrop of the Pocono Mountains. Four days of underground house, techno, bass, and ambient music across multiple stages, with immersive art installations, a vibrant vendor village, and a tight-knit community culture.",
+    "Elements Music & Arts Festival is the Northeast's premier boutique electronic music festival — an immersive three-day car camping experience held annually at the iconic Pocono Raceway in Long Pond, Pennsylvania. The 2026 edition blends underground electronic music with large-scale art installations, wellness programming, and 3D video projection mapping into an independent, community-driven gathering unlike anything else in the region.",
   highlights: [
-    "Multiple stages — forest, lakeside, and main",
-    "Curated underground and live acts",
-    "Art installations throughout the grounds",
-    "Camping on-site",
-    "Vendor village with food, art, and holistic goods",
+    "Three days of car camping in the Pocono Mountains",
+    "Electronic music across multiple curated stages",
+    "Large-scale interactive art installations",
+    "3D video projection mapping",
+    "Wellness programming and activities",
+    "Independent, boutique festival experience",
+    "Pocono Raceway, Long Pond, PA",
   ],
-  website: "https://elementsfestival.us",
+  website: "https://www.elementsfest.us",
 };
 
 export default function Elements2026Page() {
@@ -49,10 +52,13 @@ export default function Elements2026Page() {
             <span className="mb-3 inline-block rounded-full bg-[#FF5C3A]/20 px-3 py-1 font-dm-mono text-xs uppercase tracking-widest text-[#FF5C3A]">
               hot
             </span>
-            <h1 className="font-bebas text-[clamp(2.5rem,8vw,5rem)] leading-none tracking-wide">
-              Elements Festival 2026
+            <h1 className="font-bebas text-[clamp(2.2rem,7vw,4.5rem)] leading-none tracking-wide">
+              Elements Music &amp; Arts Festival
             </h1>
-            <p className="mt-1 font-dm-mono text-xs uppercase tracking-widest text-[#3AFFD4]">
+            <p className="mt-1 font-bebas text-2xl tracking-widest text-[#3AFFD4]">
+              2026
+            </p>
+            <p className="mt-1 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
               {EVENT.subtitle}
             </p>
             <p className="mt-2 text-base text-neutral-400">{EVENT.location}</p>
@@ -70,7 +76,7 @@ export default function Elements2026Page() {
 
         {/* Weather */}
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-4">
-          <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-600">Forecast at Venue</p>
+          <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-600">Forecast at Pocono Raceway</p>
           <WeatherStrip lat={EVENT.lat} lng={EVENT.lng} />
         </div>
 
@@ -100,7 +106,7 @@ export default function Elements2026Page() {
             rel="noopener noreferrer"
             className="rounded-xl bg-[#3AFFD4] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
           >
-            Get Tickets →
+            Official Site &amp; Tickets →
           </a>
           <Link
             href="/crowdwave/forum"

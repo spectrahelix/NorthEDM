@@ -27,12 +27,12 @@ type FestivalVendor = {
 const PINNED_EVENTS: FestivalEvent[] = [
   {
     id: -1,
-    name: "Elements Festival 2026",
-    location: "Lake Harmony, PA (Pocono Mountains)",
-    start_date: "2026-08-27",
-    end_date: "2026-08-30",
-    lat: 41.0534,
-    lng: -75.6052,
+    name: "Elements Music & Arts Festival",
+    location: "Pocono Raceway, Long Pond, PA",
+    start_date: "2026-08-07",
+    end_date: "2026-08-09",
+    lat: 41.0559,
+    lng: -75.5103,
     ticket_status: "available",
     badge: "hot",
     href: "/crowdwave/festival/elements-2026",
