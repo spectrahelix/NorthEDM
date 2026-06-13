@@ -1,6 +1,7 @@
 import Link from "next/link";
 import "./globals.css";
 import { NavBar } from "./components/NavBar";
+import { WaveField } from "./components/WaveField";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
@@ -93,8 +94,10 @@ export default async function RootLayout({
       lang="en"
       className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable}`}
     >
-      <body className="bg-neutral-950 text-neutral-100">
-        <header className="sticky top-0 z-30 bg-[#030303]" style={{ position: "sticky" }}>
+      <body className="bg-[#030303] text-neutral-100">
+        <WaveField />
+        <div style={{ position: "relative", zIndex: 1 }}>
+        <header className="sticky top-0 z-30" style={{ position: "sticky", background: "rgba(3,3,3,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
           {/* Spectral gradient line */}
           <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent 0%, #39FF14 18%, #00D4FF 50%, #CC00FF 82%, transparent 100%)" }} />
           {/* Stage-light aura */}
@@ -124,6 +127,7 @@ export default async function RootLayout({
 
 
         {children}
+        </div>
       </body>
     </html>
   );
