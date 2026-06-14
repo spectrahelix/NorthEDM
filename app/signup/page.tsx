@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/client";
 import { SocialAuth } from "@/app/components/SocialAuth";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
@@ -58,53 +57,17 @@ export default function SignupPage() {
       return;
     }
 
-    const supabase = createClient();
-
-    // Check username availability before signing up
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("username", username)
-      .maybeSingle();
-
-    if (existing) {
-      setError("That username is taken. Try another.");
-      setLoading(false);
-      return;
-    }
-
-    const { data: signupData, error: signupError } = await supabase.auth.signUp({
-      email,
-      password: pw,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pw, username, origin: window.location.origin }),
     });
+    const json = await res.json();
 
-    if (signupError) {
-      setError(signupError.message);
+    if (!res.ok || json.error) {
+      setError(json.error ?? "Something went wrong. Please try again.");
       setLoading(false);
       return;
-    }
-
-    // Upsert both profile tables for the new user
-    if (signupData.user) {
-      await Promise.all([
-        supabase.from("profiles").upsert({
-          id: signupData.user.id,
-          role: "user",
-          username,
-        }),
-        supabase.from("user_profiles").upsert({
-          id: signupData.user.id,
-          display_name: username,
-          role: "drifter",
-          bio: "",
-          home_city: "",
-          avatar_border: "moss",
-          avatar_url: null,
-        }),
-      ]);
     }
 
     setSuccessEmail(email);
@@ -115,11 +78,10 @@ export default function SignupPage() {
   async function handleResend() {
     if (!successEmail || resending || resent) return;
     setResending(true);
-    const supabase = createClient();
-    await supabase.auth.resend({
-      type: "signup",
-      email: successEmail,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    await fetch("/api/auth/resend-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: successEmail, origin: window.location.origin }),
     });
     setResending(false);
     setResent(true);
