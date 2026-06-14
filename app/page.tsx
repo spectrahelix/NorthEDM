@@ -94,10 +94,10 @@ export default async function HomePage() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
             <Link
-              href="/forum"
+              href={user ? "/forum" : "/signup"}
               className="flex items-center justify-center rounded-2xl bg-[#39FF14] px-6 py-4 text-base font-semibold text-black transition hover:opacity-90 active:scale-[0.98]"
             >
-              Join the Community
+              {user ? "Go to Forum" : "Join the Community"}
             </Link>
             <Link
               href="/foraging"
