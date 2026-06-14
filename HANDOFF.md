@@ -1,148 +1,99 @@
-# NorthEDM — Complete Session Handoff
-**Date:** 2026-06-14  
-**Repo:** spectrahelix/northedm  
+# NorthEDM — Full Autonomous Handoff
+**Last updated:** 2026-06-14  
+**Repo:** spectrahelix/northedm (branch: `claude/website-coding-luwy25`)  
 **Live site:** https://north-edm.vercel.app  
-**Working branch:** `claude/website-coding-luwy25` (currently merged into main; develop new features here)
+**Owner:** CJ — cjblue27@gmail.com
 
 ---
 
-## Who You Are Working With
+## FIRST: Verify Autonomy (run these in order)
 
-CJ (cjblue27@gmail.com) — owner of NorthEDM, a Next.js 16 platform for Northeast EDM/festival culture. The site includes: community forum, vendor marketplace, festival dashboard, mushroom foraging section, group chats, direct messaging, and a mushroom-wave homepage.
+### Step 1 — Check env vars are loaded
+```bash
+grep -c "=" /home/user/NorthEDM/.env.local
+```
+Expected: `7` (if less, env file is missing — see "Env Vars" section below)
 
-CJ prefers you operate autonomously. When CJ is tired or says "take the wheel," proceed without asking for confirmation on implementation choices. Commit and push all changes.
+### Step 2 — Check network allowlist
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  "https://bacyusmyzyawcrdpnvrt.supabase.co/rest/v1/user_profiles?limit=1" \
+  -H "apikey: $(grep NEXT_PUBLIC_SUPABASE_ANON_KEY /home/user/NorthEDM/.env.local | cut -d= -f2)"
+```
+- `200` = network open, full DB access ✅ — proceed to Step 3
+- `403` with "Host not in allowlist" = **network still blocked** → stop and fix (see "Network Setup" below)
+
+### Step 3 — Verify pending migration hasn't run yet
+```bash
+psql "$(grep DATABASE_URL /home/user/NorthEDM/.env.local | cut -d= -f2 || echo 'NOT_SET')" \
+  -c "SELECT to_regclass('public.display_name_history');" 2>/dev/null || \
+curl -s "https://bacyusmyzyawcrdpnvrt.supabase.co/rest/v1/display_name_history?limit=0" \
+  -H "apikey: $(grep NEXT_PUBLIC_SUPABASE_ANON_KEY /home/user/NorthEDM/.env.local | cut -d= -f2)" \
+  -H "Authorization: Bearer $(grep SUPABASE_SERVICE_ROLE_KEY /home/user/NorthEDM/.env.local | cut -d= -f2)" \
+  -w "\nHTTP:%{http_code}" | tail -1
+```
+- `HTTP:200` = table exists, migration already done ✅
+- `HTTP:404` or `42P01` = **table missing — run the migration** (see "Pending Tasks" below)
+
+### Step 4 — Verify build is clean
+```bash
+cd /home/user/NorthEDM && npm run build 2>&1 | tail -5
+```
+Expected: no errors, build succeeds.
 
 ---
 
-## Tech Stack
+## Network Setup (required for full autonomy)
 
-- **Framework:** Next.js 16 App Router (NOT the Next.js you know — read node_modules/next/dist/docs/ before any Next.js-specific code)
-- **Database:** Supabase (project: `bacyusmyzyawcrdpnvrt`)
-- **Styling:** Tailwind CSS 4 (NOT v3 — syntax differs)
-- **Email:** Resend SDK v6.12.4 (API key set, domain verification pending — see below)
-- **Deploy:** Vercel (auto-deploys from main branch pushes)
-- **Auth:** Supabase Auth with SSR (`@supabase/ssr`)
-- **Fonts:** Bebas Neue (headings), DM Mono (labels/code), system sans (body)
+The session environment has a network egress allowlist. Until these hosts are added, I cannot run migrations or use the Supabase/Vercel CLIs.
 
----
+**Go to:** https://code.claude.com → this project's environment → **Network / Egress Allowlist**
 
-## Brand Colors
+**Add these hosts:**
+```
+*.supabase.co
+api.supabase.com
+api.vercel.com
+```
 
-| Name       | Hex        | Usage                          |
-|------------|------------|-------------------------------|
-| Neon Green | `#39FF14`  | Primary CTA buttons, active tabs |
-| Teal       | `#3AFFD4`  | Accent, links, highlights      |
-| Coral      | `#FF5C3A`  | Errors, warnings, Vendors nav  |
-| Purple     | `#CC00FF`  | Forum nav pill                 |
-| Cyan       | `#00D4FF`  | Feed nav pill                  |
-| Orange     | `#FB923C`  | FestDash nav pill              |
+**Then start a fresh session.** The allowlist takes effect on new sessions only.
 
-**Do NOT use `#E8FF47` (yellow) anywhere** — it was audited out. Use `#39FF14` for active states and `#3AFFD4` for secondary accents.
+Once the network is open:
+- I can run `psql` directly against Supabase (psql is installed at `/usr/bin/psql`)
+- I can use `supabase` CLI with `SUPABASE_ACCESS_TOKEN`
+- I can use `vercel` CLI with `VERCEL_TOKEN` (if a valid non-`vcp_` token is set)
 
 ---
 
-## .env.local (NEVER COMMIT — gitignored)
+## Env Vars — .env.local
 
-The file at `/home/user/NorthEDM/.env.local` contains exactly these keys:
+File lives at `/home/user/NorthEDM/.env.local` — **never commit this file.**
 
+Required keys (ask CJ for values if file is missing):
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://bacyusmyzyawcrdpnvrt.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<see .env.local>
-SUPABASE_SERVICE_ROLE_KEY=<see .env.local>
-
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<get from Supabase dashboard → Settings → API>
+SUPABASE_SERVICE_ROLE_KEY=<get from Supabase dashboard → Settings → API>
 RESEND_API_KEY=<see .env.local>
-VERCEL_TOKEN=<see .env.local — vcp_ prefix, may need classic PAT>
+VERCEL_TOKEN=<needs classic PAT — vcp_ prefix tokens are rejected; get from vercel.com/account/tokens>
 SUPABASE_ACCESS_TOKEN=<see .env.local>
 ```
 
-**SECURITY RULE:** Credentials MUST NEVER be committed to git. RESEND_API_KEY, VERCEL_TOKEN, SUPABASE_ACCESS_TOKEN, and SUPABASE_SERVICE_ROLE_KEY are all sensitive.
+**Note on VERCEL_TOKEN:** The `vcp_` format is a Connect Provider token and is rejected by the Vercel CLI and API. To get a working token: vercel.com/account/tokens → Create → Full Account scope. The token should start with `ver_` or be a plain alphanumeric string.
 
 ---
 
-## Network Sandbox Limitations
+## Pending Tasks (not yet done)
 
-This session's environment has egress restrictions. Known blocked hosts:
-- `api.vercel.com` — Vercel CLI cannot deploy; use `git push origin main` instead (Vercel auto-deploys)
-- `api.supabase.com` — Supabase CLI cannot run migrations; use the Supabase dashboard SQL editor to paste migrations
+### 1. Run display_name_history migration (CRITICAL)
+Profile name changes will 500 in production until this table exists.
 
-What DOES work:
-- GitHub MCP tools (`mcp__github__*`) — push, PR, branch ops
-- Supabase DB via service role key (all CRUD, RLS, etc.)
-- `supabase.co` project URL — direct DB queries work fine
-
-**If you want open network access:** Create a new environment at code.claude.com with `api.supabase.com` and `api.vercel.com` added to the egress allowlist. Then paste the tokens above.
-
----
-
-## Network Test (run this to check if restrictions still apply)
-
+If network is open, run via psql:
 ```bash
-curl -s -o /dev/null -w "%{http_code}" https://api.vercel.com/v1/user -H "Authorization: Bearer $(grep VERCEL_TOKEN .env.local | cut -d= -f2)"
+psql "$DATABASE_URL" < /home/user/NorthEDM/supabase/migrations/20260613000000_display_name_history.sql
 ```
-- `200` = open network, Vercel CLI will work
-- `000` or connection refused = sandbox blocked
 
----
-
-## What Was Built (All Merged to Main)
-
-### 1. Display Name System
-- Users can set a custom display name (default is email prefix at signup)
-- **`app/profile/edit/page.tsx`** — `save()` inserts old name to `display_name_history` before upsert if name changed
-- **`app/profile/[id]/page.tsx`** — fetches name history (limit 5), shows "Previously known as" pills with dim monospace styling
-- **Migration NOT yet run** → see Pending Tasks
-
-### 2. Direct Messages
-- **`app/messages/page.tsx`** — inbox/outbox tabs, realtime updates, compose modal, mark-read on expand
-- **`app/messages/components/ComposeModal.tsx`** — user search by display name, subject + body fields
-- Send Message button appears on other users' profiles; redirects to `/messages?to={userId}`
-- Tab active color: `#39FF14`
-
-### 3. Global Search (Cmd/Ctrl+K)
-- **`app/components/GlobalSearch.tsx`** — modal overlay, debounced, grouped results
-- **`app/api/search/route.ts`** — queries vendors, festivals, products for all; forum threads only for logged-in users
-- Forum results gated: unauthenticated users see "Sign in to search the forum" message
-- Integrated in NavBar (desktop + mobile)
-
-### 4. Email Confirmation via Resend
-- **`app/api/auth/signup/route.ts`** — server-side signup using Supabase admin `generateLink()`, sends branded HTML email via Resend
-- **`app/api/auth/resend-confirmation/route.ts`** — resend uses `magiclink` type (no password needed)
-- From address: `NorthEDM <no-reply@northedm.com>`
-- **Domain NOT yet verified** → see Pending Tasks
-
-### 5. OAuth Fix (Google Sign-In → Profile)
-- **`app/auth/callback/route.ts`** — detects new OAuth users by checking if `user_profiles` row exists
-- New users: seeds display_name from Google metadata, seeds username from email prefix, redirects to `/profile/edit`
-- Returning users: redirects to `next` param or `/feed`
-
-### 6. Signup Page
-- **`app/signup/page.tsx`** — removed direct Supabase client call; now POSTs to `/api/auth/signup`
-- Join Community button on homepage: routes to `/signup` for guests, `/forum` for logged-in users
-
-### 7. NavBar
-- **`app/components/NavBar.tsx`** — color pill per nav item, GlobalSearch integrated
-- Links with pill colors: Home(#aaa), Forum(#CC00FF), Feed(#00D4FF), CrowdWave(#3AFFD4), Marketplace(#39FF14), Vendors(#FF5C3A), Foraging(#FFB347), FestDash(#FB923C)
-
-### 8. Color / UI Audit
-- Replaced all `#E8FF47` yellow with `#39FF14` or `#3AFFD4` sitewide
-- Wave field (canvas) visible on all pages — all `<main>` backgrounds stripped to transparent
-- Forum thread cards: z-index layering pattern (Link at z-[1], HeartButton/avatar at z-[2]) so entire card is clickable
-- Home page vendor cards: removed `backdrop-blur-sm`, matched founder card transparent tint (`border-[#39FF14]/20 bg-[#39FF14]/[0.03]`)
-- Wook World hidden from public nav/surfaces
-
-### 9. Autonomous Session Config
-- **`.claude/settings.json`** — `defaultMode: acceptEdits`, `allow: ["Bash(*)", ...]` for full auto-run
-- **`.claude/hooks/session-start.sh`** — runs npm install, checks for VERCEL_TOKEN and SUPABASE_ACCESS_TOKEN
-
----
-
-## PENDING TASKS (must be done manually or in open-network session)
-
-### CRITICAL: Run Supabase Migration
-The `display_name_history` table doesn't exist in production yet. The feature code is deployed but will 500 on name changes until this runs.
-
-Go to: **Supabase Dashboard → SQL Editor** → paste and run:
-
+If network is still blocked, paste the SQL manually in Supabase dashboard → SQL Editor:
 ```sql
 create table if not exists public.display_name_history (
   id bigserial primary key,
@@ -150,156 +101,303 @@ create table if not exists public.display_name_history (
   display_name text not null,
   changed_at timestamptz not null default now()
 );
-
 create index if not exists display_name_history_user_id_idx
   on public.display_name_history(user_id, changed_at desc);
-
 alter table public.display_name_history enable row level security;
-
 create policy "Name history is public read"
   on public.display_name_history for select using (true);
-
 create policy "Users insert own name history"
   on public.display_name_history for insert
   with check (auth.uid() = user_id);
 ```
 
-Migration file is also at: `supabase/migrations/20260613000000_display_name_history.sql`
+### 2. Verify Resend domain (IMPORTANT)
+Confirmation emails are built and deployed but will silently fail until `northedm.com` is verified.
 
-### IMPORTANT: Verify Resend Domain
-Email sends from `no-reply@northedm.com`. Until the domain is verified in Resend, emails will fail silently (the API call returns an error but signup still works — users just won't get the email).
+Go to: **resend.com/domains** → Add `northedm.com` → add the DNS TXT/MX/DKIM records to your domain registrar.
 
-Go to: **resend.com/domains** → Add `northedm.com` → Add the DNS records it provides to your DNS registrar.
+Resend API key: `re_DuxXebgM_EW77YXhKBAXhBP74CQc9yjvE`
+From address the code uses: `NorthEDM <no-reply@northedm.com>`
 
-Resend API key: already set in `.env.local` as `RESEND_API_KEY`
-
-Temporary workaround while domain is unverified: emails are logged server-side as a fallback (user gets no email but account is created).
-
-### OPTIONAL: Fix Vercel CLI Token
-The `VERCEL_TOKEN` in .env.local uses `vcp_` prefix (Connect Provider token) which is rejected by both the CLI and the API. To get a working token:
-- Go to vercel.com/account/tokens → Create → select "Full Account" scope → copy the token (starts with `ver_` or similar)
-- Update `.env.local` with the new token
-
-This is only needed if you want `vercel` CLI commands. Vercel auto-deploys from `git push origin main` so this is optional.
-
----
-
-## Key Architecture Rules
-
-### Next.js 16 App Router Gotchas
-- Server components CANNOT have `onClick` handlers — causes runtime crash
-- For clickable cards with interactive sub-elements: use z-index layering
-  ```tsx
-  // Correct pattern for clickable card + nested interactive element
-  <div className="relative">
-    <Link href="..." className="absolute inset-0 z-[1]" />
-    <div className="...card content...">
-      <HeartButton className="relative z-[2]" />  {/* above the link */}
-    </div>
-  </div>
-  ```
-- `params` and `searchParams` are Promises in Next.js 16 — must `await` them
-
-### Supabase SSR
-- Server components: `createClient()` from `@/utils/supabase/server` (uses cookies)
-- Client components: `createClient()` from `@/utils/supabase/client` (browser)
-- Admin operations (service role): `createAdminClient()` from `@/utils/supabase/admin`
-
-### Wave Field
-- Canvas is `position: fixed; z-index: 0` — sits behind everything
-- Pages MUST have transparent backgrounds to show the wave through
-- Never add `bg-neutral-950` or `bg-black` to `<main>` elements
-
-### Tailwind CSS 4
-- Does NOT use `tailwind.config.js` class extension the same way as v3
-- Custom values inline: `bg-[#39FF14]`, `text-[#3AFFD4]`
-
----
-
-## File Map (Key Files)
-
-```
-app/
-  page.tsx                          # Home page with vendor cards, wave field, guest panel
-  layout.tsx                        # Root layout with NavBar + WaveField
-  components/
-    NavBar.tsx                      # Color-pill nav with GlobalSearch
-    GlobalSearch.tsx                # Cmd+K search modal
-    WaveField.tsx                   # Canvas wave background
-    AvatarBorder.tsx                # Avatar border styles
-    RankBadge.tsx                   # User role badge
-  forum/
-    page.tsx                        # Forum listing (z-index card pattern)
-    [id]/page.tsx                   # Thread detail
-  profile/
-    [id]/page.tsx                   # Public profile with name history
-    edit/page.tsx                   # Edit profile (saves name history)
-  messages/
-    page.tsx                        # Inbox/outbox
-    components/ComposeModal.tsx     # Compose new message
-  auth/
-    callback/route.ts               # OAuth + email confirmation handler
-  api/
-    auth/
-      signup/route.ts               # Server-side signup with Resend email
-      resend-confirmation/route.ts  # Resend confirmation email
-    search/route.ts                 # Global search API (auth-gated forum)
-utils/
-  supabase/
-    client.ts                       # Browser Supabase client
-    server.ts                       # Server Supabase client
-    admin.ts                        # Service role admin client
-    user-profiles.ts                # getUserProfile() helper
-supabase/
-  migrations/
-    20260613000000_display_name_history.sql   # PENDING — not yet run
-.claude/
-  settings.json                     # Autonomous permissions config
-  hooks/session-start.sh            # npm install + token checks on session start
-```
-
----
-
-## Vendor Pricing (for reference — `NorthEDM_Vendor_Pricing_Report.md`)
-
-Recommended tiers based on market analysis:
-- **Seedling** — $29/mo (basic listing, 1 product, no marketplace boost)
-- **Grower** — $59/mo (unlimited products, featured placement, analytics)
-- **Founder** — $89/mo (everything + CrowdWave integration, priority support, badge)
-
-Current founder vendor: Frank's General Store
+### 3. Fix VERCEL_TOKEN
+Current token uses `vcp_` prefix which is rejected. Get a classic PAT from vercel.com/account/tokens and update `.env.local`. Needed only for CLI deploys — Vercel auto-deploys from `git push origin main` regardless.
 
 ---
 
 ## How to Deploy
 
-```bash
-# All pushes to main auto-deploy via Vercel
-git add <files>
-git commit -m "description"
-git push origin main
+Vercel auto-deploys when main is pushed. All code changes should follow this flow:
 
-# Or push feature branch first, then merge
-git push origin claude/website-coding-luwy25
-# Then merge to main via GitHub
+```bash
+# Make changes on feature branch
+git checkout claude/website-coding-luwy25
+# ... edit files ...
+git add <specific files>
+git commit -m "descriptive message"
+git push -u origin claude/website-coding-luwy25
+
+# Merge to main to trigger Vercel deploy
+git checkout main
+git merge claude/website-coding-luwy25
+git push origin main
 ```
 
 ---
 
-## Quick Diagnostics
+## Who CJ Is / How to Work With Him
+
+- CJ wants fully autonomous operation. When he says "take the wheel" or "just do it," proceed without asking for confirmation.
+- Commit and push all changes — don't leave things as untracked files.
+- He cares about the vibe: dark, festivalcore, mushroom aesthetic. Brand is North EDM / Northeast festival community.
+- If CJ is tired or vague, make a reasonable implementation decision and tell him what you did after.
+
+---
+
+## Tech Stack
+
+| Layer | Tech | Notes |
+|-------|------|-------|
+| Framework | Next.js 16 App Router | **Read node_modules/next/dist/docs/ before writing Next.js code** — breaking changes from prior versions |
+| Database | Supabase (project `bacyusmyzyawcrdpnvrt`) | Postgres + auth + storage + realtime |
+| Styling | Tailwind CSS 4 | NOT v3 — different config and some syntax differs |
+| Email | Resend SDK v6.12.4 | Transactional email; domain verification pending |
+| Deploy | Vercel | Auto-deploys from main |
+| Auth | Supabase Auth + `@supabase/ssr` | SSR cookies pattern |
+| Fonts | Bebas Neue, DM Mono | Bebas = headings, DM Mono = labels/code |
+
+---
+
+## Brand Colors
+
+| Name | Hex | Usage |
+|------|-----|-------|
+| Neon Green | `#39FF14` | Primary CTA buttons, active tab indicators |
+| Teal | `#3AFFD4` | Accent, links, nav pills |
+| Coral | `#FF5C3A` | Errors, warnings, Vendors nav |
+| Purple | `#CC00FF` | Forum nav pill |
+| Cyan | `#00D4FF` | Feed nav pill |
+| Orange | `#FB923C` | FestDash nav pill |
+| Amber | `#FFB347` | Foraging nav pill |
+
+**Never use `#E8FF47` (yellow)** — audited out sitewide.
+
+---
+
+## Architecture Rules
+
+### Next.js 16 Server Components
+- Server components **cannot** have `onClick`, `useState`, etc.
+- For clickable cards with nested interactive elements, use z-index layering:
+  ```tsx
+  <div className="relative">
+    <Link href="..." className="absolute inset-0 z-[1]" />
+    <div className="...content...">
+      <HeartButton className="relative z-[2]" />  {/* sits above the link layer */}
+    </div>
+  </div>
+  ```
+- `params` and `searchParams` in page components are **Promises** — must `await` them
+
+### Supabase Client Pattern
+```ts
+// Server components / route handlers
+import { createClient } from "@/utils/supabase/server";
+const supabase = await createClient();
+
+// Client components
+import { createClient } from "@/utils/supabase/client";
+const supabase = createClient();
+
+// Admin / service role (API routes only)
+import { createClient } from "@supabase/supabase-js";
+const admin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+```
+
+### Wave Field Background
+- Canvas is `position: fixed; z-index: 0` — behind everything
+- **Never** add `bg-neutral-950` or solid `bg-black` to `<main>` elements — it covers the wave
+- All page backgrounds should be transparent
+
+### Row Level Security
+- Every new table needs RLS enabled + explicit policies
+- Admin routes that need to bypass RLS must use the service role key, not the anon client
+
+---
+
+## What's Been Built (all on main, all live)
+
+### Core Platform
+- **Forum** — threads, replies, hearts, categories, z-index clickable cards
+- **Direct Messages** — inbox/outbox, realtime updates, compose modal, mark-read
+- **User Profiles** — avatar upload, bio, home city, avatar border styles, rank badge
+- **Display Name History** — tracks previous names, shown on profile (⚠ table not yet created in DB)
+- **Global Search** — Cmd/Ctrl+K modal, auth-gated forum results, nav-colored result groups
+- **Feed** — activity stream
+
+### Auth
+- **Email signup** → `/api/auth/signup` → Supabase admin `generateLink()` → Resend branded email
+- **Resend confirmation** → `/api/auth/resend-confirmation` (uses `magiclink` type, no password needed)
+- **OAuth (Google)** → `/auth/callback` detects new users, seeds profile, redirects to `/profile/edit`
+- **Password reset** → forgot-password / reset-password pages
+
+### Commerce / Marketplace
+- **Marketplace** — product listings, vendor cards
+- **Vendors** — vendor pages, My Shop dashboard
+- **FestDash** — festival delivery network
+  - Customer order wizard + order history
+  - Vendor enrollment + dashboard + new order alerts
+  - Driver view
+  - Admin panel (service role RLS bypass)
+
+### Festival
+- **FestDash** (see above)
+- **Elements 2026 festival page** — real lineup, real dates
+
+### Navigation
+- Color-pill nav: Home(#aaa) / Forum(#CC00FF) / Feed(#00D4FF) / CrowdWave(#3AFFD4) / Marketplace(#39FF14) / Vendors(#FF5C3A) / Foraging(#FFB347) / FestDash(#FB923C)
+- Mobile hamburger menu
+- GlobalSearch integrated in both desktop and mobile nav
+
+### Home Page
+- WaveField mushroom animation visible through transparent sections
+- Guest sign-in panel
+- "Join Community" → `/signup` for guests, `/forum` for logged-in users
+- Vendor cards transparent tint: `border-[#39FF14]/20 bg-[#39FF14]/[0.03]`
+
+### Session Autonomy
+- `.claude/settings.json` — `defaultMode: acceptEdits`, all tools allowed
+- `.claude/hooks/session-start.sh` — auto npm install, token status check
+
+---
+
+## File Map
+
+```
+app/
+  page.tsx                              # Home (wave, vendor cards, guest panel)
+  layout.tsx                            # Root layout — NavBar + WaveField
+  components/
+    NavBar.tsx                          # Color-pill nav with GlobalSearch
+    GlobalSearch.tsx                    # Cmd+K search modal
+    WaveField.tsx                       # Canvas mushroom wave background
+    AvatarBorder.tsx                    # Avatar border variants
+    RankBadge.tsx                       # User role badge
+    SocialAuth.tsx                      # OAuth buttons (Google etc)
+  forum/
+    page.tsx                            # Thread listing (z-index card pattern)
+    [id]/page.tsx                       # Thread detail + replies + hearts
+  profile/
+    [id]/page.tsx                       # Public profile + name history pills
+    edit/page.tsx                       # Edit profile (saves old name to history)
+  messages/
+    page.tsx                            # Inbox / outbox
+    components/ComposeModal.tsx         # New message composer
+  auth/
+    callback/route.ts                   # OAuth + email confirmation; seeds new users
+  api/
+    auth/
+      signup/route.ts                   # Server signup → generateLink → Resend email
+      resend-confirmation/route.ts      # Resend confirmation (magiclink type)
+    search/route.ts                     # Global search (forum gated to auth users)
+    festdash/
+      admin/vendors/route.ts            # Admin vendor list (service role)
+      admin/applications/route.ts       # Admin app list (service role)
+      admin/applications/[id]/route.ts  # Approve/reject application
+    admin/
+      create-user/route.ts              # Admin user creation
+    vendor/route.ts
+    vendors/route.ts
+  festdash/
+    page.tsx                            # FestDash landing
+    order/page.tsx                      # Customer order wizard
+    orders/page.tsx                     # Customer order history
+    vendor/page.tsx                     # Vendor dashboard
+    driver/page.tsx                     # Driver view
+    admin/festdash/page.tsx             # Admin panel
+  marketplace/page.tsx
+  vendors/
+    page.tsx                            # Vendor directory
+    [id]/page.tsx                       # Vendor detail
+  foraging/page.tsx
+  feed/page.tsx
+  crowdwave/page.tsx
+utils/
+  supabase/
+    client.ts                           # Browser Supabase client
+    server.ts                           # Server Supabase client (cookies)
+    user-profiles.ts                    # getUserProfile() helper
+supabase/
+  migrations/
+    20260609000000_enable_rls_invoices.sql      # ✅ applied
+    20260612000000_festdash_schema.sql           # ✅ applied
+    20260613000000_display_name_history.sql      # ⚠ NOT YET APPLIED
+.claude/
+  settings.json                         # Autonomous permissions
+  hooks/session-start.sh                # npm install + token checks
+HANDOFF.md                              # This file
+```
+
+---
+
+## Supabase DB Tables (known)
+
+| Table | Purpose |
+|-------|---------|
+| `user_profiles` | id, display_name, bio, home_city, avatar_url, avatar_border, role, created_at |
+| `profiles` | username (unique), user_id — separate from user_profiles |
+| `threads` | Forum threads |
+| `replies` | Thread replies |
+| `direct_messages` | DMs between users |
+| `display_name_history` | ⚠ migration not run yet |
+| `vendors` | Vendor listings |
+| `products` | Marketplace products |
+| `festival_events` | Festival listings |
+| `group_members` | Community groups |
+| `festdash_vendor_applications` | FestDash enrollment |
+| `festdash_vendors` | Approved FestDash vendors |
+| `festdash_orders` | Customer orders |
+| `festdash_order_items` | Order line items |
+| `invoices` | Invoices (RLS enabled) |
+
+---
+
+## Vendor Pricing (context for future vendor onboarding conversations)
+
+Recommended tiers (from market analysis done 2026-06-14):
+
+| Tier | Price | Includes |
+|------|-------|---------|
+| Seedling | $29/mo | Basic listing, 1 product, standard placement |
+| Grower | $59/mo | Unlimited products, featured placement, analytics |
+| Founder | $89/mo | Everything + CrowdWave integration, priority support, Founder badge |
+
+Current founder vendor: **Frank's General Store**, **Homestead Life**
+
+---
+
+## Quick Reference Commands
 
 ```bash
-# Check if build passes
-cd /home/user/NorthEDM && npm run build
+# Run dev server
+cd /home/user/NorthEDM && npm run dev
 
-# Check env vars are loaded
-grep -c "=" .env.local  # should be 7
+# Build check
+npm run build 2>&1 | tail -10
 
-# Test Supabase DB connection (safe — uses anon key)
+# Push to deploy (Vercel auto-deploys from main)
+git push origin main
+
+# Run a specific migration (when network is open)
+psql "$DATABASE_URL" < supabase/migrations/<file>.sql
+
+# Check all env keys are present
+grep -c "=" .env.local   # expect 7
+
+# Test Supabase DB connectivity (when network is open)
 curl -s "https://bacyusmyzyawcrdpnvrt.supabase.co/rest/v1/user_profiles?limit=1" \
-  -H "apikey: $(grep NEXT_PUBLIC_SUPABASE_ANON_KEY .env.local | cut -d= -f2)"
-
-# Test network restrictions
-curl -s -o /dev/null -w "%{http_code}" https://api.vercel.com/v1/user \
-  -H "Authorization: Bearer $(grep VERCEL_TOKEN .env.local | cut -d= -f2)"
+  -H "apikey: $(grep NEXT_PUBLIC_SUPABASE_ANON_KEY .env.local | cut -d= -f2)" \
+  -w "\nHTTP:%{http_code}" | tail -2
 ```
