@@ -11,6 +11,9 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [successEmail, setSuccessEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
 
@@ -70,7 +73,13 @@ export default function SignupPage() {
       return;
     }
 
-    const { data: signupData, error: signupError } = await supabase.auth.signUp({ email, password: pw });
+    const { data: signupData, error: signupError } = await supabase.auth.signUp({
+      email,
+      password: pw,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
     if (signupError) {
       setError(signupError.message);
@@ -98,8 +107,23 @@ export default function SignupPage() {
       ]);
     }
 
+    setSuccessEmail(email);
     setSuccess(true);
     setLoading(false);
+  }
+
+  async function handleResend() {
+    if (!successEmail || resending || resent) return;
+    setResending(true);
+    const supabase = createClient();
+    await supabase.auth.resend({
+      type: "signup",
+      email: successEmail,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    setResending(false);
+    setResent(true);
+    setTimeout(() => setResent(false), 30000);
   }
 
   if (success) {
@@ -111,14 +135,29 @@ export default function SignupPage() {
           </div>
           <h1 className="font-bebas text-3xl tracking-wide text-white">Check your inbox</h1>
           <p className="mt-3 text-sm text-neutral-400">
-            We sent a confirmation link to your email. Click it to activate your account, then come back and log in.
+            We sent a confirmation link to{" "}
+            <span className="text-neutral-200">{successEmail}</span>.
+            Click it to activate your account, then come back and log in.
           </p>
-          <Link
-            href="/login"
-            className="mt-7 inline-block rounded-xl bg-[#39FF14] px-6 py-3 font-semibold text-black transition hover:opacity-90"
-          >
-            Back to Login
-          </Link>
+          <p className="mt-3 font-dm-mono text-xs text-neutral-600">
+            Don&apos;t see it? Check your spam or junk folder.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            <button
+              onClick={handleResend}
+              disabled={resending || resent}
+              className="w-full rounded-xl border border-white/10 py-2.5 text-sm text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+            >
+              {resent ? "Email resent ✓" : resending ? "Resending…" : "Resend confirmation email"}
+            </button>
+            <Link
+              href="/login"
+              className="block rounded-xl bg-[#39FF14] px-6 py-3 font-semibold text-black transition hover:opacity-90"
+            >
+              Back to Login
+            </Link>
+          </div>
         </div>
       </main>
     );
