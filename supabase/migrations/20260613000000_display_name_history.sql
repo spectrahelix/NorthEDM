@@ -9,9 +9,12 @@ create index if not exists display_name_history_user_id_idx on public.display_na
 
 alter table public.display_name_history enable row level security;
 
+-- CREATE POLICY has no IF NOT EXISTS; drop-then-create keeps this migration idempotent
+drop policy if exists "Name history is public read" on public.display_name_history;
 create policy "Name history is public read"
   on public.display_name_history for select using (true);
 
+drop policy if exists "Users insert own name history" on public.display_name_history;
 create policy "Users insert own name history"
   on public.display_name_history for insert
   with check (auth.uid() = user_id);
