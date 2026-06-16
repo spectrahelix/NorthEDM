@@ -248,94 +248,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Sponsored / Advertisement ─────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 pb-14">
-        <div className="relative overflow-hidden rounded-[2rem] border border-[#00D4FF]/20 bg-[#00D4FF]/[0.04] p-8 sm:p-10">
-          <div
-            className="pointer-events-none absolute -right-10 top-0 h-64 w-64 opacity-20"
-            style={{
-              background: "radial-gradient(circle, #00D4FF 0%, transparent 70%)",
-            }}
-          />
-          <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#00D4FF]">
-            Advertisement
-          </p>
-          <h2 className="mt-3 font-bebas text-3xl tracking-wide sm:text-4xl">
-            Kepner, Kepner &amp; Corba, P.C.
-          </h2>
-          <p className="mt-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-            Aggressive. Dedicated. Experienced.
-          </p>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-300 sm:text-base">
-            A full-service law firm serving all of Northeastern Pennsylvania since
-            1950. Trusted counsel in personal injury, family law, criminal
-            defense, and more — with offices in Berwick and Stroudsburg.
-          </p>
-
-          {/* Practice areas */}
-          <div className="mt-6 flex flex-wrap gap-2">
-            {[
-              "Personal Injury",
-              "Family Law",
-              "Criminal Defense / DUI",
-              "Civil Litigation",
-              "Real Estate",
-              "Employment Law",
-              "Probate & Estate",
-            ].map((area) => (
-              <span
-                key={area}
-                className="rounded-full border border-[#00D4FF]/20 bg-[#00D4FF]/[0.06] px-3 py-1 font-dm-mono text-xs text-[#00D4FF]"
-              >
-                {area}
-              </span>
-            ))}
-          </div>
-
-          {/* Offices */}
-          <div className="mt-7 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Berwick Office
-              </p>
-              <p className="mt-1 text-sm text-neutral-300">
-                123 West Front Street, Berwick, PA 18603
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Stroudsburg Office
-              </p>
-              <p className="mt-1 text-sm text-neutral-300">
-                612 Main Street, Suite 223, Stroudsburg, PA 18360
-              </p>
-            </div>
-          </div>
-
-          {/* CTAs */}
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="https://www.kkclaw.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center rounded-2xl bg-[#00D4FF] px-6 py-3.5 text-sm font-semibold text-black transition hover:opacity-90 active:scale-[0.98]"
-            >
-              Visit kkclaw.com
-            </a>
-            <a
-              href="tel:+15702317418"
-              className="flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-white/5 active:scale-[0.98]"
-            >
-              Call (570) 231-7418
-            </a>
-          </div>
-
-          <p className="mt-4 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-700">
-            Paid advertisement
-          </p>
-        </div>
-      </section>
-
       {/* ── Featured Vendors ──────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 pb-14">
         <div className="mb-6 flex items-end justify-between">
@@ -454,6 +366,41 @@ export default async function HomePage() {
               </div>
             </Link>
           ))}
+
+          {/* Sponsored — compact ad card (smaller/lighter than vendor cards) */}
+          <div className="flex flex-col self-start rounded-2xl border border-[#00D4FF]/20 bg-[#00D4FF]/[0.04] p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="font-dm-mono text-[10px] uppercase tracking-[0.25em] text-[#00D4FF]">
+                Sponsored
+              </p>
+              <span className="rounded-full bg-white/5 px-2 py-0.5 font-dm-mono text-[9px] uppercase tracking-wide text-neutral-500">
+                Ad
+              </span>
+            </div>
+            <h3 className="font-bebas text-lg leading-snug tracking-wide">
+              Kepner, Kepner &amp; Corba, P.C.
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-neutral-400">
+              NE Pennsylvania law firm since 1950 — personal injury, family law,
+              criminal defense &amp; more.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-dm-mono text-[11px] uppercase tracking-widest">
+              <a
+                href="https://www.kkclaw.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#00D4FF] transition hover:text-white"
+              >
+                Visit →
+              </a>
+              <a
+                href="tel:+15702317418"
+                className="text-neutral-400 transition hover:text-white"
+              >
+                Call
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
