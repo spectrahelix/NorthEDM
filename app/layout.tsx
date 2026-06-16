@@ -101,8 +101,12 @@ export default async function RootLayout({
           <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent 0%, #39FF14 18%, #00D4FF 50%, #CC00FF 82%, transparent 100%)" }} />
           {/* Stage-light aura */}
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 35% 180% at 18% 120%, rgba(57,255,20,0.09) 0%, transparent 65%), radial-gradient(ellipse 35% 180% at 50% 120%, rgba(0,212,255,0.07) 0%, transparent 65%), radial-gradient(ellipse 35% 180% at 82% 120%, rgba(204,0,255,0.09) 0%, transparent 65%)" }} />
-          <div className="relative mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-            <Link href="/" className="block shrink-0">
+          <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+            <Link
+              href="/"
+              aria-label="NorthEDM home"
+              className="-ml-3 block shrink-0 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
+            >
               <div
                 className="font-bebas text-xl tracking-wide"
                 style={{
