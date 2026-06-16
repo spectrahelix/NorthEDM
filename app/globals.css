@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* NorthEDM is a dark-only experience — keep the canvas dark regardless of
+     the visitor's OS color-scheme (previously white in light mode). */
+  --background: #030303;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -25,13 +27,6 @@
   --color-neon-green:  #39FF14;
   --color-neon-blue:   #00D4FF;
   --color-neon-purple: #CC00FF;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

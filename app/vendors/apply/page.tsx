@@ -5,6 +5,8 @@ import { useState } from "react";
 export default function VendorApplyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  // Captured at mount — used as a timing trap against instant bot submits.
+  const [loadedAt] = useState(() => Date.now());
 
   return (
     <main className="min-h-screen px-6 py-16 text-neutral-100">
@@ -38,6 +40,9 @@ export default function VendorApplyPage() {
               description: formData.get("description"),
               capacity: formData.get("capacity"),
               public: formData.get("public"),
+              // Anti-spam: honeypot (should stay empty) + time-to-submit.
+              company_website: formData.get("company_website"),
+              elapsedMs: Date.now() - loadedAt,
             };
 
             try {
@@ -65,6 +70,17 @@ export default function VendorApplyPage() {
           }}
           className="mt-8 space-y-4 rounded-3xl border border-white/10 bg-white/[0.03] p-6"
         >
+          {/* Honeypot — hidden from people, irresistible to bots. If filled,
+              the server silently drops the submission. */}
+          <input
+            type="text"
+            name="company_website"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="absolute left-[-9999px] h-0 w-0 opacity-0"
+          />
+
           <input
             name="name"
             placeholder="Name"
