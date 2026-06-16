@@ -20,13 +20,6 @@ type NavLink = {
 
 const NAV_LINKS: NavLink[] = [
   {
-    href: "/",
-    label: "Home",
-    color: "#aaaaaa",
-    bg: "rgba(255,255,255,0.04)",
-    border: "rgba(255,255,255,0.10)",
-  },
-  {
     href: "/forum",
     label: "Forum",
     color: "#CC00FF",
