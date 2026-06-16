@@ -12,8 +12,18 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // no-op here; middleware handles refresh/session syncing
+        setAll(cookiesToSet) {
+          // Persists session cookies set during code/OTP exchange in Route
+          // Handlers and Server Actions (e.g. /auth/callback, /auth/confirm).
+          // In Server Components cookie writes throw — that's expected; the
+          // proxy refreshes the session there instead.
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // called from a Server Component render — safe to ignore
+          }
         },
       },
     }

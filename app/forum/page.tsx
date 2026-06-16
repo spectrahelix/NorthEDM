@@ -185,11 +185,9 @@ export default async function ForumPage({
                 }`}
               >
                 All Posts
-                {countMap["all"] !== undefined && (
-                  <span className="ml-2 font-dm-mono text-[10px] text-neutral-700">
-                    {Object.values(countMap).reduce((a, b) => a + b, 0)}
-                  </span>
-                )}
+                <span className="ml-2 font-dm-mono text-[10px] text-neutral-700">
+                  {Object.values(countMap).reduce((a, b) => a + b, 0)}
+                </span>
               </Link>
 
               {defaultCategories.map((cat) => {

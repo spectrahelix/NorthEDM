@@ -13,6 +13,7 @@ export async function GET(
     .select("id, name, description, price, image_url, category, inventory_count")
     .eq("vendor_id", Number(vendorId))
     .eq("is_public", true)
+    .eq("status", "published")
     .gt("inventory_count", 0)
     .order("category");
 
