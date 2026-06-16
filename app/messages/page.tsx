@@ -73,13 +73,15 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
       fetchMessages(user.id, tab);
 
       // Realtime for new messages
-      const channel = supabase
+      channel = supabase
         .channel(`messages:${user.id}`)
         .on(
           "postgres_changes",
@@ -92,8 +94,9 @@ export default function MessagesPage() {
           () => fetchMessages(user.id, tab)
         )
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
     });
+
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [router, tab, fetchMessages]);
 
   async function markRead(msg: Message) {

@@ -42,7 +42,7 @@ export function SocialAuth({ next = "/feed" }: { next?: string }) {
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
   }
