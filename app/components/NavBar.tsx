@@ -110,7 +110,7 @@ export function NavBar({
   return (
     <>
       {/* ── Desktop nav ───────────────────────────────────────── */}
-      <nav className="hidden items-center gap-2 text-sm lg:flex">
+      <nav className="hidden items-center gap-1.5 text-sm lg:flex">
         {NAV_LINKS.map((l) => {
           const isActive = l.href === "/"
             ? pathname === "/"
@@ -119,7 +119,7 @@ export function NavBar({
             <Link
               key={l.href}
               href={l.href}
-              className={`rounded-full px-3 py-1 transition ${l.bold ? "font-semibold" : ""}`}
+              className={`rounded-full px-2.5 py-1 transition ${l.bold ? "font-semibold" : ""}`}
               style={{
                 color: isActive ? l.color : l.color + "bb",
                 background: isActive ? l.bg.replace(/[\d.]+\)$/, "0.18)") : l.bg,
