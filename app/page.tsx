@@ -496,6 +496,41 @@ export default async function HomePage() {
               </div>
             </Link>
           ))}
+
+          {/* Sponsored — compact ad card (smaller/lighter than vendor cards) */}
+          <div className="flex flex-col self-start rounded-2xl border border-[#00D4FF]/20 bg-[#00D4FF]/[0.04] p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="font-dm-mono text-[10px] uppercase tracking-[0.25em] text-[#00D4FF]">
+                Sponsored
+              </p>
+              <span className="rounded-full bg-white/5 px-2 py-0.5 font-dm-mono text-[9px] uppercase tracking-wide text-neutral-500">
+                Ad
+              </span>
+            </div>
+            <h3 className="font-bebas text-lg leading-snug tracking-wide">
+              Kepner, Kepner &amp; Corba, P.C.
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-neutral-400">
+              NE Pennsylvania law firm since 1950 — personal injury, family law,
+              criminal defense &amp; more.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-dm-mono text-[11px] uppercase tracking-widest">
+              <a
+                href="https://www.kkclaw.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#00D4FF] transition hover:text-white"
+              >
+                Visit →
+              </a>
+              <a
+                href="tel:+15702317418"
+                className="text-neutral-400 transition hover:text-white"
+              >
+                Call
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
