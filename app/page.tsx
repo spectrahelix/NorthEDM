@@ -248,136 +248,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured Partner: Kepner, Kepner & Corba ─────────── */}
-      <section className="mx-auto max-w-6xl px-6 pb-14">
-        <div className="relative overflow-hidden rounded-[2rem] border border-[#E8FF47]/20 bg-[#E8FF47]/[0.03] p-8 sm:p-10">
-          <div
-            className="pointer-events-none absolute right-0 top-0 h-72 w-72 opacity-10"
-            style={{ background: "radial-gradient(circle, #E8FF47 0%, transparent 70%)" }}
-          />
-
-          {/* Header row */}
-          <div className="relative flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#E8FF47]">
-                Featured Partner · Est. 1950
-              </p>
-              <h2 className="mt-2 font-bebas text-3xl tracking-wide sm:text-4xl">
-                Kepner, Kepner &amp; Corba, P.C.
-              </h2>
-              <p className="mt-1 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                Aggressive. Dedicated. Experienced.
-              </p>
-            </div>
-            <a
-              href="https://www.kkclaw.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-2xl bg-[#E8FF47] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 active:scale-[0.98]"
-            >
-              Visit kkclaw.com →
-            </a>
-          </div>
-
-          {/* Details row */}
-          <div className="relative mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Contact */}
-            <div>
-              <p className="mb-2 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Contact
-              </p>
-              <ul className="space-y-2 text-sm text-neutral-300">
-                <li>
-                  <a
-                    href="https://maps.google.com/?q=123+West+Front+Street+Berwick+PA+18603"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-start gap-2 transition hover:text-[#E8FF47]"
-                  >
-                    <span className="mt-0.5 shrink-0">📍</span>
-                    <span>123 West Front St<br />Berwick, PA 18603</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="tel:+15702317418"
-                    className="flex items-center gap-2 transition hover:text-[#E8FF47]"
-                  >
-                    <span>📞</span>
-                    <span>(570) 231-7418</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://www.kkclaw.com/contact-us/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 transition hover:text-[#E8FF47]"
-                  >
-                    <span>✉️</span>
-                    <span>Send a Message</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Attorneys */}
-            <div>
-              <p className="mb-2 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Attorneys · 78 Yrs Combined
-              </p>
-              <ul className="space-y-2 text-sm text-neutral-300">
-                {[
-                  "Franklin E. Kepner, Jr.",
-                  "Alice T. K. Corba",
-                  "Franklin E. Kepner, III",
-                ].map((name) => (
-                  <li key={name} className="flex items-center gap-2">
-                    <span className="text-[#E8FF47]/50">⚖️</span>
-                    <a
-                      href="https://www.kkclaw.com/attorneys/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="transition hover:text-[#E8FF47]"
-                    >
-                      {name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Practice Areas */}
-            <div>
-              <p className="mb-2 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Practice Areas
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: "Personal Injury",  href: "https://www.kkclaw.com/practice-areas/" },
-                  { label: "Employment Law",   href: "https://www.kkclaw.com/practice-areas/employment-law/" },
-                  { label: "Family Law",       href: "https://www.kkclaw.com/practice-areas/" },
-                  { label: "Criminal Defense", href: "https://www.kkclaw.com/practice-areas/" },
-                  { label: "Real Estate",      href: "https://www.kkclaw.com/practice-areas/" },
-                  { label: "Civil Litigation", href: "https://www.kkclaw.com/practice-areas/" },
-                  { label: "Probate & Estate", href: "https://www.kkclaw.com/practice-areas/" },
-                ].map((area) => (
-                  <a
-                    key={area.label}
-                    href={area.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full border border-[#E8FF47]/15 bg-[#E8FF47]/5 px-3 py-1 font-dm-mono text-[11px] text-[#E8FF47]/70 transition hover:border-[#E8FF47]/40 hover:bg-[#E8FF47]/10 hover:text-[#E8FF47]"
-                  >
-                    {area.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── Featured Vendors ──────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 pb-14">
         <div className="mb-6 flex items-end justify-between">
@@ -497,31 +367,121 @@ export default async function HomePage() {
             </Link>
           ))}
 
-          {/* Sponsored — compact ad card (smaller/lighter than vendor cards) */}
+          {/* Sponsored — Kepner, Kepner & Corba (condensed bulletin) */}
           <div className="flex flex-col self-start rounded-2xl border border-[#00D4FF]/20 bg-[#00D4FF]/[0.04] p-4">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="font-dm-mono text-[10px] uppercase tracking-[0.25em] text-[#00D4FF]">
-                Sponsored
+                Sponsored · Est. 1950
               </p>
               <span className="rounded-full bg-white/5 px-2 py-0.5 font-dm-mono text-[9px] uppercase tracking-wide text-neutral-500">
                 Ad
               </span>
             </div>
+
             <h3 className="font-bebas text-lg leading-snug tracking-wide">
               Kepner, Kepner &amp; Corba, P.C.
             </h3>
-            <p className="mt-1 text-xs leading-5 text-neutral-400">
-              NE Pennsylvania law firm since 1950 — personal injury, family law,
-              criminal defense &amp; more.
+            <p className="mt-0.5 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+              Aggressive. Dedicated. Experienced.
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-dm-mono text-[11px] uppercase tracking-widest">
+
+            {/* Contact */}
+            <p className="mt-3 font-dm-mono text-[9px] uppercase tracking-widest text-neutral-600">
+              Contact
+            </p>
+            <ul className="mt-1 space-y-1 text-xs text-neutral-400">
+              <li>
+                <a
+                  href="https://maps.google.com/?q=123+West+Front+Street+Berwick+PA+18603"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-1.5 transition hover:text-[#00D4FF]"
+                >
+                  <span className="mt-0.5 shrink-0">📍</span>
+                  <span>123 West Front St, Berwick, PA 18603</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="tel:+15702317418"
+                  className="flex items-center gap-1.5 transition hover:text-[#00D4FF]"
+                >
+                  <span>📞</span>
+                  <span>(570) 231-7418</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.kkclaw.com/contact-us/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 transition hover:text-[#00D4FF]"
+                >
+                  <span>✉️</span>
+                  <span>Send a Message</span>
+                </a>
+              </li>
+            </ul>
+
+            {/* Attorneys */}
+            <p className="mt-3 font-dm-mono text-[9px] uppercase tracking-widest text-neutral-600">
+              Attorneys · 78 Yrs Combined
+            </p>
+            <ul className="mt-1 space-y-1 text-xs text-neutral-400">
+              {[
+                "Franklin E. Kepner, Jr.",
+                "Alice T. K. Corba",
+                "Franklin E. Kepner, III",
+              ].map((name) => (
+                <li key={name} className="flex items-center gap-1.5">
+                  <span className="text-[#00D4FF]/50">⚖️</span>
+                  <a
+                    href="https://www.kkclaw.com/attorneys/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="transition hover:text-[#00D4FF]"
+                  >
+                    {name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            {/* Practice areas */}
+            <p className="mt-3 font-dm-mono text-[9px] uppercase tracking-widest text-neutral-600">
+              Practice Areas
+            </p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {[
+                { label: "Personal Injury",  href: "https://www.kkclaw.com/practice-areas/" },
+                { label: "Employment Law",   href: "https://www.kkclaw.com/practice-areas/employment-law/" },
+                { label: "Family Law",       href: "https://www.kkclaw.com/practice-areas/" },
+                { label: "Criminal Defense", href: "https://www.kkclaw.com/practice-areas/" },
+                { label: "Real Estate",      href: "https://www.kkclaw.com/practice-areas/" },
+                { label: "Civil Litigation", href: "https://www.kkclaw.com/practice-areas/" },
+                { label: "Probate & Estate", href: "https://www.kkclaw.com/practice-areas/" },
+              ].map((area) => (
+                <a
+                  key={area.label}
+                  href={area.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-[#00D4FF]/15 bg-[#00D4FF]/5 px-2 py-0.5 font-dm-mono text-[10px] text-[#00D4FF]/70 transition hover:border-[#00D4FF]/40 hover:bg-[#00D4FF]/10 hover:text-[#00D4FF]"
+                >
+                  {area.label}
+                </a>
+              ))}
+            </div>
+
+            {/* CTAs */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-dm-mono text-[11px] uppercase tracking-widest">
               <a
                 href="https://www.kkclaw.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#00D4FF] transition hover:text-white"
               >
-                Visit →
+                Visit kkclaw.com →
               </a>
               <a
                 href="tel:+15702317418"
