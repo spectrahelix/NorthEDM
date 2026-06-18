@@ -40,9 +40,15 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" vi
       <stop offset="0.889" stop-color="#4b00ff"/>
       <stop offset="1.000" stop-color="#0a84ff"/>
     </radialGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="2.4" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.8" result="blur"/>
+      <feFlood flood-color="#39ff14" flood-opacity="0.85"/>
+      <feComposite in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
 
