@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const metadata = {
   title: "FestDash — Festival Delivery Network",
@@ -30,6 +31,20 @@ export default async function FestDashPage() {
       isFestDashVendor = !!fd;
     }
   }
+
+  // Live network stats — service role so counts span all rows (past RLS)
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const [vendorsRes, runnersRes, deliveriesRes] = await Promise.all([
+    admin.from("festdash_vendors").select("*", { count: "exact", head: true }),
+    admin.from("festdash_drivers").select("*", { count: "exact", head: true }).eq("is_active", true),
+    admin.from("festdash_orders").select("*", { count: "exact", head: true }).eq("status", "delivered"),
+  ]);
+  const vendorCount = vendorsRes.count ?? 0;
+  const runnerCount = runnersRes.count ?? 0;
+  const deliveredCount = deliveriesRes.count ?? 0;
 
   return (
     <main className="min-h-screen">
@@ -220,6 +235,25 @@ export default async function FestDashPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Live network stats */}
+      <section className="mx-auto max-w-4xl px-6 py-20 text-center">
+        <h2 className="mb-10 font-bebas text-4xl tracking-wide text-white">
+          The FestDash Network
+        </h2>
+        <div className="grid grid-cols-3 gap-4 sm:gap-6">
+          {[
+            { stat: vendorCount, label: "Vendors Enlisted" },
+            { stat: runnerCount, label: "Runners Enlisted" },
+            { stat: deliveredCount, label: "Deliveries Made" },
+          ].map((s) => (
+            <div key={s.label} className="rounded-2xl border border-white/8 bg-white/3 p-6">
+              <div className="font-bebas text-4xl text-orange-400 sm:text-5xl">{s.stat}</div>
+              <div className="mt-1 text-xs text-neutral-500 sm:text-sm">{s.label}</div>
+            </div>
+          ))}
         </div>
       </section>
     </main>
