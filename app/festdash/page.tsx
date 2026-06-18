@@ -3,9 +3,9 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const metadata = {
-  title: "FestDash — Festival Delivery Network",
+  title: "FestDash / FestEats — Festival Delivery Network",
   description:
-    "FestDash brings vendor delivery straight to your campsite. Order from your favorite festival vendors, share your site location, and we handle the rest.",
+    "FestDash (also FestEats) brings vendor delivery straight to your campsite. Order from your favorite festival vendors, share your site location, and we handle the rest.",
 };
 
 export default async function FestDashPage() {
@@ -59,6 +59,9 @@ export default async function FestDashPage() {
           <h1 className="font-bebas text-6xl tracking-wide text-white md:text-8xl">
             Fest<span className="text-orange-400">Dash</span>
           </h1>
+          <p className="mt-3 font-dm-mono text-xs uppercase tracking-[0.25em] text-neutral-500">
+            also known as <span className="text-orange-400">Fest</span><span className="text-white">Eats</span>
+          </p>
           <p className="mt-4 text-xl text-neutral-300">
             Festival delivery. Right to your campsite.
           </p>
@@ -118,7 +121,7 @@ export default async function FestDashPage() {
               step: "02",
               icon: "📍",
               title: "Share your site",
-              desc: "Enter your campground zone and snap a photo of your campsite so the driver can find you.",
+              desc: "Enter your campground zone and snap a photo of your campsite so the runner can find you.",
             },
             {
               step: "03",
@@ -130,7 +133,7 @@ export default async function FestDashPage() {
               step: "04",
               icon: "🏕️",
               title: "Receive delivery",
-              desc: "Your vendor's driver brings it straight to your site during your requested window.",
+              desc: "Your vendor's runner brings it straight to your site during your requested window.",
             },
           ].map((s) => (
             <div
@@ -160,14 +163,14 @@ export default async function FestDashPage() {
               <p className="mb-4 text-neutral-400">
                 Add FestDash as an add-on to your existing transaction setup. When
                 a delivery order comes in, it pops up right on your tablet —
-                accept or decline in one tap. Your assigned driver handles the rest.
+                accept or decline in one tap. Your assigned runner handles the rest.
               </p>
               <ul className="space-y-2 text-sm text-neutral-400">
                 {[
                   "Works alongside any existing POS — no new hardware",
                   "Orders appear live on your tablet as they come in",
                   "One-tap accept / decline per order",
-                  "Your driver is pre-assigned — you don't manage logistics",
+                  "Your runner is pre-assigned — you don't manage logistics",
                   "Take FestDash to every event you attend",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">

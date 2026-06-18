@@ -16,6 +16,11 @@ type Order = {
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
   status: "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  driver_lat: number | null;
+  driver_lng: number | null;
+  location_updated_at: string | null;
+  customer_lat: number | null;
+  customer_lng: number | null;
   created_at: string;
 };
 
@@ -29,6 +34,14 @@ const STEPS = [
 const STATUS_INDEX: Record<string, number> = {
   pending: 0, accepted: 1, in_transit: 2, delivered: 3,
 };
+
+function timeAgo(iso: string) {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  return `${Math.floor(s / 3600)}h ago`;
+}
 
 export default function TrackPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -82,6 +95,19 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
   const currentStep = STATUS_INDEX[order.status] ?? 0;
   const isDeclined = order.status === "declined";
 
+  // Live runner map (Mapbox Static Images API — no SDK needed)
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const hasRunnerLoc = order.driver_lat != null && order.driver_lng != null;
+  const runnerPin = `pin-l+f97316(${order.driver_lng},${order.driver_lat})`;
+  const sitePin =
+    order.customer_lat != null && order.customer_lng != null
+      ? `pin-s+22c55e(${order.customer_lng},${order.customer_lat})`
+      : null;
+  const mapView = sitePin ? "auto" : `${order.driver_lng},${order.driver_lat},14`;
+  const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${[runnerPin, sitePin]
+    .filter(Boolean)
+    .join(",")}/${mapView}/600x300@2x?access_token=${mapboxToken}`;
+
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-md">
@@ -124,7 +150,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                         <p className="text-xs text-neutral-500">Your order is being prepared</p>
                       )}
                       {active && order.status === "in_transit" && (
-                        <p className="text-xs text-orange-400 animate-pulse">Driver is heading to you now!</p>
+                        <p className="text-xs text-orange-400 animate-pulse">Runner is heading to you now!</p>
                       )}
                     </div>
                     {active && order.status !== "delivered" && (
@@ -134,6 +160,34 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                 );
               })}
             </div>
+
+            {/* Live runner location */}
+            {order.status === "in_transit" && (
+              <div className="mb-8 overflow-hidden rounded-2xl border border-orange-500/20 bg-white/3">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-400">
+                    Live Runner Location
+                  </p>
+                  {order.location_updated_at && (
+                    <span className="font-dm-mono text-[10px] text-neutral-500">
+                      updated {timeAgo(order.location_updated_at)}
+                    </span>
+                  )}
+                </div>
+                {hasRunnerLoc && mapboxToken ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mapUrl} alt="Runner location" className="w-full object-cover" style={{ maxHeight: 280 }} />
+                ) : hasRunnerLoc ? (
+                  <div className="px-4 pb-4 text-sm text-neutral-400">
+                    Runner is near {order.driver_lat!.toFixed(4)}, {order.driver_lng!.toFixed(4)}.
+                  </div>
+                ) : (
+                  <div className="px-4 pb-4 text-sm text-neutral-500">
+                    Waiting for your runner to start sharing their location…
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Order summary */}
             <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
