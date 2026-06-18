@@ -493,52 +493,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="border-t border-white/10">
-        <div className="mx-auto max-w-6xl px-6 py-10">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="font-bebas text-lg tracking-wide">NorthEDM</p>
-              <p className="mt-1 font-dm-mono text-[10px] uppercase tracking-[0.3em] text-neutral-600">
-                Unite the Northeast
-              </p>
-            </div>
-            <div>
-              <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Community
-              </p>
-              <ul className="space-y-2 text-sm text-neutral-400">
-                <li><Link href="/forum" className="hover:text-white">Forum</Link></li>
-                <li><Link href="/crowdwave" className="hover:text-white">CrowdWave</Link></li>
-                <li><Link href="/feed" className="hover:text-white">Feed</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Platform
-              </p>
-              <ul className="space-y-2 text-sm text-neutral-400">
-                <li><Link href="/marketplace" className="hover:text-white">Marketplace</Link></li>
-                <li><Link href="/vendors" className="hover:text-white">Vendors</Link></li>
-                <li><Link href="/foraging" className="hover:text-white">Foraging</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
-                Account
-              </p>
-              <ul className="space-y-2 text-sm text-neutral-400">
-                <li><Link href="/signup" className="hover:text-white">Create Account</Link></li>
-                <li><Link href="/login" className="hover:text-white">Log In</Link></li>
-              </ul>
-            </div>
-          </div>
-          <p className="mt-10 font-dm-mono text-[10px] text-neutral-700">
-            © {new Date().getFullYear()} NorthEDM. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </main>
   );
 }

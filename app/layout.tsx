@@ -105,22 +105,32 @@ export default async function RootLayout({
             <Link
               href="/"
               aria-label="NorthEDM home"
-              className="-ml-3 block shrink-0 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
+              className="-ml-3 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
             >
-              <div
-                className="font-bebas text-xl tracking-wide"
-                style={{
-                  background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
-                }}
-              >
-                NorthEDM
-              </div>
-              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
-                Unite the Northeast
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/northedm-logo.svg"
+                alt="NorthEDM logo"
+                width={44}
+                height={44}
+                className="h-11 w-11 shrink-0"
+              />
+              <div>
+                <div
+                  className="font-bebas text-xl tracking-wide"
+                  style={{
+                    background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
+                  }}
+                >
+                  NorthEDM
+                </div>
+                <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+                  Unite the Northeast
+                </div>
               </div>
             </Link>
 
@@ -130,6 +140,67 @@ export default async function RootLayout({
 
 
         {children}
+
+        <footer className="relative mt-24 border-t border-white/10">
+          {/* Spectral gradient line */}
+          <div className="absolute top-0 left-0 right-0 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent 0%, #39FF14 18%, #00D4FF 50%, #CC00FF 82%, transparent 100%)" }} />
+          <div className="mx-auto max-w-6xl px-6 py-12">
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/northedm-logo.svg" alt="NorthEDM logo" width={48} height={48} className="h-12 w-12 shrink-0" />
+                  <div>
+                    <div
+                      className="font-bebas text-lg tracking-wide"
+                      style={{
+                        background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                        backgroundClip: "text",
+                      }}
+                    >
+                      NorthEDM
+                    </div>
+                    <p className="font-dm-mono text-[10px] uppercase tracking-[0.3em] text-neutral-600">
+                      Unite the Northeast
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-4 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-700">
+                  FestDash™ / FestEats™
+                </p>
+              </div>
+              <div>
+                <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Community</p>
+                <ul className="space-y-2 text-sm text-neutral-400">
+                  <li><Link href="/forum" className="hover:text-white">Forum</Link></li>
+                  <li><Link href="/crowdwave" className="hover:text-white">CrowdWave</Link></li>
+                  <li><Link href="/feed" className="hover:text-white">Feed</Link></li>
+                </ul>
+              </div>
+              <div>
+                <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Platform</p>
+                <ul className="space-y-2 text-sm text-neutral-400">
+                  <li><Link href="/marketplace" className="hover:text-white">Marketplace</Link></li>
+                  <li><Link href="/vendors" className="hover:text-white">Vendors</Link></li>
+                  <li><Link href="/foraging" className="hover:text-white">Foraging</Link></li>
+                  <li><Link href="/festdash" className="hover:text-white">FestDash</Link></li>
+                </ul>
+              </div>
+              <div>
+                <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Account</p>
+                <ul className="space-y-2 text-sm text-neutral-400">
+                  <li><Link href="/signup" className="hover:text-white">Create Account</Link></li>
+                  <li><Link href="/login" className="hover:text-white">Log In</Link></li>
+                </ul>
+              </div>
+            </div>
+            <p className="mt-10 font-dm-mono text-[10px] text-neutral-700">
+              © {new Date().getFullYear()} NorthEDM. All rights reserved.
+            </p>
+          </div>
+        </footer>
         </div>
       </body>
     </html>
