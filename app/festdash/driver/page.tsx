@@ -16,6 +16,8 @@ type Order = {
   total_cents: number;
   status: "pending" | "accepted" | "in_transit" | "delivered" | "declined";
   driver_id: string | null;
+  customer_lat: number | null;
+  customer_lng: number | null;
   created_at: string;
 };
 
@@ -269,6 +271,14 @@ export default function DriverPage() {
           <div className="mb-8 space-y-4">
             {mine.map((order) => (
               <OrderCard key={order.id} order={order} onDetails={() => setSelected(order)}>
+                <a
+                  href={navUrl(order)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center rounded-xl border border-white/15 px-4 py-2.5 text-sm text-neutral-300 hover:bg-white/5"
+                >
+                  🧭 Navigate
+                </a>
                 {order.status === "accepted" && (
                   <button
                     onClick={() => updateStatus(order.id, "in_transit")}
@@ -366,6 +376,13 @@ export default function DriverPage() {
       )}
     </main>
   );
+}
+
+function navUrl(o: Order) {
+  if (o.customer_lat != null && o.customer_lng != null) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${o.customer_lat},${o.customer_lng}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${o.campground_zone} ${o.event_name}`)}`;
 }
 
 function OrderCard({ order, onDetails, children }: { order: Order; onDetails: () => void; children?: React.ReactNode }) {

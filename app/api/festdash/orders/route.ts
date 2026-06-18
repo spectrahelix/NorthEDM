@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     vendorId, eventName, campgroundZone, campsiteNotes,
     campsitePhotoUrl, deliveryWindow, items, totalCents, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
-    licensePlate, carPhotoUrl,
+    licensePlate, carPhotoUrl, customerLat, customerLng,
   } = body;
 
   if (!vendorId || !eventName || !campgroundZone || !deliveryWindow || !items?.length) {
@@ -42,6 +42,8 @@ export async function POST(req: Request) {
       license_plate: licensePlate || null,
       customer_phone: customerPhone || null,
       confirmation_code: confirmationCode,
+      customer_lat: typeof customerLat === "number" ? customerLat : null,
+      customer_lng: typeof customerLng === "number" ? customerLng : null,
       delivery_window: deliveryWindow,
       items,
       total_cents: Number(totalCents) || 0,
