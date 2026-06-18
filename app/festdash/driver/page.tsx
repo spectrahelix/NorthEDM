@@ -9,54 +9,99 @@ type Order = {
   campground_zone: string;
   campsite_notes: string;
   campsite_photo_url: string | null;
+  car_photo_url: string | null;
+  license_plate: string | null;
   delivery_window: string;
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
   status: "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  driver_id: string | null;
   created_at: string;
 };
 
+type Driver = { id: string; display_name: string; phone: string | null; vehicle: string | null; is_active: boolean };
+
 export default function DriverPage() {
   const supabase = createClient();
-  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needAuth, setNeedAuth] = useState(false);
+  const [driver, setDriver] = useState<Driver | null>(null);
+
+  const [available, setAvailable] = useState<Order[]>([]);
+  const [mine, setMine] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [vendorId, setVendorId] = useState<number | null>(null);
-  const [unauthorized, setUnauthorized] = useState(false);
 
-  const loadOrders = useCallback(async (vId: number) => {
-    const { data } = await supabase
-      .from("festdash_orders")
-      .select("*")
-      .eq("vendor_id", vId)
-      .in("status", ["accepted", "in_transit"])
-      .order("created_at", { ascending: true });
-    setOrders((data as Order[]) ?? []);
-    setLoading(false);
-  }, [supabase]);
+  // Registration form
+  const [displayName, setDisplayName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [vehicle, setVehicle] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [regError, setRegError] = useState("");
+
+  const loadOrders = useCallback(async () => {
+    const res = await fetch("/api/festdash/driver/orders");
+    if (res.ok) {
+      const j = await res.json();
+      setAvailable(j.available ?? []);
+      setMine(j.mine ?? []);
+    }
+  }, []);
 
   useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setUnauthorized(true); setLoading(false); return; }
+      if (!user) { setNeedAuth(true); setLoading(false); return; }
+      if (user.email) setDisplayName(user.email.split("@")[0]);
 
-      const { data: profile } = await supabase
-        .from("profiles").select("vendor_id").eq("id", user.id).single();
-      if (!profile?.vendor_id) { setUnauthorized(true); setLoading(false); return; }
+      const res = await fetch("/api/festdash/driver");
+      const j = await res.json();
+      setDriver(j.driver ?? null);
+      if (j.driver) await loadOrders();
+      setLoading(false);
 
-      setVendorId(profile.vendor_id);
-      await loadOrders(profile.vendor_id);
-
-      const channel = supabase
+      channel = supabase
         .channel("driver_orders")
         .on("postgres_changes", { event: "*", schema: "public", table: "festdash_orders" }, () => {
-          loadOrders(profile.vendor_id);
+          loadOrders();
         })
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
     })();
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [supabase, loadOrders]);
+
+  async function register(e: React.FormEvent) {
+    e.preventDefault();
+    setRegError("");
+    setRegistering(true);
+    const res = await fetch("/api/festdash/driver", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName, phone, vehicle }),
+    });
+    const j = await res.json();
+    if (res.ok) {
+      setDriver(j.driver);
+      await loadOrders();
+    } else {
+      setRegError(j.error ?? "Registration failed.");
+    }
+    setRegistering(false);
+  }
+
+  async function claim(orderId: string) {
+    setUpdating(orderId);
+    const res = await fetch(`/api/festdash/orders/${orderId}/claim`, { method: "POST" });
+    if (res.ok) {
+      await loadOrders();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error ?? "Claim failed.");
+      await loadOrders();
+    }
+    setUpdating(null);
+  }
 
   async function updateStatus(orderId: string, status: string) {
     let code: string | undefined;
@@ -74,13 +119,8 @@ export default function DriverPage() {
       body: JSON.stringify({ status, code }),
     });
     if (res.ok) {
-      if (status === "delivered") {
-        setOrders((prev) => prev.filter((o) => o.id !== orderId));
-        if (selected?.id === orderId) setSelected(null);
-      } else {
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: status as Order["status"] } : o));
-        if (selected?.id === orderId) setSelected((s) => s ? { ...s, status: status as Order["status"] } : s);
-      }
+      await loadOrders();
+      if (selected?.id === orderId) setSelected(null);
     } else {
       const j = await res.json().catch(() => ({}));
       alert(j.error ?? "Update failed.");
@@ -88,11 +128,17 @@ export default function DriverPage() {
     setUpdating(null);
   }
 
-  if (unauthorized) {
+  // ── Gates ────────────────────────────────────────────────────────
+  if (needAuth) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-neutral-400">Driver access requires a linked vendor account.</p>
+        <div className="max-w-sm text-center">
+          <div className="mb-4 text-4xl">🚗</div>
+          <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Sign in to Drive</h2>
+          <p className="mb-6 text-neutral-500">You need a NorthEDM account to deliver with FestDash.</p>
+          <a href={`/login?next=${encodeURIComponent("/festdash/driver")}`} className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
+            Sign In
+          </a>
         </div>
       </main>
     );
@@ -101,11 +147,64 @@ export default function DriverPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="font-dm-mono text-sm text-neutral-500">Loading deliveries…</p>
+        <p className="font-dm-mono text-sm text-neutral-500">Loading…</p>
       </main>
     );
   }
 
+  // ── Driver registration ──────────────────────────────────────────
+  if (!driver) {
+    return (
+      <main className="min-h-screen px-6 py-16">
+        <div className="mx-auto max-w-md">
+          <div className="mb-2 text-4xl">🚗</div>
+          <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">Become a <span className="text-orange-400">Driver</span></h1>
+          <p className="mb-8 text-neutral-500">Register once, then claim deliveries at any festival.</p>
+
+          <form onSubmit={register} className="space-y-5">
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Name *</label>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                placeholder="How customers will see you"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Phone</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                type="tel"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                placeholder="(570) 555-1234"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Vehicle</label>
+              <input
+                value={vehicle}
+                onChange={(e) => setVehicle(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                placeholder="e.g. Red golf cart, blue bike, on foot"
+              />
+            </div>
+            {regError && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{regError}</p>}
+            <button
+              type="submit"
+              disabled={registering || !displayName.trim()}
+              className="w-full rounded-2xl bg-orange-500 py-3.5 font-semibold text-white transition hover:bg-orange-400 disabled:opacity-40"
+            >
+              {registering ? "Registering…" : "Register as Driver 🚗"}
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Driver console ───────────────────────────────────────────────
   return (
     <main className="min-h-screen p-4">
       <div className="mx-auto max-w-lg">
@@ -114,100 +213,72 @@ export default function DriverPage() {
             <h1 className="font-bebas text-3xl tracking-wide text-white">
               Driver <span className="text-orange-400">View</span>
             </h1>
-            <div className="flex items-center gap-3">
-              <p className="font-dm-mono text-xs text-neutral-500">Active deliveries</p>
-              <a href="/festdash/vendor-dashboard" className="font-dm-mono text-xs text-orange-400 hover:text-orange-300">← Vendor Board</a>
-            </div>
+            <p className="font-dm-mono text-xs text-neutral-500">{driver.display_name}</p>
           </div>
-          <span className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-            <span className="font-dm-mono text-xs text-green-400">Live</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={loadOrders} className="rounded-full border border-white/10 px-3 py-1.5 font-dm-mono text-xs text-neutral-400 hover:bg-white/5">
+              ↻ Refresh
+            </button>
+            <span className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
+              <span className="font-dm-mono text-xs text-green-400">Live</span>
+            </span>
+          </div>
         </div>
 
-        {orders.length === 0 ? (
+        {/* My deliveries */}
+        <h2 className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">My Deliveries</h2>
+        {mine.length === 0 ? (
+          <div className="mb-8 rounded-2xl border border-white/8 py-8 text-center">
+            <p className="text-sm text-neutral-500">Nothing claimed yet — grab one below.</p>
+          </div>
+        ) : (
+          <div className="mb-8 space-y-4">
+            {mine.map((order) => (
+              <OrderCard key={order.id} order={order} onDetails={() => setSelected(order)}>
+                {order.status === "accepted" && (
+                  <button
+                    onClick={() => updateStatus(order.id, "in_transit")}
+                    disabled={updating === order.id}
+                    className="flex-1 rounded-xl bg-purple-600 py-2.5 font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+                  >
+                    {updating === order.id ? "…" : "🏃 I'm On My Way"}
+                  </button>
+                )}
+                {order.status === "in_transit" && (
+                  <button
+                    onClick={() => updateStatus(order.id, "delivered")}
+                    disabled={updating === order.id}
+                    className="flex-1 rounded-xl bg-green-600 py-2.5 font-semibold text-white hover:bg-green-500 disabled:opacity-50"
+                  >
+                    {updating === order.id ? "…" : "✅ Mark Delivered"}
+                  </button>
+                )}
+              </OrderCard>
+            ))}
+          </div>
+        )}
+
+        {/* Available pool */}
+        <h2 className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Available to Claim</h2>
+        {available.length === 0 ? (
           <div className="rounded-2xl border border-white/8 py-16 text-center">
             <div className="mb-3 text-4xl">🏕️</div>
-            <p className="text-neutral-500">No active deliveries.</p>
-            <p className="text-sm text-neutral-600">Accepted orders will appear here.</p>
+            <p className="text-neutral-500">No deliveries available right now.</p>
+            <p className="text-sm text-neutral-600">Accepted orders waiting for a driver show up here.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                className={`rounded-2xl border p-5 ${
-                  order.status === "in_transit"
-                    ? "border-purple-500/30 bg-purple-950/20"
-                    : "border-white/10 bg-white/3"
-                }`}
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-white">{order.customer_name}</p>
-                    <p className="text-sm text-orange-400">{order.campground_zone}</p>
-                    <p className="text-xs text-neutral-500">{order.event_name}</p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${
-                    order.status === "in_transit" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"
-                  }`}>
-                    {order.status === "in_transit" ? "En Route" : "Ready to Pick Up"}
-                  </span>
-                </div>
-
-                {/* Items */}
-                <div className="mb-3 rounded-xl bg-white/5 px-3 py-2 text-sm">
-                  {order.items.map((i, idx) => (
-                    <span key={idx} className="text-neutral-300">{idx > 0 ? " · " : ""}{i.qty}× {i.name}</span>
-                  ))}
-                </div>
-
-                <p className="mb-3 text-xs text-neutral-500">Window: {order.delivery_window}</p>
-
-                {/* Campsite photo */}
-                {order.campsite_photo_url && (
-                  <img
-                    src={order.campsite_photo_url}
-                    alt="Campsite"
-                    className="mb-3 w-full rounded-xl object-cover"
-                    style={{ maxHeight: 180 }}
-                  />
-                )}
-
-                {order.campsite_notes && (
-                  <div className="mb-3 rounded-xl border border-yellow-500/20 bg-yellow-950/20 px-3 py-2 text-xs text-yellow-300">
-                    📍 {order.campsite_notes}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  {order.status === "accepted" && (
-                    <button
-                      onClick={() => updateStatus(order.id, "in_transit")}
-                      disabled={updating === order.id}
-                      className="flex-1 rounded-xl bg-purple-600 py-2.5 font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
-                    >
-                      {updating === order.id ? "…" : "🏃 I'm On My Way"}
-                    </button>
-                  )}
-                  {order.status === "in_transit" && (
-                    <button
-                      onClick={() => updateStatus(order.id, "delivered")}
-                      disabled={updating === order.id}
-                      className="flex-1 rounded-xl bg-green-600 py-2.5 font-semibold text-white hover:bg-green-500 disabled:opacity-50"
-                    >
-                      {updating === order.id ? "…" : "✅ Mark Delivered"}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setSelected(order)}
-                    className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-neutral-400 hover:bg-white/5"
-                  >
-                    Details
-                  </button>
-                </div>
-              </div>
+            {available.map((order) => (
+              <OrderCard key={order.id} order={order} onDetails={() => setSelected(order)}>
+                <button
+                  onClick={() => claim(order.id)}
+                  disabled={updating === order.id}
+                  className="flex-1 rounded-xl bg-orange-500 py-2.5 font-semibold text-white hover:bg-orange-400 disabled:opacity-50"
+                >
+                  {updating === order.id ? "…" : "🙋 Claim Delivery"}
+                </button>
+              </OrderCard>
             ))}
           </div>
         )}
@@ -227,8 +298,17 @@ export default function DriverPage() {
                 <p className="text-white">{selected.campground_zone}</p>
                 {selected.campsite_notes && <p className="mt-1 text-neutral-400">{selected.campsite_notes}</p>}
               </div>
-              {selected.campsite_photo_url && (
-                <img src={selected.campsite_photo_url} alt="Campsite" className="w-full rounded-xl object-cover" style={{ maxHeight: 200 }} />
+              {selected.license_plate && (
+                <div className="rounded-xl bg-white/5 p-3">
+                  <p className="font-dm-mono text-xs text-neutral-500 mb-1">LICENSE PLATE</p>
+                  <p className="uppercase text-white">{selected.license_plate}</p>
+                </div>
+              )}
+              {(selected.campsite_photo_url || selected.car_photo_url) && (
+                <div className="flex gap-2">
+                  {selected.campsite_photo_url && <img src={selected.campsite_photo_url} alt="Campsite" className="w-1/2 rounded-xl object-cover" style={{ maxHeight: 160 }} />}
+                  {selected.car_photo_url && <img src={selected.car_photo_url} alt="Car" className="w-1/2 rounded-xl object-cover" style={{ maxHeight: 160 }} />}
+                </div>
               )}
               <div className="rounded-xl bg-white/5 p-3">
                 <p className="font-dm-mono text-xs text-neutral-500 mb-1">WINDOW</p>
@@ -243,7 +323,7 @@ export default function DriverPage() {
                   </div>
                 ))}
                 <div className="mt-2 flex justify-between border-t border-white/10 pt-2 font-semibold">
-                  <span className="text-white">Collect</span>
+                  <span className="text-white">Order total</span>
                   <span className="text-orange-400">${(selected.total_cents / 100).toFixed(2)}</span>
                 </div>
               </div>
@@ -252,5 +332,49 @@ export default function DriverPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function OrderCard({ order, onDetails, children }: { order: Order; onDetails: () => void; children?: React.ReactNode }) {
+  return (
+    <div className={`rounded-2xl border p-5 ${order.status === "in_transit" ? "border-purple-500/30 bg-purple-950/20" : "border-white/10 bg-white/3"}`}>
+      <div className="mb-3 flex items-start justify-between">
+        <div>
+          <p className="font-semibold text-white">{order.customer_name}</p>
+          <p className="text-sm text-orange-400">{order.campground_zone}</p>
+          <p className="text-xs text-neutral-500">{order.event_name}</p>
+        </div>
+        <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${
+          order.status === "in_transit" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"
+        }`}>
+          {order.status === "in_transit" ? "En Route" : order.driver_id ? "Claimed" : "Available"}
+        </span>
+      </div>
+
+      <div className="mb-3 rounded-xl bg-white/5 px-3 py-2 text-sm">
+        {order.items.map((i, idx) => (
+          <span key={idx} className="text-neutral-300">{idx > 0 ? " · " : ""}{i.qty}× {i.name}</span>
+        ))}
+      </div>
+
+      <p className="mb-3 text-xs text-neutral-500">Window: {order.delivery_window}</p>
+
+      {order.campsite_photo_url && (
+        <img src={order.campsite_photo_url} alt="Campsite" className="mb-3 w-full rounded-xl object-cover" style={{ maxHeight: 180 }} />
+      )}
+
+      {order.campsite_notes && (
+        <div className="mb-3 rounded-xl border border-yellow-500/20 bg-yellow-950/20 px-3 py-2 text-xs text-yellow-300">
+          📍 {order.campsite_notes}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {children}
+        <button onClick={onDetails} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-neutral-400 hover:bg-white/5">
+          Details
+        </button>
+      </div>
+    </div>
   );
 }
