@@ -222,30 +222,6 @@ export default async function FestDashPage() {
           </div>
         </div>
       </section>
-
-      {/* Network stats / social proof */}
-      <section className="mx-auto max-w-4xl px-6 py-20 text-center">
-        <h2 className="mb-10 font-bebas text-4xl tracking-wide text-white">
-          Built for the Northeast Festival Scene
-        </h2>
-        <div className="grid grid-cols-3 gap-6">
-          {[
-            { stat: "2026", label: "Launch Season" },
-            { stat: "NE", label: "Region Focus" },
-            { stat: "∞", label: "Vibes Delivered" },
-          ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-white/8 bg-white/3 p-6">
-              <div className="font-bebas text-5xl text-orange-400">{s.stat}</div>
-              <div className="mt-1 text-sm text-neutral-500">{s.label}</div>
-            </div>
-          ))}
-        </div>
-        <p className="mx-auto mt-10 max-w-lg text-neutral-500">
-          FestDash is a NorthEDM original — built by and for the Northeast festival
-          community. Vendors bring it to every event, customers get their goods,
-          everyone stays in the moment.
-        </p>
-      </section>
     </main>
   );
 }
