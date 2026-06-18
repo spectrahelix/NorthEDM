@@ -71,6 +71,32 @@ export default function DriverPage() {
     return () => { if (channel) supabase.removeChannel(channel); };
   }, [supabase, loadOrders]);
 
+  // Share live GPS while any delivery is in transit
+  const transitIds = mine.filter((o) => o.status === "in_transit").map((o) => o.id).join(",");
+  useEffect(() => {
+    const ids = transitIds ? transitIds.split(",") : [];
+    if (ids.length === 0 || typeof navigator === "undefined" || !navigator.geolocation) return;
+    let lastSent = 0;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const now = Date.now();
+        if (now - lastSent < 12000) return; // throttle to ~12s
+        lastSent = now;
+        const { latitude, longitude } = pos.coords;
+        ids.forEach((oid) => {
+          fetch(`/api/festdash/orders/${oid}/location`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: latitude, lng: longitude }),
+          }).catch(() => {});
+        });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [transitIds]);
+
   async function register(e: React.FormEvent) {
     e.preventDefault();
     setRegError("");
@@ -225,6 +251,13 @@ export default function DriverPage() {
             </span>
           </div>
         </div>
+
+        {transitIds && (
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm text-green-300">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
+            Sharing your live location with customers while en route.
+          </div>
+        )}
 
         {/* My deliveries */}
         <h2 className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">My Deliveries</h2>
