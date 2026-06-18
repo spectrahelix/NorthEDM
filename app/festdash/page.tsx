@@ -3,9 +3,9 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const metadata = {
-  title: "FestDash — Festival Delivery Network",
+  title: "FestDash / FestEats — Festival Delivery Network",
   description:
-    "FestDash brings vendor delivery straight to your campsite. Order from your favorite festival vendors, share your site location, and we handle the rest.",
+    "FestDash (also FestEats) brings vendor delivery straight to your campsite. Order from your favorite festival vendors, share your site location, and we handle the rest.",
 };
 
 export default async function FestDashPage() {
@@ -59,6 +59,9 @@ export default async function FestDashPage() {
           <h1 className="font-bebas text-6xl tracking-wide text-white md:text-8xl">
             Fest<span className="text-orange-400">Dash</span>
           </h1>
+          <p className="mt-3 font-dm-mono text-xs uppercase tracking-[0.25em] text-neutral-500">
+            also known as <span className="text-orange-400">Fest</span><span className="text-white">Eats</span>
+          </p>
           <p className="mt-4 text-xl text-neutral-300">
             Festival delivery. Right to your campsite.
           </p>
