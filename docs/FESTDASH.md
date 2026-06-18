@@ -157,6 +157,6 @@ on `festdash_vendors` (e.g. `stripe_account_id`).
   Connect onboarding replacing the "link Square/GoDaddy" step.
 
 ## Open decisions (owner)
-1. **Payments processor** — Stripe Connect recommended (Square/GoDaddy don't fit escrow+payouts).
-2. **Maps provider** — Mapbox vs Google Maps (for the live ping map).
-3. Run the **realtime** + **storage policy** SQL when ready.
+1. **Payments processor** — ✅ **DECIDED: Stripe Connect** (Express accounts for vendors; handles escrow hold + payout).
+2. **Maps provider** — ✅ **DECIDED: Mapbox** (live ping map; data layer is keyless, map needs a free key).
+3. Run the **realtime** + **storage policy** + **schema** SQL when ready (see migrations).
