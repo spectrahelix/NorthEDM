@@ -105,22 +105,32 @@ export default async function RootLayout({
             <Link
               href="/"
               aria-label="NorthEDM home"
-              className="-ml-3 block shrink-0 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
+              className="-ml-3 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
             >
-              <div
-                className="font-bebas text-xl tracking-wide"
-                style={{
-                  background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
-                }}
-              >
-                NorthEDM
-              </div>
-              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
-                Unite the Northeast
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/northedm-logo.svg"
+                alt="NorthEDM logo"
+                width={44}
+                height={44}
+                className="h-11 w-11 shrink-0"
+              />
+              <div>
+                <div
+                  className="font-bebas text-xl tracking-wide"
+                  style={{
+                    background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
+                  }}
+                >
+                  NorthEDM
+                </div>
+                <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+                  Unite the Northeast
+                </div>
               </div>
             </Link>
 
@@ -130,6 +140,46 @@ export default async function RootLayout({
 
 
         {children}
+
+        <footer className="relative mt-24 border-t border-white/10">
+          {/* Spectral gradient line */}
+          <div className="absolute top-0 left-0 right-0 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent 0%, #39FF14 18%, #00D4FF 50%, #CC00FF 82%, transparent 100%)" }} />
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 py-12 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/northedm-logo.svg" alt="NorthEDM logo" width={64} height={64} className="h-16 w-16" />
+            <div>
+              <div
+                className="font-bebas text-2xl tracking-wide"
+                style={{
+                  background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: "drop-shadow(0 0 10px rgba(57,255,20,0.4))",
+                }}
+              >
+                NorthEDM
+              </div>
+              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+                Unite the Northeast
+              </div>
+            </div>
+
+            <nav className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+              <Link href="/forum" className="transition hover:text-neutral-200">Forum</Link>
+              <Link href="/feed" className="transition hover:text-neutral-200">Feed</Link>
+              <Link href="/crowdwave" className="transition hover:text-neutral-200">CrowdWave</Link>
+              <Link href="/marketplace" className="transition hover:text-neutral-200">Marketplace</Link>
+              <Link href="/vendors" className="transition hover:text-neutral-200">Vendors</Link>
+              <Link href="/foraging" className="transition hover:text-neutral-200">Foraging</Link>
+              <Link href="/festdash" className="transition hover:text-neutral-200">FestDash</Link>
+            </nav>
+
+            <p className="mt-2 text-xs text-neutral-600">
+              © {new Date().getFullYear()} NorthEDM · FestDash™ / FestEats™
+            </p>
+          </div>
+        </footer>
         </div>
       </body>
     </html>
