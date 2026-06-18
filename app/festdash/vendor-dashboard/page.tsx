@@ -98,17 +98,28 @@ export default function VendorDashboard() {
   }, [loadOrders, supabase]);
 
   async function updateStatus(orderId: string, status: Order["status"]) {
+    let code: string | undefined;
+    if (status === "delivered") {
+      const entered = window.prompt(
+        "Enter the customer's 4-digit confirmation code (last 4 of their phone):"
+      );
+      if (!entered) return;
+      code = entered;
+    }
     setUpdating(orderId);
     const res = await fetch(`/api/festdash/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, code }),
     });
     if (res.ok) {
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
       );
       if (selected?.id === orderId) setSelected((s) => s ? { ...s, status } : s);
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error ?? "Update failed.");
     }
     setUpdating(null);
   }
