@@ -62,6 +62,10 @@ export default function OrderPage() {
   const [deliveryWindow, setDeliveryWindow] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingCar, setUploadingCar] = useState(false);
+  const [customerLat, setCustomerLat] = useState<number | null>(null);
+  const [customerLng, setCustomerLng] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -134,6 +138,31 @@ export default function OrderPage() {
     if (file) handleUpload(file, setCarPhotoUrl, setUploadingCar);
   }
 
+  function pinCampsiteLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocError("Location isn't available on this device.");
+      return;
+    }
+    setLocating(true);
+    setLocError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCustomerLat(pos.coords.latitude);
+        setCustomerLng(pos.coords.longitude);
+        setLocating(false);
+      },
+      (err) => {
+        setLocError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission denied — enable it to pin your site."
+            : "Couldn't get your location. Try again."
+        );
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  }
+
   async function submitOrder() {
     setSubmitting(true);
     setError("");
@@ -160,6 +189,8 @@ export default function OrderPage() {
         carPhotoUrl,
         licensePlate,
         customerPhone,
+        customerLat,
+        customerLng,
         deliveryWindow,
         items: cart.map((c) => ({ name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
@@ -467,6 +498,30 @@ export default function OrderPage() {
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onCampsitePhoto} disabled={uploadingPhoto} />
                 </label>
               )}
+            </div>
+
+            {/* Pin campsite GPS */}
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                Pin Campsite GPS <span className="normal-case tracking-normal text-neutral-600">(best way to be found)</span>
+              </label>
+              {customerLat != null && customerLng != null ? (
+                <div className="flex items-center justify-between rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+                  <span>📍 Pinned ({customerLat.toFixed(4)}, {customerLng.toFixed(4)})</span>
+                  <button type="button" onClick={() => { setCustomerLat(null); setCustomerLng(null); }} className="text-xs text-neutral-400 hover:text-white">Clear</button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={pinCampsiteLocation}
+                  disabled={locating}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 py-3 text-sm text-neutral-300 transition hover:border-orange-500/40 disabled:opacity-50"
+                >
+                  📍 {locating ? "Getting your location…" : "Pin my campsite location"}
+                </button>
+              )}
+              {locError && <p className="mt-1 text-xs text-red-400">{locError}</p>}
+              <p className="mt-1 text-xs text-neutral-600">Stand at your site and tap — your runner gets live distance to you.</p>
             </div>
 
             {/* Find-my-car */}

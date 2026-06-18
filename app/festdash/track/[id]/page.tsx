@@ -43,6 +43,22 @@ function timeAgo(iso: string) {
   return `${Math.floor(s / 3600)}h ago`;
 }
 
+function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 3958.8; // earth radius in miles
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function fmtDistance(mi: number) {
+  if (mi < 0.19) return `${Math.round((mi * 5280) / 10) * 10} ft`;
+  return `${mi.toFixed(1)} mi`;
+}
+
 export default function TrackPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const supabase = createClient();
@@ -107,6 +123,13 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
   const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${[runnerPin, sitePin]
     .filter(Boolean)
     .join(",")}/${mapView}/600x300@2x?access_token=${mapboxToken}`;
+
+  // Live runner -> campsite distance + rough ETA (~4 mph on-site pace)
+  const hasSite = order.customer_lat != null && order.customer_lng != null;
+  const distMi = hasRunnerLoc && hasSite
+    ? haversineMi(order.driver_lat!, order.driver_lng!, order.customer_lat!, order.customer_lng!)
+    : null;
+  const etaMin = distMi != null ? Math.max(1, Math.round((distMi / 4) * 60)) : null;
 
   return (
     <main className="min-h-screen px-6 py-16">
@@ -184,6 +207,12 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                 ) : (
                   <div className="px-4 pb-4 text-sm text-neutral-500">
                     Waiting for your runner to start sharing their location…
+                  </div>
+                )}
+                {distMi != null && (
+                  <div className="flex items-center justify-between border-t border-white/8 px-4 py-3 text-sm">
+                    <span><span className="font-semibold text-orange-300">{fmtDistance(distMi)}</span><span className="text-neutral-500"> away</span></span>
+                    <span className="font-dm-mono text-xs text-neutral-400">~{etaMin} min out</span>
                   </div>
                 )}
               </div>
