@@ -73,7 +73,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" vi
   </g>
   <text x="200" y="214" text-anchor="middle" font-family="'Bebas Neue','Arial Narrow',sans-serif"
         fill="url(#wordmark)" letter-spacing="1.5" filter="url(#glow)">
-    <tspan font-size="52">N</tspan><tspan font-size="37">orth</tspan><tspan font-size="52">EDM</tspan>
+    <tspan font-size="52">N</tspan><tspan font-size="40">ORTH</tspan><tspan font-size="52">EDM</tspan>
   </text>
 
   <!-- double neon ring frame -->
