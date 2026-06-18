@@ -27,16 +27,19 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" vi
       <stop offset="0%" stop-color="#0e1411"/>
       <stop offset="100%" stop-color="#05080a"/>
     </radialGradient>
-    <!-- ROYGBIV coursing across the pattern -->
-    <linearGradient id="roygbiv" gradientUnits="userSpaceOnUse" x1="${C - R_IN}" y1="${C}" x2="${C + R_IN}" y2="${C}">
-      <stop offset="0.00" stop-color="#ff0000"/>
-      <stop offset="0.16" stop-color="#ff8a00"/>
-      <stop offset="0.32" stop-color="#ffe600"/>
-      <stop offset="0.50" stop-color="#28e000"/>
-      <stop offset="0.66" stop-color="#00b3ff"/>
-      <stop offset="0.82" stop-color="#3a3aff"/>
-      <stop offset="1.00" stop-color="#b400ff"/>
-    </linearGradient>
+    <!-- VIBGYOR-VIB concentric spectrum: target rings from the centre outward -->
+    <radialGradient id="roygbiv" gradientUnits="userSpaceOnUse" cx="${C}" cy="${C}" r="${R_IN}">
+      <stop offset="0.000" stop-color="#8b00ff"/>
+      <stop offset="0.111" stop-color="#4b00ff"/>
+      <stop offset="0.222" stop-color="#0a84ff"/>
+      <stop offset="0.333" stop-color="#28e000"/>
+      <stop offset="0.444" stop-color="#ffe600"/>
+      <stop offset="0.556" stop-color="#ff8a00"/>
+      <stop offset="0.667" stop-color="#ff0000"/>
+      <stop offset="0.778" stop-color="#8b00ff"/>
+      <stop offset="0.889" stop-color="#4b00ff"/>
+      <stop offset="1.000" stop-color="#0a84ff"/>
+    </radialGradient>
     <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="2.4" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
