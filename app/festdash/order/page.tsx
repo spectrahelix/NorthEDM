@@ -49,12 +49,19 @@ export default function OrderPage() {
   // Delivery info
   const [eventName, setEventName] = useState("");
   const [customEvent, setCustomEvent] = useState("");
-  const [campgroundZone, setCampgroundZone] = useState("");
+  const [campground, setCampground] = useState("");
+  const [subCampground, setSubCampground] = useState("");
+  const [campsiteRow, setCampsiteRow] = useState("");
+  const [tent, setTent] = useState("");
   const [campsiteNotes, setCampsiteNotes] = useState("");
   const [campsitePhotoUrl, setCampsitePhotoUrl] = useState("");
-  const [deliveryWindow, setDeliveryWindow] = useState("");
+  const [carPhotoUrl, setCarPhotoUrl] = useState("");
+  const [licensePlate, setLicensePlate] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryWindow, setDeliveryWindow] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingCar, setUploadingCar] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -98,10 +105,12 @@ export default function OrderPage() {
   const cartTotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
   const cartTotalCents = Math.round(cartTotal * 100);
 
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingPhoto(true);
+  async function handleUpload(
+    file: File,
+    setUrl: (url: string) => void,
+    setBusy: (b: boolean) => void
+  ) {
+    setBusy(true);
     const { data: { user } } = await supabase.auth.getUser();
     const path = `${user?.id ?? "anon"}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage
@@ -111,9 +120,18 @@ export default function OrderPage() {
       setError(`Photo upload failed: ${uploadError.message}`);
     } else {
       const { data } = supabase.storage.from("festdash-campsites").getPublicUrl(path);
-      setCampsitePhotoUrl(data.publicUrl);
+      setUrl(data.publicUrl);
     }
-    setUploadingPhoto(false);
+    setBusy(false);
+  }
+
+  function onCampsitePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file, setCampsitePhotoUrl, setUploadingPhoto);
+  }
+  function onCarPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file, setCarPhotoUrl, setUploadingCar);
   }
 
   async function submitOrder() {
@@ -127,9 +145,21 @@ export default function OrderPage() {
       body: JSON.stringify({
         vendorId: selectedVendor!.id,
         eventName: finalEvent,
-        campgroundZone,
+        campgroundZone: [
+          campground,
+          subCampground,
+          campsiteRow && `row ${campsiteRow}`,
+          tent && `tent ${tent}`,
+        ].filter(Boolean).join(", "),
+        campground,
+        subCampground,
+        campsiteRow,
+        tent,
         campsiteNotes,
         campsitePhotoUrl,
+        carPhotoUrl,
+        licensePlate,
+        customerPhone,
         deliveryWindow,
         items: cart.map((c) => ({ name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
@@ -329,6 +359,19 @@ export default function OrderPage() {
             </div>
 
             <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Phone Number *</label>
+              <input
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                type="tel"
+                inputMode="tel"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                placeholder="(570) 555-1234"
+              />
+              <p className="mt-1 text-xs text-neutral-600">The last 4 digits are your delivery confirmation code.</p>
+            </div>
+
+            <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Event *</label>
               <select
                 value={eventName}
@@ -349,13 +392,44 @@ export default function OrderPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Campground Zone / Section *</label>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Campground *</label>
               <input
-                value={campgroundZone}
-                onChange={(e) => setCampgroundZone(e.target.value)}
+                value={campground}
+                onChange={(e) => setCampground(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
-                placeholder="e.g. Camp B, Site 14 — or Main Stage Left"
+                placeholder="e.g. Camp Stegosaurus"
               />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Sub-campground / Area</label>
+              <input
+                value={subCampground}
+                onChange={(e) => setSubCampground(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                placeholder="e.g. North Loop"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Row</label>
+                <input
+                  value={campsiteRow}
+                  onChange={(e) => setCampsiteRow(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                  placeholder="e.g. 4"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Tent / Spot</label>
+                <input
+                  value={tent}
+                  onChange={(e) => setTent(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                  placeholder="e.g. 10 tents down"
+                />
+              </div>
             </div>
 
             <div>
@@ -390,7 +464,43 @@ export default function OrderPage() {
                     {uploadingPhoto ? "Uploading…" : "Snap a photo of your campsite or car"}
                   </span>
                   <span className="mt-1 text-xs text-neutral-600">Helps the driver find you fast</span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={uploadPhoto} disabled={uploadingPhoto} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onCampsitePhoto} disabled={uploadingPhoto} />
+                </label>
+              )}
+            </div>
+
+            {/* Find-my-car */}
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">License Plate</label>
+              <input
+                value={licensePlate}
+                onChange={(e) => setLicensePlate(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm uppercase text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+                placeholder="e.g. ABC-1234"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                Car Photo <span className="normal-case tracking-normal text-neutral-600">(helps the driver spot you)</span>
+              </label>
+              {carPhotoUrl ? (
+                <div className="relative">
+                  <img src={carPhotoUrl} alt="Car" className="w-full rounded-xl object-cover" style={{ maxHeight: 200 }} />
+                  <button
+                    onClick={() => setCarPhotoUrl("")}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-white/20 py-8 text-center transition hover:border-orange-500/40">
+                  <span className="mb-2 text-2xl">🚗</span>
+                  <span className="text-sm text-neutral-400">
+                    {uploadingCar ? "Uploading…" : "Snap a photo of your car + plate"}
+                  </span>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onCarPhoto} disabled={uploadingCar} />
                 </label>
               )}
             </div>
@@ -412,7 +522,7 @@ export default function OrderPage() {
             )}
 
             <button
-              disabled={!eventName || !campgroundZone || !deliveryWindow || (eventName === "Local Market / Other" && !customEvent)}
+              disabled={!eventName || !campground || !customerPhone || !deliveryWindow || (eventName === "Local Market / Other" && !customEvent)}
               onClick={() => setStep(4)}
               className="w-full rounded-2xl bg-orange-500 py-3.5 font-semibold text-white transition hover:bg-orange-400 disabled:opacity-40"
             >
@@ -461,21 +571,25 @@ export default function OrderPage() {
             <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Delivery</p>
             <div className="space-y-1.5 text-sm">
               <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Name</span><span className="text-white">{customerName}</span></div>
+              <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Phone</span><span className="text-white">{customerPhone}</span></div>
               <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Event</span><span className="text-white">{eventName === "Local Market / Other" ? customEvent : eventName}</span></div>
-              <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Zone / Site</span><span className="text-white">{campgroundZone}</span></div>
+              <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Campsite</span><span className="text-white">{[campground, subCampground, campsiteRow && `row ${campsiteRow}`, tent && `tent ${tent}`].filter(Boolean).join(", ")}</span></div>
               {campsiteNotes && <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Notes</span><span className="text-white">{campsiteNotes}</span></div>}
+              {licensePlate && <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Plate</span><span className="uppercase text-white">{licensePlate}</span></div>}
               <div className="flex gap-2"><span className="text-neutral-500 w-28 shrink-0">Window</span><span className="text-white">{deliveryWindow}</span></div>
-              {campsitePhotoUrl && (
-                <div className="mt-2">
-                  <img src={campsitePhotoUrl} alt="Campsite" className="rounded-xl object-cover" style={{ maxHeight: 120 }} />
+              {(campsitePhotoUrl || carPhotoUrl) && (
+                <div className="mt-2 flex gap-2">
+                  {campsitePhotoUrl && <img src={campsitePhotoUrl} alt="Campsite" className="rounded-xl object-cover" style={{ maxHeight: 100 }} />}
+                  {carPhotoUrl && <img src={carPhotoUrl} alt="Car" className="rounded-xl object-cover" style={{ maxHeight: 100 }} />}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Payment notice */}
+          {/* Payment + confirmation notice */}
           <div className="rounded-2xl border border-orange-500/20 bg-orange-950/20 p-4 text-sm text-orange-300">
-            💳 Payment is collected on delivery. Have <span className="font-semibold">${cartTotal.toFixed(2)}</span> ready — cash or card accepted from your driver.
+            🔒 Secure prepayment (held in escrow until your order is delivered) is coming soon.
+            On delivery, give your driver the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
           </div>
 
           {error && (

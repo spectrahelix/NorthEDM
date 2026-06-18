@@ -11,11 +11,17 @@ export async function POST(req: Request) {
   const {
     vendorId, eventName, campgroundZone, campsiteNotes,
     campsitePhotoUrl, deliveryWindow, items, totalCents, customerName,
+    customerPhone, campground, subCampground, campsiteRow, tent,
+    licensePlate, carPhotoUrl,
   } = body;
 
   if (!vendorId || !eventName || !campgroundZone || !deliveryWindow || !items?.length) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
+
+  // Delivery confirmation code = last 4 digits of the customer's phone
+  const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
+  const confirmationCode = phoneDigits.length >= 4 ? phoneDigits.slice(-4) : null;
 
   const { data, error } = await supabase
     .from("festdash_orders")
@@ -28,6 +34,14 @@ export async function POST(req: Request) {
       campground_zone: campgroundZone,
       campsite_notes: campsiteNotes || null,
       campsite_photo_url: campsitePhotoUrl || null,
+      campground: campground || null,
+      sub_campground: subCampground || null,
+      campsite_row: campsiteRow || null,
+      tent: tent || null,
+      car_photo_url: carPhotoUrl || null,
+      license_plate: licensePlate || null,
+      customer_phone: customerPhone || null,
+      confirmation_code: confirmationCode,
       delivery_window: deliveryWindow,
       items,
       total_cents: Number(totalCents) || 0,
