@@ -124,7 +124,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                         <p className="text-xs text-neutral-500">Your order is being prepared</p>
                       )}
                       {active && order.status === "in_transit" && (
-                        <p className="text-xs text-orange-400 animate-pulse">Driver is heading to you now!</p>
+                        <p className="text-xs text-orange-400 animate-pulse">Runner is heading to you now!</p>
                       )}
                     </div>
                     {active && order.status !== "delivered" && (

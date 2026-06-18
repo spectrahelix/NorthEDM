@@ -118,7 +118,7 @@ export default async function FestDashPage() {
               step: "02",
               icon: "📍",
               title: "Share your site",
-              desc: "Enter your campground zone and snap a photo of your campsite so the driver can find you.",
+              desc: "Enter your campground zone and snap a photo of your campsite so the runner can find you.",
             },
             {
               step: "03",
@@ -130,7 +130,7 @@ export default async function FestDashPage() {
               step: "04",
               icon: "🏕️",
               title: "Receive delivery",
-              desc: "Your vendor's driver brings it straight to your site during your requested window.",
+              desc: "Your vendor's runner brings it straight to your site during your requested window.",
             },
           ].map((s) => (
             <div
@@ -160,14 +160,14 @@ export default async function FestDashPage() {
               <p className="mb-4 text-neutral-400">
                 Add FestDash as an add-on to your existing transaction setup. When
                 a delivery order comes in, it pops up right on your tablet —
-                accept or decline in one tap. Your assigned driver handles the rest.
+                accept or decline in one tap. Your assigned runner handles the rest.
               </p>
               <ul className="space-y-2 text-sm text-neutral-400">
                 {[
                   "Works alongside any existing POS — no new hardware",
                   "Orders appear live on your tablet as they come in",
                   "One-tap accept / decline per order",
-                  "Your driver is pre-assigned — you don't manage logistics",
+                  "Your runner is pre-assigned — you don't manage logistics",
                   "Take FestDash to every event you attend",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">

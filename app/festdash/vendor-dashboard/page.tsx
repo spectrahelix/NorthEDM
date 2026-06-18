@@ -162,7 +162,7 @@ export default function VendorDashboard() {
             </h1>
             <div className="flex flex-wrap items-center gap-3">
               <p className="font-dm-mono text-xs text-neutral-500">Vendor Dashboard</p>
-              <a href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Driver View →</a>
+              <a href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Runner View →</a>
               <a href="/vendor" className="font-dm-mono text-xs text-neutral-500 hover:text-neutral-300">Manage Products →</a>
             </div>
           </div>

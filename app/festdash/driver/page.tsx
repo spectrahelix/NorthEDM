@@ -133,8 +133,8 @@ export default function DriverPage() {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <div className="max-w-sm text-center">
-          <div className="mb-4 text-4xl">🚗</div>
-          <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Sign in to Drive</h2>
+          <div className="mb-4 text-4xl">🏃</div>
+          <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Sign in to Run</h2>
           <p className="mb-6 text-neutral-500">You need a NorthEDM account to deliver with FestDash.</p>
           <a href={`/login?next=${encodeURIComponent("/festdash/driver")}`} className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
             Sign In
@@ -157,8 +157,8 @@ export default function DriverPage() {
     return (
       <main className="min-h-screen px-6 py-16">
         <div className="mx-auto max-w-md">
-          <div className="mb-2 text-4xl">🚗</div>
-          <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">Become a <span className="text-orange-400">Driver</span></h1>
+          <div className="mb-2 text-4xl">🏃</div>
+          <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">Become a <span className="text-orange-400">Runner</span></h1>
           <p className="mb-8 text-neutral-500">Register once, then claim deliveries at any festival.</p>
 
           <form onSubmit={register} className="space-y-5">
@@ -196,7 +196,7 @@ export default function DriverPage() {
               disabled={registering || !displayName.trim()}
               className="w-full rounded-2xl bg-orange-500 py-3.5 font-semibold text-white transition hover:bg-orange-400 disabled:opacity-40"
             >
-              {registering ? "Registering…" : "Register as Driver 🚗"}
+              {registering ? "Registering…" : "Register as Runner 🏃"}
             </button>
           </form>
         </div>
@@ -211,7 +211,7 @@ export default function DriverPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="font-bebas text-3xl tracking-wide text-white">
-              Driver <span className="text-orange-400">View</span>
+              Runner <span className="text-orange-400">View</span>
             </h1>
             <p className="font-dm-mono text-xs text-neutral-500">{driver.display_name}</p>
           </div>
@@ -265,7 +265,7 @@ export default function DriverPage() {
           <div className="rounded-2xl border border-white/8 py-16 text-center">
             <div className="mb-3 text-4xl">🏕️</div>
             <p className="text-neutral-500">No deliveries available right now.</p>
-            <p className="text-sm text-neutral-600">Accepted orders waiting for a driver show up here.</p>
+            <p className="text-sm text-neutral-600">Accepted orders waiting for a runner show up here.</p>
           </div>
         ) : (
           <div className="space-y-4">

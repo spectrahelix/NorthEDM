@@ -354,7 +354,7 @@ export default function OrderPage() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
-                placeholder="How should the driver ask for you?"
+                placeholder="How should the runner ask for you?"
               />
             </div>
 
@@ -463,7 +463,7 @@ export default function OrderPage() {
                   <span className="text-sm text-neutral-400">
                     {uploadingPhoto ? "Uploading…" : "Snap a photo of your campsite or car"}
                   </span>
-                  <span className="mt-1 text-xs text-neutral-600">Helps the driver find you fast</span>
+                  <span className="mt-1 text-xs text-neutral-600">Helps the runner find you fast</span>
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onCampsitePhoto} disabled={uploadingPhoto} />
                 </label>
               )}
@@ -482,7 +482,7 @@ export default function OrderPage() {
 
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                Car Photo <span className="normal-case tracking-normal text-neutral-600">(helps the driver spot you)</span>
+                Car Photo <span className="normal-case tracking-normal text-neutral-600">(helps the runner spot you)</span>
               </label>
               {carPhotoUrl ? (
                 <div className="relative">
@@ -589,7 +589,7 @@ export default function OrderPage() {
           {/* Payment + confirmation notice */}
           <div className="rounded-2xl border border-orange-500/20 bg-orange-950/20 p-4 text-sm text-orange-300">
             🔒 Secure prepayment (held in escrow until your order is delivered) is coming soon.
-            On delivery, give your driver the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
+            On delivery, give your runner the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
           </div>
 
           {error && (
