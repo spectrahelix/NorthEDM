@@ -40,13 +40,22 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" vi
       <stop offset="0.889" stop-color="#4b00ff"/>
       <stop offset="1.000" stop-color="#0a84ff"/>
     </radialGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="1.8" result="blur"/>
-      <feFlood flood-color="#39ff14" flood-opacity="0.85"/>
-      <feComposite in2="blur" operator="in" result="glow"/>
+    <!-- Site wordmark gradient: neon green -> cyan -->
+    <linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#39FF14"/>
+      <stop offset="1" stop-color="#00D4FF"/>
+    </linearGradient>
+    <!-- Layered drop-shadow style glow: crisp letters, soft green+cyan aura -->
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="b1"/>
+      <feFlood flood-color="#39FF14" flood-opacity="0.60" result="c1"/>
+      <feComposite in="c1" in2="b1" operator="in" result="g1"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6.5" result="b2"/>
+      <feFlood flood-color="#00D4FF" flood-opacity="0.32" result="c2"/>
+      <feComposite in="c2" in2="b2" operator="in" result="g2"/>
       <feMerge>
-        <feMergeNode in="glow"/>
-        <feMergeNode in="glow"/>
+        <feMergeNode in="g2"/>
+        <feMergeNode in="g1"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
@@ -63,8 +72,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" vi
     <rect x="0" y="168" width="400" height="64" fill="#000000" fill-opacity="0.9"/>
   </g>
   <text x="200" y="214" text-anchor="middle" font-family="'Bebas Neue','Arial Narrow',sans-serif"
-        fill="#39ff14" letter-spacing="1.5" filter="url(#glow)">
-    <tspan font-size="52">N</tspan><tspan font-size="41">orth</tspan><tspan font-size="52">EDM</tspan>
+        fill="url(#wordmark)" letter-spacing="1.5" filter="url(#glow)">
+    <tspan font-size="52">N</tspan><tspan font-size="37">orth</tspan><tspan font-size="52">EDM</tspan>
   </text>
 
   <!-- double neon ring frame -->
