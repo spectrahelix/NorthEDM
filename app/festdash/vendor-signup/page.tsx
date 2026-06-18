@@ -102,7 +102,7 @@ export default function FestDashVendorSignup() {
                 value={form.businessName}
                 onChange={(e) => set("businessName", e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
-                placeholder="Homestead Life"
+                placeholder="Your business name"
               />
             </div>
             <div>
@@ -114,7 +114,7 @@ export default function FestDashVendorSignup() {
                 value={form.contactName}
                 onChange={(e) => set("contactName", e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
-                placeholder="Brandi Martenas"
+                placeholder="Your full name"
               />
             </div>
           </div>
