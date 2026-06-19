@@ -116,6 +116,9 @@ export default function FestDashAdminClient({
       <div className="mx-auto max-w-5xl">
         <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-400">Admin</p>
         <h1 className="mt-2 font-bebas text-5xl tracking-wide text-white">FestDash Control</h1>
+        <a href="/admin/festdash/promoters" className="mt-1 inline-block font-dm-mono text-xs text-orange-400 hover:text-orange-300">
+          Promoter applications →
+        </a>
 
         {/* Stats */}
         <div className="mt-8 grid grid-cols-3 gap-4">
