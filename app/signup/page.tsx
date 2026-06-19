@@ -151,8 +151,8 @@ export default function SignupPage() {
           {referralCode && (
             <div className="mb-6 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5 px-4 py-3 text-sm text-[#39FF14]">
               🎁 You were referred with code{" "}
-              <span className="font-dm-mono font-semibold">{referralCode}</span> — you&apos;ll
-              get <span className="font-semibold">$1.00 store credit</span> when you join.
+              <span className="font-dm-mono font-semibold">{referralCode}</span> — confirm your
+              email and you&apos;ll get <span className="font-semibold">$1.00 store credit</span>.
             </div>
           )}
 

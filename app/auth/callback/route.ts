@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { awardReferralReward } from "@/utils/referrals";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -28,6 +29,12 @@ export async function GET(request: Request) {
   // Check if this is a new OAuth user who has no profile yet
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
+    // Email is now confirmed — grant any pending referral reward (idempotent).
+    await awardReferralReward(
+      user.id,
+      user.user_metadata?.referral_code as string | undefined
+    );
+
     const { data: existingProfile } = await supabase
       .from("user_profiles")
       .select("id")
