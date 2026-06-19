@@ -71,6 +71,12 @@ export default function OrderPage() {
   const [creditBalanceCents, setCreditBalanceCents] = useState(0);
   const [useCredit, setUseCredit] = useState(true);
 
+  // Promo / commission code
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState<{ code: string; discountCents: number; percentOff: number } | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -117,8 +123,35 @@ export default function OrderPage() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
   const cartTotalCents = Math.round(cartTotal * 100);
-  const appliedCreditCents = useCredit ? Math.min(creditBalanceCents, cartTotalCents) : 0;
-  const netTotalCents = cartTotalCents - appliedCreditCents;
+  const promoDiscountCents = promo ? Math.min(promo.discountCents, cartTotalCents) : 0;
+  const discountedCents = cartTotalCents - promoDiscountCents;
+  const appliedCreditCents = useCredit ? Math.min(creditBalanceCents, discountedCents) : 0;
+  const netTotalCents = discountedCents - appliedCreditCents;
+
+  async function applyPromo() {
+    if (!promoInput.trim() || !selectedVendor) return;
+    setValidatingPromo(true);
+    setPromoError("");
+    const res = await fetch("/api/festdash/promo-codes/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: promoInput.trim(), vendorId: selectedVendor.id, subtotalCents: cartTotalCents }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.valid) {
+      setPromo(null);
+      setPromoError(j.error ?? "Invalid code.");
+    } else {
+      setPromo({ code: promoInput.trim().toUpperCase(), discountCents: j.discountCents, percentOff: j.percentOff });
+    }
+    setValidatingPromo(false);
+  }
+
+  function removePromo() {
+    setPromo(null);
+    setPromoInput("");
+    setPromoError("");
+  }
 
   async function handleUpload(
     file: File,
@@ -206,6 +239,7 @@ export default function OrderPage() {
         items: cart.map((c) => ({ name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
         useCredit,
+        promoCode: promo?.code,
         customerName,
       }),
     });
@@ -628,27 +662,55 @@ export default function OrderPage() {
               </div>
             ))}
             <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-400">Subtotal</span>
+                <span className="text-neutral-300">${cartTotal.toFixed(2)}</span>
+              </div>
+
+              {/* Promo / commission code */}
+              {promo ? (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-neutral-300">
+                    Code <span className="font-dm-mono text-neutral-200">{promo.code}</span>
+                    <span className="text-neutral-500">({promo.percentOff}% off)</span>
+                    <button onClick={removePromo} className="text-neutral-500 hover:text-white" aria-label="Remove code">✕</button>
+                  </span>
+                  <span className="text-[#39FF14]">−${(promoDiscountCents / 100).toFixed(2)}</span>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                    placeholder="Promo code"
+                    className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-dm-mono text-sm uppercase tracking-wider text-neutral-100 placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-600 outline-none focus:border-orange-500/50"
+                  />
+                  <button
+                    onClick={applyPromo}
+                    disabled={validatingPromo || !promoInput.trim()}
+                    className="rounded-lg border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 disabled:opacity-40"
+                  >
+                    {validatingPromo ? "…" : "Apply"}
+                  </button>
+                </div>
+              )}
+              {promoError && <p className="text-xs text-[#FF5C3A]">{promoError}</p>}
+
               {creditBalanceCents > 0 && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-neutral-400">Subtotal</span>
-                    <span className="text-neutral-300">${cartTotal.toFixed(2)}</span>
-                  </div>
-                  <label className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-neutral-300">
-                      <input
-                        type="checkbox"
-                        checked={useCredit}
-                        onChange={(e) => setUseCredit(e.target.checked)}
-                        className="h-4 w-4 accent-orange-500"
-                      />
-                      Use store credit (${(creditBalanceCents / 100).toFixed(2)} available)
-                    </span>
-                    {appliedCreditCents > 0 && (
-                      <span className="text-[#39FF14]">−${(appliedCreditCents / 100).toFixed(2)}</span>
-                    )}
-                  </label>
-                </>
+                <label className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={useCredit}
+                      onChange={(e) => setUseCredit(e.target.checked)}
+                      className="h-4 w-4 accent-orange-500"
+                    />
+                    Use store credit (${(creditBalanceCents / 100).toFixed(2)} available)
+                  </span>
+                  {appliedCreditCents > 0 && (
+                    <span className="text-[#39FF14]">−${(appliedCreditCents / 100).toFixed(2)}</span>
+                  )}
+                </label>
               )}
               <div className="flex justify-between font-semibold">
                 <span className="text-white">Total</span>

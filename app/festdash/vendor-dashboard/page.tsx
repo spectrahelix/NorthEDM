@@ -186,6 +186,7 @@ export default function VendorDashboard() {
               <a href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Runner View →</a>
               <a href="/vendor" className="font-dm-mono text-xs text-neutral-500 hover:text-neutral-300">Manage Products →</a>
               <a href="/festdash/referrals" className="font-dm-mono text-xs text-[#39FF14] hover:text-[#39FF14]/80">Referral Codes →</a>
+              <a href="/festdash/commission-codes" className="font-dm-mono text-xs text-orange-400 hover:text-orange-300">Commission Codes →</a>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5">
