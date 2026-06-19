@@ -38,8 +38,29 @@ export default function VendorDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [notEnrolled, setNotEnrolled] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; onboarded: boolean } | null>(null);
+  const [connectingStripe, setConnectingStripe] = useState(false);
   const prevPendingCount = useRef(0);
   const supabase = createClient();
+
+  useEffect(() => {
+    fetch("/api/festdash/stripe/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setStripeStatus({ connected: !!d.connected, onboarded: !!d.onboarded }); })
+      .catch(() => {});
+  }, []);
+
+  async function connectStripe() {
+    setConnectingStripe(true);
+    const res = await fetch("/api/festdash/stripe/connect", { method: "POST" });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok && j.url) {
+      window.location.href = j.url;
+    } else {
+      alert(j.error ?? "Couldn't start Stripe setup.");
+      setConnectingStripe(false);
+    }
+  }
 
   const loadOrders = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -171,6 +192,28 @@ export default function VendorDashboard() {
             <span className="font-dm-mono text-xs text-green-400">Live</span>
           </div>
         </div>
+
+        {/* Stripe payouts status */}
+        {stripeStatus && !stripeStatus.onboarded && (
+          <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-orange-950/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-orange-300">💳 Set up payouts</p>
+              <p className="text-sm text-neutral-400">Connect a Stripe account to receive your earnings — funds are held in escrow until each order is delivered, then paid out (minus a 5% FestDash fee).</p>
+            </div>
+            <button
+              onClick={connectStripe}
+              disabled={connectingStripe}
+              className="shrink-0 rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white hover:bg-orange-400 disabled:opacity-50"
+            >
+              {connectingStripe ? "Starting…" : stripeStatus.connected ? "Finish setup" : "Set up payouts"}
+            </button>
+          </div>
+        )}
+        {stripeStatus?.onboarded && (
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-green-500/20 bg-green-500/5 px-4 py-2 text-sm text-green-400">
+            <span>✓</span> Payouts active — earnings transfer to your Stripe account on delivery.
+          </div>
+        )}
 
         {/* New order alert banner */}
         {newOrderAlert && (
