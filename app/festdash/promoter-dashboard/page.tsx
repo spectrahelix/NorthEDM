@@ -21,35 +21,23 @@ export default function PromoterDashboard() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [isPromoter, setIsPromoter] = useState(false);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralCount, setReferralCount] = useState(0);
   const [balanceCents, setBalanceCents] = useState(0);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-  const [origin, setOrigin] = useState("");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setOrigin(window.location.origin);
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
       const { data: promoter } = await supabase
         .from("festdash_promoters")
-        .select("referral_code, is_active")
+        .select("is_active")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (!promoter) { setLoading(false); return; }
       setIsPromoter(true);
-
-      let code = promoter.referral_code as string | null;
-      if (!code) {
-        // Mint one for promoters approved before codes existed
-        const res = await fetch("/api/festdash/promoter/referral-code", { method: "POST" });
-        if (res.ok) code = (await res.json()).referralCode ?? null;
-      }
-      setReferralCode(code);
 
       const [{ count }, { data: bal }, { data: led }] = await Promise.all([
         supabase.from("referrals").select("id", { count: "exact", head: true }).eq("referrer_id", user.id),
@@ -63,16 +51,6 @@ export default function PromoterDashboard() {
       setLoading(false);
     })();
   }, [supabase]);
-
-  const shareLink = referralCode ? `${origin}/signup?ref=${referralCode}` : "";
-
-  function copyLink() {
-    if (!shareLink) return;
-    navigator.clipboard.writeText(shareLink).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
 
   if (loading) {
     return <main className="flex min-h-screen items-center justify-center text-neutral-500">Loading…</main>;
@@ -119,37 +97,21 @@ export default function PromoterDashboard() {
           </div>
         </div>
 
-        {/* Referral link */}
+        {/* Referral codes */}
         <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5">
           <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-            Your referral link
+            Referral codes
           </p>
-          <p className="mb-3 text-sm text-neutral-400">
-            Share this link. When someone signs up with it, you both get
-            <span className="text-[#39FF14]"> $1.00 store credit</span>.
+          <p className="mb-4 text-sm text-neutral-400">
+            Pull a fresh single-use code for each new person you refer. When they sign up and
+            confirm their email, you both get <span className="text-[#39FF14]">$1.00 store credit</span>.
           </p>
-          {referralCode ? (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                readOnly
-                value={shareLink}
-                className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-200"
-              />
-              <button
-                onClick={copyLink}
-                className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
-              >
-                {copied ? "Copied ✓" : "Copy link"}
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-neutral-500">Generating your code…</p>
-          )}
-          {referralCode && (
-            <p className="mt-3 font-dm-mono text-xs text-neutral-600">
-              Code: <span className="text-neutral-400">{referralCode}</span>
-            </p>
-          )}
+          <Link
+            href="/festdash/referrals"
+            className="inline-flex rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
+          >
+            Generate &amp; manage codes →
+          </Link>
         </div>
 
         {/* Ledger */}

@@ -3,11 +3,14 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 const REFERRAL_REWARD_CENTS = 100; // $1.00 to each side
 
 /**
- * Grants the referral reward once a referred user's email is confirmed.
- * Credits both the referring promoter and the new user $1.00 in store credit.
- * Idempotent: the referrals UNIQUE(referred_user_id) constraint plus an
- * up-front check prevent double rewards, so this is safe to call on every
- * auth callback.
+ * Redeems a one-time referral code once the referred user's email is confirmed,
+ * crediting both the code's issuer and the new user $1.00 in store credit.
+ *
+ * Idempotent and safe to call on every auth callback:
+ *  - claim_referral_code() atomically flips the code to redeemed (and refuses
+ *    self-redemption / already-used codes),
+ *  - the referrals UNIQUE(referred_user_id) guards against a user being
+ *    rewarded twice across different codes.
  */
 export async function awardReferralReward(userId: string, rawCode?: string | null) {
   const code = rawCode?.trim().toUpperCase();
@@ -19,36 +22,39 @@ export async function awardReferralReward(userId: string, rawCode?: string | nul
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Already rewarded?
-  const { data: existing } = await admin
+  // This user already earned a referral reward?
+  const { data: already } = await admin
     .from("referrals")
     .select("id")
     .eq("referred_user_id", userId)
     .maybeSingle();
-  if (existing) return;
+  if (already) return;
 
-  const { data: promoter } = await admin
-    .from("festdash_promoters")
-    .select("user_id")
-    .eq("referral_code", code)
-    .eq("is_active", true)
-    .maybeSingle();
-  if (!promoter?.user_id || promoter.user_id === userId) return;
+  // Atomically claim the one-time code.
+  const { data: claimed } = await admin.rpc("claim_referral_code", {
+    p_code: code,
+    p_redeemer: userId,
+  });
+  if (!claimed) return; // unknown, already used, or self-issued
 
+  const issuerId: string = claimed.issuer_id;
+  const reward: number = claimed.reward_cents ?? REFERRAL_REWARD_CENTS;
+
+  // Record the attribution (also the per-user uniqueness guard).
   const { error: refErr } = await admin.from("referrals").insert({
-    referrer_id: promoter.user_id,
+    referrer_id: issuerId,
     referred_user_id: userId,
     code,
-    reward_cents: REFERRAL_REWARD_CENTS,
+    reward_cents: reward,
   });
-  if (refErr) return; // unique violation = already rewarded by a concurrent call
+  if (refErr) return; // lost a race — another callback already rewarded this user
 
   await admin.rpc("grant_store_credit", {
-    p_user: promoter.user_id, p_amount: REFERRAL_REWARD_CENTS,
+    p_user: issuerId, p_amount: reward,
     p_reason: "referral_bonus", p_ref_type: "referral", p_ref_id: userId,
   });
   await admin.rpc("grant_store_credit", {
-    p_user: userId, p_amount: REFERRAL_REWARD_CENTS,
-    p_reason: "referral_signup", p_ref_type: "referral", p_ref_id: promoter.user_id,
+    p_user: userId, p_amount: reward,
+    p_reason: "referral_signup", p_ref_type: "referral", p_ref_id: issuerId,
   });
 }
