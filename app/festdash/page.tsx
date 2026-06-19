@@ -179,12 +179,20 @@ export default async function FestDashPage() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/festdash/vendor-signup"
-                className="mt-6 inline-flex rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
-              >
-                Join the FestDash Network
-              </Link>
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <Link
+                  href="/festdash/vendor-signup"
+                  className="inline-flex rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
+                >
+                  Join the FestDash Network
+                </Link>
+                <Link
+                  href="/festdash/promoter-signup"
+                  className="inline-flex rounded-2xl border border-orange-500/40 px-6 py-3 font-semibold text-orange-300 transition hover:bg-orange-500/10"
+                >
+                  Become a Promoter →
+                </Link>
+              </div>
             </div>
             {/* Tablet mockup */}
             <div className="w-full max-w-xs shrink-0">
