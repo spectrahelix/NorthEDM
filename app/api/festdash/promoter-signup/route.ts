@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { notifyNewApplication } from "@/utils/alerts";
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -28,6 +29,18 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await notifyNewApplication({
+    kind: "promoter",
+    name: displayName,
+    email: String(email).toLowerCase().trim(),
+    detail: [
+      phone ? `Phone: ${phone}` : "",
+      audience ? `Audience: ${audience}` : "",
+      promoteVendor ? `Wants to promote: ${promoteVendor}` : "",
+      why ? `Why: ${why}` : "",
+    ].filter(Boolean).join("\n"),
+  });
 
   return NextResponse.json({ success: true });
 }

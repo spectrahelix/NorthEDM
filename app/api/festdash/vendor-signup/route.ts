@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { notifyNewApplication } from "@/utils/alerts";
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -44,6 +45,18 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await notifyNewApplication({
+    kind: "vendor",
+    name: businessName,
+    email: String(email).toLowerCase().trim(),
+    detail: [
+      `Contact: ${contactName}`,
+      `Products: ${productTypes}`,
+      phone ? `Phone: ${phone}` : "",
+      typicalEvents ? `Events: ${typicalEvents}` : "",
+    ].filter(Boolean).join("\n"),
+  });
 
   return NextResponse.json({ success: true });
 }
