@@ -5,11 +5,12 @@ import { createClient } from "@/utils/supabase/server";
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
 export async function POST(req: NextRequest) {
-  const { email, password, username, origin } = await req.json() as {
+  const { email, password, username, origin, referralCode } = await req.json() as {
     email: string;
     password: string;
     username: string;
     origin: string;
+    referralCode?: string;
   };
 
   if (!email || !password || !username || !origin) {
@@ -39,12 +40,15 @@ export async function POST(req: NextRequest) {
   // confirmation email through its own mail service — no third-party sender,
   // no custom-domain verification needed. The link lands on /auth/callback.
   const supabase = await createClient();
+  const normalizedRef = referralCode ? String(referralCode).trim().toUpperCase() : null;
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: `${origin}/auth/callback`,
-      data: { username },
+      // Stash the referral code in user metadata; the reward is granted once
+      // the email is confirmed (see /auth/callback) to deter throwaway accounts.
+      data: normalizedRef ? { username, referral_code: normalizedRef } : { username },
     },
   });
 

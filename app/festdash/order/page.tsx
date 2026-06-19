@@ -67,6 +67,10 @@ export default function OrderPage() {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
+  // Store credit
+  const [creditBalanceCents, setCreditBalanceCents] = useState(0);
+  const [useCredit, setUseCredit] = useState(true);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -78,6 +82,11 @@ export default function OrderPage() {
       const json = await res.json();
       setVendors(json.vendors ?? []);
       setLoadingVendors(false);
+
+      fetch("/api/store-credit")
+        .then((r) => r.json())
+        .then((j) => setCreditBalanceCents(j.balanceCents ?? 0))
+        .catch(() => {});
     })();
   }, [supabase]);
 
@@ -108,6 +117,8 @@ export default function OrderPage() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
   const cartTotalCents = Math.round(cartTotal * 100);
+  const appliedCreditCents = useCredit ? Math.min(creditBalanceCents, cartTotalCents) : 0;
+  const netTotalCents = cartTotalCents - appliedCreditCents;
 
   async function handleUpload(
     file: File,
@@ -194,6 +205,7 @@ export default function OrderPage() {
         deliveryWindow,
         items: cart.map((c) => ({ name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
+        useCredit,
         customerName,
       }),
     });
@@ -615,9 +627,33 @@ export default function OrderPage() {
                 <span className="text-sm text-neutral-400">${(c.price * c.qty).toFixed(2)}</span>
               </div>
             ))}
-            <div className="mt-3 flex justify-between border-t border-white/10 pt-3 font-semibold">
-              <span className="text-white">Total</span>
-              <span className="text-orange-400">${cartTotal.toFixed(2)}</span>
+            <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
+              {creditBalanceCents > 0 && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-400">Subtotal</span>
+                    <span className="text-neutral-300">${cartTotal.toFixed(2)}</span>
+                  </div>
+                  <label className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-neutral-300">
+                      <input
+                        type="checkbox"
+                        checked={useCredit}
+                        onChange={(e) => setUseCredit(e.target.checked)}
+                        className="h-4 w-4 accent-orange-500"
+                      />
+                      Use store credit (${(creditBalanceCents / 100).toFixed(2)} available)
+                    </span>
+                    {appliedCreditCents > 0 && (
+                      <span className="text-[#39FF14]">−${(appliedCreditCents / 100).toFixed(2)}</span>
+                    )}
+                  </label>
+                </>
+              )}
+              <div className="flex justify-between font-semibold">
+                <span className="text-white">Total</span>
+                <span className="text-orange-400">${(netTotalCents / 100).toFixed(2)}</span>
+              </div>
             </div>
           </div>
 

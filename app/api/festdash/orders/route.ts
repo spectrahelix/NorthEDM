@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -12,12 +13,33 @@ export async function POST(req: Request) {
     vendorId, eventName, campgroundZone, campsiteNotes,
     campsitePhotoUrl, deliveryWindow, items, totalCents, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
-    licensePlate, carPhotoUrl, customerLat, customerLng,
+    licensePlate, carPhotoUrl, customerLat, customerLng, useCredit,
   } = body;
 
   if (!vendorId || !eventName || !campgroundZone || !deliveryWindow || !items?.length) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
+
+  const grossCents = Number(totalCents) || 0;
+
+  // Apply store credit if requested: cover up to the order total from the
+  // user's wallet. Computed server-side from the real balance so the client
+  // can't over-redeem.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  let creditCents = 0;
+  if (useCredit) {
+    const { data: bal } = await admin
+      .from("store_credit_balances")
+      .select("balance_cents")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    creditCents = Math.min(Math.max(bal?.balance_cents ?? 0, 0), grossCents);
+  }
+  const netCents = grossCents - creditCents;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
@@ -46,7 +68,8 @@ export async function POST(req: Request) {
       customer_lng: typeof customerLng === "number" ? customerLng : null,
       delivery_window: deliveryWindow,
       items,
-      total_cents: Number(totalCents) || 0,
+      total_cents: netCents,
+      store_credit_cents: creditCents,
       status: "pending",
       paid: false,
     }])
@@ -54,6 +77,23 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Deduct the applied credit from the wallet. If this fails (e.g. a race
+  // drained the balance), undo the credit on the order rather than give it free.
+  if (creditCents > 0) {
+    const { error: spendErr } = await admin.rpc("grant_store_credit", {
+      p_user: user.id, p_amount: -creditCents,
+      p_reason: "order_redeem", p_ref_type: "festdash_order", p_ref_id: data.id,
+    });
+    if (spendErr) {
+      await admin
+        .from("festdash_orders")
+        .update({ total_cents: grossCents, store_credit_cents: 0 })
+        .eq("id", data.id);
+      data.total_cents = grossCents;
+      data.store_credit_cents = 0;
+    }
+  }
 
   return NextResponse.json({ order: data });
 }

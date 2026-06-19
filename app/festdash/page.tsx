@@ -192,6 +192,12 @@ export default async function FestDashPage() {
                 >
                   Become a Promoter →
                 </Link>
+                <Link
+                  href="/festdash/promoter-dashboard"
+                  className="inline-flex items-center font-dm-mono text-xs text-neutral-500 transition hover:text-neutral-300"
+                >
+                  Promoter dashboard →
+                </Link>
               </div>
             </div>
             {/* Tablet mockup */}

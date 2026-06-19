@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SocialAuth } from "@/app/components/SocialAuth";
 
@@ -9,6 +9,13 @@ const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+
+  // Pick up a promoter's referral code from ?ref=CODE
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) setReferralCode(ref.trim().toUpperCase());
+  }, []);
   const [success, setSuccess] = useState(false);
   const [successEmail, setSuccessEmail] = useState("");
   const [resending, setResending] = useState(false);
@@ -60,7 +67,7 @@ export default function SignupPage() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: pw, username, origin: window.location.origin }),
+      body: JSON.stringify({ email, password: pw, username, origin: window.location.origin, referralCode: referralCode || undefined }),
     });
     const json = await res.json();
 
@@ -140,6 +147,14 @@ export default function SignupPage() {
           <p className="mb-7 text-sm text-neutral-400">
             Your account is your identity across bookings, the marketplace, and the forum.
           </p>
+
+          {referralCode && (
+            <div className="mb-6 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5 px-4 py-3 text-sm text-[#39FF14]">
+              🎁 You were referred with code{" "}
+              <span className="font-dm-mono font-semibold">{referralCode}</span> — confirm your
+              email and you&apos;ll get <span className="font-semibold">$1.00 store credit</span>.
+            </div>
+          )}
 
           <SocialAuth next="/profile/edit" />
 
