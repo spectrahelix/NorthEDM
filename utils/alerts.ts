@@ -1,20 +1,24 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
 
-// Owner alerting: in-app notifications + email (Resend) + SMS (Twilio).
+// Owner alerting: in-app notifications + email (your own SMTP) + phone push (ntfy).
 //
-// Every channel is best-effort and independently guarded by its env vars, so a
-// missing key or a provider outage never blocks the user action that triggered
-// it, and one channel failing doesn't stop the others. In-app notifications
-// work with no extra config; email/SMS activate once their env vars are set:
+// No third-party email SaaS (no Resend). Email goes through any SMTP mailbox you
+// already control — the same kind of credentials Supabase's Custom SMTP uses.
+// Phone alerts go through ntfy.sh (free, open-source push; install the ntfy app
+// and subscribe to your topic) instead of a paid SMS provider.
 //
-//   OWNER_ALERT_EMAIL   (default: cjblue27@gmail.com)
-//   OWNER_ALERT_PHONE   (E.164, e.g. +15555551234)  — required for SMS
-//   RESEND_API_KEY, RESEND_FROM                      — email
-//   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM — SMS
-//   NEXT_PUBLIC_SITE_URL                             — absolute links in alerts
+// Every channel is best-effort and independently guarded, wrapped in
+// Promise.allSettled so a missing config / outage never blocks the user action
+// or the other channels. In-app notifications need no extra config; the others
+// activate once their env vars are set:
+//
+//   OWNER_ALERT_EMAIL                                  (default: cjblue27@gmail.com)
+//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM   — email
+//   NTFY_TOPIC, NTFY_SERVER (default https://ntfy.sh)  — phone push ("text")
+//   NEXT_PUBLIC_SITE_URL                               — absolute links in alerts
 
 const OWNER_EMAIL = process.env.OWNER_ALERT_EMAIL || "cjblue27@gmail.com";
-const OWNER_PHONE = process.env.OWNER_ALERT_PHONE || "";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
 function admin() {
@@ -25,39 +29,42 @@ function admin() {
   );
 }
 
+// Email via your own SMTP mailbox (nodemailer). No SaaS provider.
 async function emailOwner(subject: string, text: string) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return;
-  const from = process.env.RESEND_FROM || "NorthEDM Alerts <onboarding@resend.dev>";
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) return;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const from = process.env.SMTP_FROM || user;
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [OWNER_EMAIL], subject, text }),
+    const transport = nodemailer.createTransport({
+      host, port, secure: port === 465, auth: { user, pass },
     });
-    if (!res.ok) console.error("owner email failed:", res.status, await res.text().catch(() => ""));
+    await transport.sendMail({ from, to: OWNER_EMAIL, subject, text });
   } catch (e) {
     console.error("owner email error:", e);
   }
 }
 
-async function smsOwner(body: string) {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM;
-  if (!sid || !token || !from || !OWNER_PHONE) return;
+// Phone push via ntfy.sh (free, no account). Arrives on your phone like a text.
+async function pushOwner(title: string, message: string, clickUrl?: string) {
+  const topic = process.env.NTFY_TOPIC;
+  if (!topic) return;
+  const server = (process.env.NTFY_SERVER || "https://ntfy.sh").replace(/\/$/, "");
   try {
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    const res = await fetch(`${server}/${topic}`, {
       method: "POST",
       headers: {
-        Authorization: "Basic " + Buffer.from(`${sid}:${token}`).toString("base64"),
-        "Content-Type": "application/x-www-form-urlencoded",
+        Title: title,
+        Tags: "tada",
+        ...(clickUrl ? { Click: clickUrl } : {}),
       },
-      body: new URLSearchParams({ To: OWNER_PHONE, From: from, Body: body }),
+      body: message,
     });
-    if (!res.ok) console.error("owner sms failed:", res.status, await res.text().catch(() => ""));
+    if (!res.ok) console.error("owner push failed:", res.status, await res.text().catch(() => ""));
   } catch (e) {
-    console.error("owner sms error:", e);
+    console.error("owner push error:", e);
   }
 }
 
@@ -89,11 +96,10 @@ export async function notifyNewApplication(opts: {
   const subject = `🎪 New ${label} application — ${opts.name}`;
   const emailText =
     `${message}\n${opts.detail ? `\n${opts.detail}\n` : ""}\nReview it here: ${reviewUrl}`;
-  const smsText = `NorthEDM: new ${label} application from ${opts.name}. Review: ${reviewUrl}`;
 
   await Promise.allSettled([
     notifyAdminsInApp(`festdash_${opts.kind}_application`, message, path),
     emailOwner(subject, emailText),
-    smsOwner(smsText),
+    pushOwner(`New ${label} application`, `${opts.name} (${opts.email})`, reviewUrl),
   ]);
 }
