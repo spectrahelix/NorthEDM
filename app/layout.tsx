@@ -26,6 +26,9 @@ const dmMono = DM_Mono({
 
 export const metadata = {
   metadataBase: new URL("https://northedm.com"),
+  verification: {
+    google: "x2L3uWls2ZEHnlWxVQDu9HizLicmZKZg4GBJkfWkxq8",
+  },
   title: {
     default: "NorthEDM — Unite the Northeast",
     template: "%s | NorthEDM",
