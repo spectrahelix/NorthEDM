@@ -50,3 +50,7 @@ design/*.png
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Local MCP + agent skills (machine-specific)
+.mcp.json
+.agents/
