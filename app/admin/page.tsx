@@ -37,6 +37,24 @@ export default async function AdminPage() {
           </span>
         </p>
 
+        <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+          Insights
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Link
+            href="/admin/analytics"
+            className="group rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition hover:border-[#00D4FF]/30 hover:bg-white/[0.04]"
+          >
+            <div className="mb-3 text-2xl">📈</div>
+            <h2 className="font-bebas text-2xl tracking-wide group-hover:text-[#00D4FF]">
+              Site Traffic
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Pageviews, unique visitors, daily trend, top pages &amp; referrers
+            </p>
+          </Link>
+        </div>
+
         {forumAdmin && (
           <>
             <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
