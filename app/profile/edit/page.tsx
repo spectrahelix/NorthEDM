@@ -166,6 +166,12 @@ export default function EditProfilePage() {
             >
               {uploading ? "Uploading…" : "Change Avatar"}
             </button>
+            <button
+              onClick={() => router.push("/avatar/builder")}
+              className="ml-2 rounded-xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.06] px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/10"
+            >
+              Build Avatar →
+            </button>
             <p className="mt-1.5 font-dm-mono text-xs text-neutral-600">
               JPG, PNG, WEBP · max 5MB
             </p>
