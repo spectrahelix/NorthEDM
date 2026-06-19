@@ -150,9 +150,8 @@ export default function SignupPage() {
 
           {referralCode && (
             <div className="mb-6 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5 px-4 py-3 text-sm text-[#39FF14]">
-              🎁 You were referred with code{" "}
-              <span className="font-dm-mono font-semibold">{referralCode}</span> — confirm your
-              email and you&apos;ll get <span className="font-semibold">$1.00 store credit</span>.
+              🎁 Referral code applied — confirm your email and you&apos;ll get{" "}
+              <span className="font-semibold">$1.00 store credit</span>.
             </div>
           )}
 
@@ -194,6 +193,20 @@ export default function SignupPage() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none transition focus:border-[#3AFFD4]/50 focus:ring-1 focus:ring-[#3AFFD4]/20"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                Referral code <span className="text-neutral-600">(optional)</span>
+              </label>
+              <input
+                name="referralCode"
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="Got a code? Enter it for $1 credit"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-dm-mono text-sm uppercase tracking-wider text-neutral-100 placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-600 outline-none transition focus:border-[#39FF14]/50 focus:ring-1 focus:ring-[#39FF14]/20"
               />
             </div>
 
