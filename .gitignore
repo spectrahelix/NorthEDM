@@ -45,3 +45,8 @@ next-env.d.ts
 
 # logo render previews
 design/*.png
+
+# Local agent skills tooling (installed via `skills add`)
+.agents/
+.claude/skills/
+skills-lock.json
