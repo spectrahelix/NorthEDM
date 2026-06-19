@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { NavBar } from "./components/NavBar";
 import { WaveField } from "./components/WaveField";
+import { PageViewTracker } from "./components/PageViewTracker";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
@@ -94,6 +96,8 @@ export default async function RootLayout({
       className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable}`}
     >
       <body className="bg-[#030303] text-neutral-100">
+        <Analytics />
+        <PageViewTracker />
         <WaveField />
         <div style={{ position: "relative", zIndex: 1 }}>
         <header className="sticky top-0 z-30" style={{ position: "sticky", background: "rgba(3,3,3,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
