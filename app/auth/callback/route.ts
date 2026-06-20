@@ -43,7 +43,8 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (!existingProfile) {
-      // New OAuth signup — seed profiles and send them to profile setup
+      // New OAuth signup — seed profiles, then send them to profile setup
+      // (which redirects to the home page once they save).
       const emailPrefix = user.email?.split("@")[0]?.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 20) ?? "user";
       const displayName = (user.user_metadata?.full_name as string | undefined)
         ?? (user.user_metadata?.name as string | undefined)
@@ -71,7 +72,8 @@ export async function GET(request: Request) {
       // Owner alert for the new account (in-app + push, once).
       await notifyNewSignup({ email: user.email ?? "", name: displayName });
 
-      return NextResponse.redirect(`${origin}/profile/edit`);
+      // New user → profile setup; the edit page sends them home after saving.
+      return NextResponse.redirect(`${origin}/profile/edit?welcome=1`);
     }
 
     // Existing profile (e.g. an email/password account confirming): alert the

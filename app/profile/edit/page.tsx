@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
   AvatarBorder,
@@ -13,6 +13,9 @@ import type { UserProfile } from "@/utils/supabase/user-profiles";
 
 export default function EditProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // New users arrive here with ?welcome=1; after saving, send them to the home page.
+  const isWelcome = searchParams.get("welcome") === "1";
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -118,7 +121,7 @@ export default function EditProfilePage() {
       return;
     }
     setSaved(true);
-    setTimeout(() => router.push(`/profile/${userId}`), 1000);
+    setTimeout(() => router.push(isWelcome ? "/" : `/profile/${userId}`), 1000);
   }
 
   if (loading) {
