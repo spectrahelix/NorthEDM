@@ -106,3 +106,18 @@ export async function notifyNewApplication(opts: {
     pushOwner(`New ${label} application`, `${opts.name} (${opts.email})`, reviewUrl),
   ]);
 }
+
+/**
+ * Owner alert for a brand-new account. In-app + phone push only — email is
+ * reserved for higher-signal events (vendor/promoter applications) to avoid
+ * inbox spam. Call once per account (the caller dedupes).
+ */
+export async function notifyNewSignup(opts: { email: string; name?: string }) {
+  const who = opts.name && opts.name !== opts.email ? `${opts.name} (${opts.email})` : opts.email;
+  const path = "/admin/users";
+  const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
+  await Promise.allSettled([
+    notifyAdminsInApp("user_signup", `New account signup: ${who}.`, path),
+    pushOwner("New NorthEDM signup", who, reviewUrl),
+  ]);
+}
