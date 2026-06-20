@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { awardReferralReward } from "@/utils/referrals";
+import { notifyNewSignup } from "@/utils/alerts";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
 
     const { data: existingProfile } = await supabase
       .from("user_profiles")
-      .select("id")
+      .select("id, signup_alerted, display_name")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
           home_city: "",
           avatar_border: "moss",
           avatar_url: avatarUrl,
+          signup_alerted: true,
         }),
         // profiles.username must be unique — use email prefix, ignore conflict
         supabase.from("profiles").upsert(
@@ -66,7 +68,28 @@ export async function GET(request: Request) {
         ),
       ]);
 
+      // Owner alert for the new account (in-app + push, once).
+      await notifyNewSignup({ email: user.email ?? "", name: displayName });
+
       return NextResponse.redirect(`${origin}/profile/edit`);
+    }
+
+    // Existing profile (e.g. an email/password account confirming): alert the
+    // owner once, claimed atomically so repeat logins never re-alert.
+    if (!existingProfile.signup_alerted) {
+      const { data: claimed } = await supabase
+        .from("user_profiles")
+        .update({ signup_alerted: true })
+        .eq("id", user.id)
+        .eq("signup_alerted", false)
+        .select("id")
+        .maybeSingle();
+      if (claimed) {
+        await notifyNewSignup({
+          email: user.email ?? "",
+          name: (existingProfile.display_name as string | undefined) || undefined,
+        });
+      }
     }
   }
 
