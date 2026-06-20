@@ -1,12 +1,11 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
 
-// Owner alerting: in-app notifications + email (your own SMTP) + phone push (ntfy).
+// Owner alerting: in-app notifications + email (Brevo API) + phone push (ntfy).
 //
-// No third-party email SaaS (no Resend). Email goes through any SMTP mailbox you
-// already control — the same kind of credentials Supabase's Custom SMTP uses.
-// Phone alerts go through ntfy.sh (free, open-source push; install the ntfy app
-// and subscribe to your topic) instead of a paid SMS provider.
+// Email goes through Brevo's transactional API (not SMTP) — serverless functions
+// send from rotating IPs, which Brevo's SMTP/IP allowlisting blocks, so the API
+// with a key is the reliable path. Phone alerts go through ntfy.sh (free,
+// open-source push) instead of a paid SMS provider.
 //
 // Every channel is best-effort and independently guarded, wrapped in
 // Promise.allSettled so a missing config / outage never blocks the user action
@@ -14,7 +13,7 @@ import nodemailer from "nodemailer";
 // activate once their env vars are set:
 //
 //   OWNER_ALERT_EMAIL                                  (default: cjblue27@gmail.com)
-//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM   — email
+//   BREVO_API_KEY, BREVO_SENDER_EMAIL (default no-reply@northedm.com)  — email
 //   NTFY_TOPIC, NTFY_SERVER (default https://ntfy.sh)  — phone push ("text")
 //   NEXT_PUBLIC_SITE_URL                               — absolute links in alerts
 
@@ -29,19 +28,23 @@ function admin() {
   );
 }
 
-// Email via your own SMTP mailbox (nodemailer). No SaaS provider.
+// Email via Brevo's transactional API. From address must be a verified Brevo sender.
 async function emailOwner(subject: string, text: string) {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) return;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const from = process.env.SMTP_FROM || user;
+  const key = process.env.BREVO_API_KEY;
+  if (!key) return;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "no-reply@northedm.com";
   try {
-    const transport = nodemailer.createTransport({
-      host, port, secure: port === 465, auth: { user, pass },
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": key, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        sender: { name: "NorthEDM Alerts", email: senderEmail },
+        to: [{ email: OWNER_EMAIL }],
+        subject,
+        textContent: text,
+      }),
     });
-    await transport.sendMail({ from, to: OWNER_EMAIL, subject, text });
+    if (!res.ok) console.error("owner email failed:", res.status, await res.text().catch(() => ""));
   } catch (e) {
     console.error("owner email error:", e);
   }
