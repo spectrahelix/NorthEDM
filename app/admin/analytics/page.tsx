@@ -15,6 +15,8 @@ type Totals = {
 type DailyRow = { day: string; views: number; visitors: number };
 type PageRow = { path: string; views: number };
 type RefRow = { referrer: string; views: number };
+type Audience = { member_views: number; guest_views: number; members: number };
+type MemberRow = { name: string; views: number };
 
 function StatCard({ label, views, visitors, accent }: {
   label: string; views: number; visitors: number; accent: string;
@@ -56,6 +58,8 @@ export default async function AnalyticsPage() {
   const daily: DailyRow[] = data?.daily ?? [];
   const topPages: PageRow[] = data?.top_pages ?? [];
   const topReferrers: RefRow[] = data?.top_referrers ?? [];
+  const audience: Audience = data?.audience ?? { member_views: 0, guest_views: 0, members: 0 };
+  const topMembers: MemberRow[] = data?.top_members ?? [];
 
   // Fill the chart window so empty days still show.
   const byDay = new Map(daily.map((d) => [d.day, d]));
@@ -145,9 +149,48 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
+        {/* Audience: members vs guests + most active members */}
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+              Audience (30d)
+            </p>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-300">Signed-in members</span>
+                <span className="font-dm-mono text-neutral-400">
+                  {audience.member_views.toLocaleString()} views · {audience.members.toLocaleString()} {audience.members === 1 ? "person" : "people"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-300">Guests (not signed in)</span>
+                <span className="font-dm-mono text-neutral-400">{audience.guest_views.toLocaleString()} views</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+              Most active members (30d)
+            </p>
+            {topMembers.length === 0 ? (
+              <p className="text-sm text-neutral-600">No signed-in member activity yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {topMembers.map((m, i) => (
+                  <div key={`${m.name}-${i}`} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate text-neutral-300">{m.name}</span>
+                    <span className="shrink-0 font-dm-mono text-neutral-500">{m.views.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <p className="mt-8 font-dm-mono text-[11px] text-neutral-600">
-          First-party counts (admin views excluded, common bots filtered). Vercel Web
-          Analytics also runs alongside for cross-checking in the Vercel dashboard.
+          First-party counts — <span className="text-neutral-400">your own admin visits are excluded</span>,
+          common bots filtered. Vercel Web Analytics also runs alongside for cross-checking in the Vercel dashboard.
         </p>
       </div>
     </main>
