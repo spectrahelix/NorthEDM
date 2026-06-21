@@ -193,6 +193,7 @@ export default async function RootLayout({
                   <li><Link href="/vendors" className="hover:text-white">Vendors</Link></li>
                   <li><Link href="/foraging" className="hover:text-white">Foraging</Link></li>
                   <li><Link href="/festdash" className="hover:text-white">FestDash</Link></li>
+                  <li><Link href="/portfolio" className="hover:text-white">Portfolio</Link></li>
                 </ul>
               </div>
               <div>
