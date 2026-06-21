@@ -1,17 +1,6 @@
 "use client";
 
-export type ForumRole = "archon" | "warden" | "merchant" | "wanderer" | "drifter";
-
-const ROLE_CONFIG: Record<
-  ForumRole,
-  { label: string; color: string; effect: "sparkle" | "pulse" | "none" }
-> = {
-  archon:   { label: "Archon",   color: "#7DF9FF", effect: "sparkle" },
-  warden:   { label: "Warden",   color: "#FF9A3C", effect: "sparkle" },
-  merchant: { label: "Merchant", color: "#7FFF6E", effect: "sparkle" },
-  wanderer: { label: "Wanderer", color: "#F5E6C8", effect: "pulse"   },
-  drifter:  { label: "Drifter",  color: "#A8A8A8", effect: "none"    },
-};
+import { ROLE_CONFIG, type ForumRole } from "./roleColors";
 
 export function RankBadge({
   role,
@@ -81,8 +70,4 @@ export function RankBadge({
       </span>
     </span>
   );
-}
-
-export function getRoleColor(role: string): string {
-  return ROLE_CONFIG[role as ForumRole]?.color ?? ROLE_CONFIG.drifter.color;
 }

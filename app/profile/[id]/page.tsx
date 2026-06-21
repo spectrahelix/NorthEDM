@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { getUserProfile } from "@/utils/supabase/user-profiles";
-import { RankBadge, getRoleColor } from "@/app/components/RankBadge";
+import { RankBadge } from "@/app/components/RankBadge";
+import { getRoleColor } from "@/app/components/roleColors";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
 
 function timeAgo(dateStr: string) {
