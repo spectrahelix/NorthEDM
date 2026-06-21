@@ -269,12 +269,7 @@ export default async function HomePage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Homestead Life — permanent founder vendor */}
-          <a
-            href="https://homestead-life.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex flex-col rounded-3xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.04] p-6 transition hover:border-[#3AFFD4]/60 hover:bg-[#3AFFD4]/[0.07] active:scale-[0.99]"
-          >
+          <div className="group flex flex-col rounded-3xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.04] p-6 transition hover:border-[#3AFFD4]/60 hover:bg-[#3AFFD4]/[0.07]">
             <div className="mb-3 flex items-start justify-between gap-2">
               <h3 className="font-bebas text-xl leading-snug tracking-wide">
                 Homestead Life
@@ -292,14 +287,27 @@ export default async function HomePage() {
               crafted with therapeutic-grade ingredients.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#3AFFD4]/10 px-3 py-1 font-dm-mono text-xs text-[#3AFFD4]">
-                featured
-              </span>
+              <a
+                href="https://homestead-life.com/shop/ols/categories/everything-balm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-[#3AFFD4]/15 px-3 py-1 font-dm-mono text-xs text-[#3AFFD4] transition hover:bg-[#3AFFD4]/25"
+              >
+                Buy Everything Balm →
+              </a>
+              <a
+                href="https://homestead-life.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-white/5 px-3 py-1 font-dm-mono text-xs text-neutral-300 transition hover:bg-white/10"
+              >
+                Visit site
+              </a>
               <span className="rounded-full bg-[#CC00FF]/10 px-3 py-1 font-dm-mono text-xs text-[#CC00FF]">
                 Founder
               </span>
             </div>
-          </a>
+          </div>
 
           {/* CJ's Foraging Tours — permanent founder vendor */}
           <Link
