@@ -64,7 +64,7 @@ export default async function HomePage() {
   ]);
 
   const vendors = ((data ?? []) as Vendor[])
-    .filter((v) => v.name !== "Homestead Life")
+    .filter((v) => v.name !== "Homestead Life" && v.name !== "CarlyIsFunny")
     .slice(0, 1);
 
   return (
@@ -331,6 +331,44 @@ export default async function HomePage() {
               </span>
             </div>
           </Link>
+
+          {/* CarlyIsFunny — created by NorthEDM */}
+          <div className="group flex flex-col rounded-3xl border border-[#FF5C3A]/30 bg-[#FF5C3A]/[0.04] p-6 transition hover:border-[#FF5C3A]/60 hover:bg-[#FF5C3A]/[0.07]">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="font-dm-mono text-[10px] uppercase tracking-[0.25em] text-[#FF5C3A]">
+                Created by NorthEDM
+              </p>
+              <span className="shrink-0 rounded-full bg-[#CC00FF]/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-[#CC00FF]">
+                Featured
+              </span>
+            </div>
+            <h3 className="font-bebas text-xl leading-snug tracking-wide">CarlyIsFunny</h3>
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
+              Comedy · Stand-up
+            </p>
+            <p className="mt-3 flex-1 text-sm leading-6 text-neutral-400">
+              Raw. Real. Relentless. — stand-up comedian Carly Dreizen brings edgy
+              live comedy and hosting to stages across the Northeast and beyond.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <a
+                href="https://carlyisfunny.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-[#FF5C3A]/10 px-3 py-1 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/20"
+              >
+                Visit site →
+              </a>
+              <a
+                href="https://carlyisfunny.com/#booking"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-[#39FF14]/10 px-3 py-1 font-dm-mono text-xs text-[#39FF14] transition hover:bg-[#39FF14]/20"
+              >
+                Book an appearance
+              </a>
+            </div>
+          </div>
 
           {vendors.map((vendor) => (
             <Link
