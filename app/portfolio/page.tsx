@@ -40,9 +40,7 @@ const PARTNERS: { name: string; note: string }[] = [
   { name: "Homestead Life", note: "Holistic goods · founder vendor" },
   { name: "CJ's Foraging Tours", note: "Guided foraging" },
   { name: "Kepner, Kepner & Corba, P.C.", note: "Legal · sponsor · Berwick & Stroudsburg, PA" },
-  { name: "Franklin E. Kepner, Jr.", note: "Attorney · Kepner, Kepner & Corba" },
-  { name: "Alice T. K. Corba", note: "Attorney · Kepner, Kepner & Corba" },
-  { name: "Franklin E. Kepner, III", note: "Attorney · Kepner, Kepner & Corba" },
+  { name: "Frank's General Store", note: "Retail partner" },
 ];
 
 export default function PortfolioPage() {
