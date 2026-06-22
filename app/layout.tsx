@@ -112,38 +112,38 @@ export default async function RootLayout({
             <Link
               href="/"
               aria-label="NorthEDM home"
-              className="-ml-3 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
+              className="-ml-3 flex shrink-0 flex-col gap-1 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/northedm-logo.svg"
-                alt="NorthEDM logo"
-                width={44}
-                height={44}
-                className="h-11 w-11 shrink-0"
-              />
-              <div>
-                <div
-                  className="font-bebas text-xl tracking-wide"
-                  style={{
-                    background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                    filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
-                  }}
-                >
-                  NorthEDM
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/northedm-logo.svg"
+                  alt="NorthEDM logo"
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 shrink-0"
+                />
+                <div>
+                  <div
+                    className="font-bebas text-xl tracking-wide"
+                    style={{
+                      background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                      filter: "drop-shadow(0 0 10px rgba(57,255,20,0.5)) drop-shadow(0 0 22px rgba(0,212,255,0.3))",
+                    }}
+                  >
+                    NorthEDM
+                  </div>
+                  <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+                    Unite the Northeast
+                  </div>
                 </div>
-                <div className="mt-1 font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
-                  Unite the Northeast
-                </div>
-                <div className="my-0.5 text-center font-dm-mono text-[8px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.26)" }}>
-                  · with ·
-                </div>
-                <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
-                  Northeast Dance Music
-                </div>
+              </div>
+              {/* Brand footer line, beneath the whole mark */}
+              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+                Northeast Dance Music
               </div>
             </Link>
 
