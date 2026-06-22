@@ -215,6 +215,9 @@ export function NavBar({
                 <p className="font-dm-mono text-[9px] uppercase tracking-[0.3em] text-neutral-600">
                   Unite the Northeast
                 </p>
+                <p className="font-dm-mono text-[9px] uppercase tracking-[0.3em] text-neutral-600">
+                  Northeast Dance Music
+                </p>
               </div>
               <button
                 onClick={() => setOpen(false)}

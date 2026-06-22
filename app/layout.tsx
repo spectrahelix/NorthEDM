@@ -180,6 +180,9 @@ export default async function RootLayout({
                     </p>
                   </div>
                 </div>
+                <p className="mt-2 font-dm-mono text-[10px] uppercase tracking-[0.3em] text-neutral-600">
+                  Northeast Dance Music
+                </p>
                 <p className="mt-4 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-700">
                   FestDash™ / FestEats™
                 </p>
