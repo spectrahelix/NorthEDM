@@ -138,6 +138,9 @@ export default async function RootLayout({
                 <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
                   Unite the Northeast
                 </div>
+                <div className="font-dm-mono text-[8px] uppercase tracking-[0.25em]" style={{ color: "rgba(57,255,20,0.28)" }}>
+                  Northeast Dance Music
+                </div>
               </div>
             </Link>
 
