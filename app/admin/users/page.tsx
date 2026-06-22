@@ -33,6 +33,8 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const fetchUsers = useCallback(async () => {
@@ -61,6 +63,7 @@ export default function AdminUsersPage() {
         return;
       }
       setMyRole(p.role);
+      setMyId(user.id);
       fetchUsers();
     });
   }, [router, fetchUsers]);
@@ -98,6 +101,29 @@ export default function AdminUsersPage() {
     setUsers((prev) =>
       prev.map((u) => (u.id === targetId ? { ...u, role: newRole } : u))
     );
+  }
+
+  async function deleteUser(target: AdminUser) {
+    if (
+      !window.confirm(
+        `Permanently delete ${target.display_name || target.email}? This removes their account and profile, and frees their email for a fresh signup. This can't be undone.`
+      )
+    )
+      return;
+    setDeletingId(target.id);
+    setError("");
+    const res = await fetch("/api/admin/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUserId: target.id }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setDeletingId(null);
+    if (!res.ok) {
+      setError(json.error ?? "Failed to delete user");
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== target.id));
   }
 
   if (loading) {
@@ -178,6 +204,9 @@ export default function AdminUsersPage() {
                 <th className="px-5 py-3 text-left font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
                   Role
                 </th>
+                <th className="px-5 py-3 text-right font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -221,6 +250,19 @@ export default function AdminUsersPage() {
                         <span className="ml-2 font-dm-mono text-[10px] text-neutral-600">
                           saving…
                         </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      {u.id === myId ? (
+                        <span className="font-dm-mono text-[10px] text-neutral-700">you</span>
+                      ) : (
+                        <button
+                          onClick={() => deleteUser(u)}
+                          disabled={deletingId === u.id}
+                          className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10 disabled:opacity-50"
+                        >
+                          {deletingId === u.id ? "Deleting…" : "Delete"}
+                        </button>
                       )}
                     </td>
                   </tr>
