@@ -26,7 +26,16 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Decode keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > "${{ runner.temp }}/release.keystore"
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > "${{ runner.temp }}/release.keystore"
+          # Sanity check: a real keystore is a few KB. If decode produced junk, fail loudly.
+          if [ ! -s "${{ runner.temp }}/release.keystore" ]; then
+            echo "::error::Decoded keystore is empty — ANDROID_KEYSTORE_B64 secret is missing or invalid base64."
+            exit 1
+          fi
+          echo "Keystore decoded ($(wc -c < "${{ runner.temp }}/release.keystore") bytes)."
       - name: Build AAB
         working-directory: android
         env:
