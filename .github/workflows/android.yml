@@ -68,8 +68,12 @@ jobs:
             ALIAS="northedm"
             PW="$(openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | head -c 28)"
             echo "::add-mask::$PW"
+            # A failed decode may have left a corrupt file here; keytool refuses
+            # to write into an existing file it can't parse, so start clean.
+            rm -f "$KS"
             keytool -genkeypair -v \
               -keystore "$KS" \
+              -storetype PKCS12 \
               -alias "$ALIAS" \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass "$PW" -keypass "$PW" \
