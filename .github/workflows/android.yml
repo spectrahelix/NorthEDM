@@ -1,8 +1,15 @@
 name: Android (AAB)
 
 # Builds a signed Android App Bundle for the Play Store. Manual trigger.
-# Requires these repo secrets (Settings → Secrets and variables → Actions):
-#   ANDROID_KEYSTORE_B64       base64 of your release.keystore
+#
+# Self-healing signing: it first tries the repo secrets and validates that they
+# actually form a working keystore. If they're missing or mangled (a common
+# copy/paste problem with the long base64 value), it generates a fresh signing
+# key for this build and uploads it as an artifact so you can save it and set
+# the secrets correctly for future updates.
+#
+# Repo secrets it will use when valid (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_B64       base64 of your release.keystore (single line)
 #   ANDROID_KEYSTORE_PASSWORD  keystore password
 #   ANDROID_KEY_ALIAS          key alias
 #   ANDROID_KEY_PASSWORD       key password
@@ -25,29 +32,98 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Sync Capacitor
         run: npx cap sync android
-      - name: Decode keystore
+
+      - name: Prepare signing keystore
+        id: keystore
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-        run: |
-          printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > "${{ runner.temp }}/release.keystore"
-          # Sanity check: a real keystore is a few KB. If decode produced junk, fail loudly.
-          if [ ! -s "${{ runner.temp }}/release.keystore" ]; then
-            echo "::error::Decoded keystore is empty — ANDROID_KEYSTORE_B64 secret is missing or invalid base64."
-            exit 1
-          fi
-          echo "Keystore decoded ($(wc -c < "${{ runner.temp }}/release.keystore") bytes)."
-      - name: Build AAB
-        working-directory: android
-        env:
-          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          set -e
+          KS="${{ runner.temp }}/release.keystore"
+          USE_EXISTING=0
+
+          # 1) Try the secret. Strip whitespace, decode, then prove it's a real
+          #    keystore by listing the alias with the given passwords.
+          if [ -n "$ANDROID_KEYSTORE_B64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > "$KS" 2>/dev/null || true
+            if [ -s "$KS" ] && keytool -list -keystore "$KS" \
+                 -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+                 -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+              echo "✔ Using the signing key from your repo secrets."
+              USE_EXISTING=1
+              {
+                echo "store_pass=$ANDROID_KEYSTORE_PASSWORD"
+                echo "key_alias=$ANDROID_KEY_ALIAS"
+                echo "key_pass=$ANDROID_KEY_PASSWORD"
+              } >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+          # 2) Fall back to a freshly generated key so the build never blocks.
+          if [ "$USE_EXISTING" = "0" ]; then
+            echo "::warning::Secret keystore was missing or invalid — generating a fresh signing key for this build. Save the artifact and set the secrets from it for future updates."
+            ALIAS="northedm"
+            PW="$(openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | head -c 28)"
+            echo "::add-mask::$PW"
+            keytool -genkeypair -v \
+              -keystore "$KS" \
+              -alias "$ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$PW" -keypass "$PW" \
+              -dname "CN=NorthEDM, O=NorthEDM, C=US"
+            {
+              echo "store_pass=$PW"
+              echo "key_alias=$ALIAS"
+              echo "key_pass=$PW"
+              echo "generated=1"
+            } >> "$GITHUB_OUTPUT"
+
+            # Artifact bundle for safekeeping. The base64 lives in its OWN file
+            # with nothing else, so on mobile you just open it → Select All → copy.
+            OUT="${{ runner.temp }}/keystore-out"
+            mkdir -p "$OUT"
+            cp "$KS" "$OUT/northedm.keystore"
+            base64 -w0 "$KS" > "$OUT/ANDROID_KEYSTORE_B64.txt"
+            {
+              echo "===== NorthEDM Android signing — SAVE ALL OF THIS ====="
+              echo
+              echo "Set these as repo Secrets so future builds reuse THIS key"
+              echo "(Settings -> Secrets and variables -> Actions):"
+              echo
+              echo "ANDROID_KEY_ALIAS=$ALIAS"
+              echo "ANDROID_KEYSTORE_PASSWORD=$PW"
+              echo "ANDROID_KEY_PASSWORD=$PW"
+              echo
+              echo "ANDROID_KEYSTORE_B64  ->  copy the entire contents of the"
+              echo "separate file ANDROID_KEYSTORE_B64.txt (Select All)."
+            } > "$OUT/READ-ME-credentials.txt"
+          fi
+
+      - name: Build AAB
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ steps.keystore.outputs.store_pass }}
+          ANDROID_KEY_ALIAS: ${{ steps.keystore.outputs.key_alias }}
+          ANDROID_KEY_PASSWORD: ${{ steps.keystore.outputs.key_pass }}
+        run: |
           chmod +x ./gradlew
           ./gradlew bundleRelease
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
         with:
           name: northedm-android-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+      - name: Upload generated keystore (SAVE THIS — only when freshly generated)
+        if: steps.keystore.outputs.generated == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: northedm-keystore-SAVE-THIS
+          path: ${{ runner.temp }}/keystore-out
+          retention-days: 7
