@@ -4,6 +4,7 @@ import "./globals.css";
 import { NavBar } from "./components/NavBar";
 import { WaveField } from "./components/WaveField";
 import { PageViewTracker } from "./components/PageViewTracker";
+import { ServiceWorkerRegister } from "./components/ServiceWorkerRegister";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
@@ -24,8 +25,22 @@ const dmMono = DM_Mono({
   variable: "--font-dm-mono-var",
 });
 
+export const viewport = {
+  themeColor: "#050506",
+};
+
 export const metadata = {
   metadataBase: new URL("https://northedm.com"),
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "NorthEDM",
+    statusBarStyle: "black-translucent" as const,
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
   verification: {
     google: "x2L3uWls2ZEHnlWxVQDu9HizLicmZKZg4GBJkfWkxq8",
   },
@@ -101,6 +116,7 @@ export default async function RootLayout({
       <body className="bg-[#030303] text-neutral-100">
         <Analytics />
         <PageViewTracker />
+        <ServiceWorkerRegister />
         <WaveField />
         <div style={{ position: "relative", zIndex: 1 }}>
         <header className="sticky top-0 z-30" style={{ position: "sticky", background: "rgba(3,3,3,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
