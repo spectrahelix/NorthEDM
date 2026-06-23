@@ -16,6 +16,9 @@ name: Android (AAB)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -131,3 +134,13 @@ jobs:
           name: northedm-keystore-SAVE-THIS
           path: ${{ runner.temp }}/keystore-out
           retention-days: 7
+
+      # Publish the .aab as a GitHub Release asset so it can be downloaded as a
+      # single file (no zip) directly on a phone for the Play Console upload.
+      - name: Publish AAB to a release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: NorthEDM Android build (latest)
+          body: "Latest signed app-release.aab for Play Store upload. Built from main."
+          files: android/app/build/outputs/bundle/release/app-release.aab
