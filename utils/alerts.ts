@@ -121,3 +121,18 @@ export async function notifyNewSignup(opts: { email: string; name?: string }) {
     pushOwner("New NorthEDM signup", who, reviewUrl),
   ]);
 }
+
+/** Owner alert for a paid store order — all channels (it's high-signal: money). */
+export async function notifyNewOrder(opts: { total_cents: number; email?: string | null; itemCount: number }) {
+  const path = "/admin/shop/orders";
+  const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
+  const amount = `$${(opts.total_cents / 100).toFixed(2)}`;
+  const who = opts.email ? ` from ${opts.email}` : "";
+  const message = `New store order — ${amount}, ${opts.itemCount} item${opts.itemCount === 1 ? "" : "s"}${who}.`;
+  await Promise.allSettled([
+    notifyAdminsInApp("shop_order", message, path),
+    emailOwner(`🛒 New NorthEDM order — ${amount}`, `${message}\n\nView it: ${reviewUrl}`),
+    pushOwner("New NorthEDM order", `${amount} · ${opts.itemCount} item${opts.itemCount === 1 ? "" : "s"}`, reviewUrl),
+  ]);
+}
+

@@ -1,0 +1,71 @@
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
+import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+
+// Creates a Stripe Checkout session for the cart. Prices/stock are validated
+// server-side from shop_products (the client cart is never trusted). A pending
+// shop_orders row is created and its id is carried in session metadata so the
+// webhook can mark it paid + decrement stock.
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  const items: { id: string; qty: number }[] = Array.isArray(body.items) ? body.items : [];
+  if (items.length === 0) return NextResponse.json({ error: "Cart is empty." }, { status: 400 });
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const ids = items.map((i) => i.id);
+  const { data: products } = await admin
+    .from("shop_products").select("id, name, price_cents, inventory_count, active").in("id", ids);
+  const byId = new Map((products ?? []).map((p) => [p.id, p]));
+
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+  const orderItems: { product_id: string; name: string; price_cents: number; qty: number }[] = [];
+  for (const it of items) {
+    const p = byId.get(it.id);
+    const qty = Math.max(1, Math.floor(Number(it.qty) || 0));
+    if (!p || !p.active) return NextResponse.json({ error: "An item is no longer available." }, { status: 400 });
+    if (p.inventory_count < qty) return NextResponse.json({ error: `"${p.name}" is out of stock.` }, { status: 400 });
+    lineItems.push({
+      quantity: qty,
+      price_data: { currency: "usd", unit_amount: p.price_cents, product_data: { name: p.name } },
+    });
+    orderItems.push({ product_id: p.id, name: p.name, price_cents: p.price_cents, qty });
+  }
+  const subtotal = orderItems.reduce((s, i) => s + i.price_cents * i.qty, 0);
+
+  // Who's ordering (optional — guest checkout allowed).
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: order, error: orderErr } = await admin.from("shop_orders").insert({
+    customer_id: user?.id ?? null,
+    email: user?.email ?? null,
+    items: orderItems,
+    subtotal_cents: subtotal,
+    shipping_cents: 0,
+    total_cents: subtotal,
+    status: "pending",
+  }).select("id").single();
+  if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
+
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: lineItems,
+    success_url: `${origin}/shop/success?order=${order.id}`,
+    cancel_url: `${origin}/shop/cart`,
+    shipping_address_collection: { allowed_countries: ["US"] },
+    customer_email: user?.email ?? undefined,
+    metadata: { order_id: order.id },
+    client_reference_id: order.id,
+  });
+
+  await admin.from("shop_orders").update({ stripe_session_id: session.id }).eq("id", order.id);
+  return NextResponse.json({ url: session.url });
+}

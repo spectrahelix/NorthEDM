@@ -48,6 +48,13 @@ const NAV_LINKS: NavLink[] = [
     border: "rgba(57,255,20,0.28)",
   },
   {
+    href: "/shop",
+    label: "Shop",
+    color: "#E8FF47",
+    bg: "rgba(232,255,71,0.08)",
+    border: "rgba(232,255,71,0.28)",
+  },
+  {
     href: "/vendors",
     label: "Vendors",
     color: "#FF5C3A",

@@ -199,6 +199,7 @@ export default async function RootLayout({
                 <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Platform</p>
                 <ul className="space-y-2 text-sm text-neutral-400">
                   <li><Link href="/marketplace" className="hover:text-white">Marketplace</Link></li>
+                  <li><Link href="/shop" className="hover:text-white">Shop</Link></li>
                   <li><Link href="/vendors" className="hover:text-white">Vendors</Link></li>
                   <li><Link href="/foraging" className="hover:text-white">Foraging</Link></li>
                   <li><Link href="/festdash" className="hover:text-white">FestDash</Link></li>
