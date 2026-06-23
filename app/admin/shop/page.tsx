@@ -103,6 +103,8 @@ export default function AdminShopPage() {
             <Link href="/admin" className="font-dm-mono text-xs text-neutral-600 hover:text-neutral-400">← Admin</Link>
             <span className="text-neutral-800">|</span>
             <p className="font-dm-mono text-xs uppercase tracking-widest text-[#39FF14]">Shop · Inventory</p>
+            <span className="text-neutral-800">|</span>
+            <Link href="/admin/shop/orders" className="font-dm-mono text-xs text-neutral-400 hover:text-white">Orders →</Link>
           </div>
           <h1 className="mt-2 font-bebas text-4xl tracking-wide">NorthEDM Store</h1>
         </div>
