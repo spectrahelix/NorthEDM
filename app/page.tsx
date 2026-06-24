@@ -70,6 +70,31 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen text-neutral-100">
 
+      {/* ── Beta tester call-out ─────────────────────────────── */}
+      <a
+        href="https://play.google.com/apps/testing/com.northedm.app"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block border-b border-white/10"
+        style={{
+          background:
+            "linear-gradient(90deg, rgba(57,255,20,0.10) 0%, rgba(0,212,255,0.10) 50%, rgba(204,0,255,0.10) 100%)",
+        }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-6 py-2.5 text-center">
+          <span className="text-sm">📱</span>
+          <span className="font-dm-mono text-[11px] uppercase tracking-[0.2em] text-neutral-200 sm:text-xs">
+            NorthEDM is on Android — help us launch.
+          </span>
+          <span
+            className="rounded-full px-3 py-1 font-dm-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-black transition group-hover:opacity-90 group-active:scale-95"
+            style={{ background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)" }}
+          >
+            Become a Tester →
+          </span>
+        </div>
+      </a>
+
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         {/* Brand color radial glows */}

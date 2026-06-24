@@ -54,3 +54,6 @@ skills-lock.json
 # Local MCP + agent skills (machine-specific)
 .mcp.json
 .agents/
+
+# Play Store tester emails — PII, never commit to a public repo
+design/play-store/testers.csv
