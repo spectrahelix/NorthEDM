@@ -136,3 +136,17 @@ export async function notifyNewOrder(opts: { total_cents: number; email?: string
   ]);
 }
 
+/** User-submitted feedback (beta testing) — email + phone push + in-app. */
+export async function notifyFeedback(opts: { message: string; category?: string; email?: string }) {
+  const cat = opts.category?.trim() || "General";
+  const from = opts.email?.trim() ? ` from ${opts.email.trim()}` : " (anonymous)";
+  const message = `New ${cat} feedback${from}:\n\n${opts.message}`;
+  const path = "/admin/users";
+  const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
+  await Promise.allSettled([
+    notifyAdminsInApp("feedback", `New ${cat} feedback${from}.`, path),
+    emailOwner(`💬 NorthEDM feedback — ${cat}`, message),
+    pushOwner("New NorthEDM feedback", `${cat}${from}`, reviewUrl),
+  ]);
+}
+

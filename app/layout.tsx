@@ -227,6 +227,7 @@ export default async function RootLayout({
                 <ul className="space-y-2 text-sm text-neutral-400">
                   <li><Link href="/signup" className="hover:text-white">Create Account</Link></li>
                   <li><Link href="/login" className="hover:text-white">Log In</Link></li>
+                  <li><Link href="/feedback" className="hover:text-white">Feedback</Link></li>
                 </ul>
               </div>
             </div>
