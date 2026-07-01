@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ForumRole = "archon" | "warden" | "merchant" | "wanderer" | "drifter";
 
+export type Social = { label: string; url: string };
+
 export type UserProfile = {
   id: string;
   display_name: string;
@@ -10,6 +12,27 @@ export type UserProfile = {
   bio: string;
   home_city: string;
   role: ForumRole;
+  created_at: string;
+  // Artisan + expanded profile fields
+  is_artisan?: boolean;
+  artisan_status?: "none" | "pending" | "approved";
+  stage_name?: string | null;
+  artisan_craft?: string | null;
+  artisan_statement?: string | null;
+  pronouns?: string | null;
+  website?: string | null;
+  socials?: Social[] | null;
+};
+
+export type ArtisanWork = {
+  id: number;
+  user_id: string;
+  kind: "image" | "embed" | "link";
+  title: string | null;
+  caption: string | null;
+  image_url: string | null;
+  url: string | null;
+  sort: number;
   created_at: string;
 };
 

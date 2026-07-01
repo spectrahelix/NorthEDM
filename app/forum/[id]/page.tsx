@@ -153,6 +153,7 @@ export default async function ThreadDetailPage({
                   <RankBadge
                     role={threadAuthor.role}
                     name={threadAuthorName}
+                    isArtisan={!!threadAuthor.is_artisan}
                   />
                 )}
                 <span className="font-dm-mono text-xs text-neutral-600">
@@ -225,7 +226,11 @@ export default async function ThreadDetailPage({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {replyAuthor && (
-                          <RankBadge role={replyAuthor.role} name={replyName} />
+                          <RankBadge
+                            role={replyAuthor.role}
+                            name={replyName}
+                            isArtisan={!!replyAuthor.is_artisan}
+                          />
                         )}
                         <span className="font-dm-mono text-xs text-neutral-600">
                           {timeAgo(reply.created_at)}

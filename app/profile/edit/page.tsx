@@ -10,6 +10,7 @@ import {
 } from "@/app/components/AvatarBorder";
 import { RankBadge } from "@/app/components/RankBadge";
 import type { UserProfile } from "@/utils/supabase/user-profiles";
+import { ArtisanEditor } from "./ArtisanEditor";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function EditProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [homeCity, setHomeCity] = useState("");
+  const [pronouns, setPronouns] = useState("");
+  const [website, setWebsite] = useState("");
   const [avatarBorder, setAvatarBorder] = useState<BorderKey>("moss");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -49,6 +52,8 @@ export default function EditProfilePage() {
             setDisplayName(p.display_name);
             setBio(p.bio);
             setHomeCity(p.home_city);
+            setPronouns(p.pronouns || "");
+            setWebsite(p.website || "");
             setAvatarBorder((p.avatar_border as BorderKey) || "moss");
             setAvatarUrl(p.avatar_url);
           }
@@ -112,6 +117,8 @@ export default function EditProfilePage() {
         display_name: displayName.trim(),
         bio: bio.trim(),
         home_city: homeCity.trim(),
+        pronouns: pronouns.trim() || null,
+        website: website.trim() || null,
         avatar_border: avatarBorder,
         avatar_url: avatarUrl,
       });
@@ -242,6 +249,36 @@ export default function EditProfilePage() {
             />
           </div>
 
+          {/* Pronouns + Website */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                Pronouns
+              </label>
+              <input
+                type="text"
+                value={pronouns}
+                onChange={(e) => setPronouns(e.target.value)}
+                maxLength={30}
+                placeholder="they/them, she/her…"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                Website
+              </label>
+              <input
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                maxLength={200}
+                placeholder="https://…"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
+              />
+            </div>
+          </div>
+
           {/* Avatar border */}
           <div>
             <label className="mb-3 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
@@ -284,6 +321,10 @@ export default function EditProfilePage() {
             </button>
           </div>
         </div>
+
+        {userId && profile && (
+          <ArtisanEditor userId={userId} profile={profile} />
+        )}
       </div>
     </main>
   );

@@ -62,6 +62,13 @@ const NAV_LINKS: NavLink[] = [
     border: "rgba(255,92,58,0.28)",
   },
   {
+    href: "/artisans",
+    label: "Artisans",
+    color: "#FFC93C",
+    bg: "rgba(255,201,60,0.08)",
+    border: "rgba(255,201,60,0.30)",
+  },
+  {
     href: "/foraging",
     label: "Foraging",
     color: "#FFB347",

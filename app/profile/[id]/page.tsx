@@ -5,6 +5,8 @@ import { getUserProfile } from "@/utils/supabase/user-profiles";
 import { RankBadge } from "@/app/components/RankBadge";
 import { getRoleColor } from "@/app/components/roleColors";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
+import { ArtisanWorks } from "@/app/components/ArtisanWorks";
+import type { ArtisanWork, Social } from "@/utils/supabase/user-profiles";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -75,6 +77,19 @@ export default async function ProfilePage({
   ]);
 
   const nameHistory = (nameHistoryData ?? []) as { display_name: string; changed_at: string }[];
+
+  const isArtisan = !!profile.is_artisan;
+  const socials = (Array.isArray(profile.socials) ? profile.socials : []) as Social[];
+  let works: ArtisanWork[] = [];
+  if (isArtisan) {
+    const { data: worksData } = await supabase
+      .from("artisan_works")
+      .select("*")
+      .eq("user_id", id)
+      .order("sort", { ascending: true })
+      .order("created_at", { ascending: false });
+    works = (worksData ?? []) as ArtisanWork[];
+  }
 
   const isOwn = currentUser?.id === id;
   const roleColor = getRoleColor(profile.role);
@@ -155,11 +170,49 @@ export default async function ProfilePage({
 
         {/* Name + bio */}
         <div className="mb-6">
-          <RankBadge role={profile.role} name={profile.display_name} size="lg" />
-          {profile.home_city && (
-            <p className="mt-1 font-dm-mono text-sm text-neutral-500">
-              📍 {profile.home_city}
+          <RankBadge role={profile.role} name={profile.display_name} size="lg" isArtisan={isArtisan} />
+          {isArtisan && profile.stage_name && (
+            <p className="mt-1 font-bebas text-2xl tracking-wide" style={{ color: "#FFC93C" }}>
+              {profile.stage_name}
+              {profile.artisan_craft && (
+                <span className="ml-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                  {profile.artisan_craft}
+                </span>
+              )}
             </p>
+          )}
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {profile.home_city && (
+              <p className="font-dm-mono text-sm text-neutral-500">📍 {profile.home_city}</p>
+            )}
+            {profile.pronouns && (
+              <p className="font-dm-mono text-sm text-neutral-600">{profile.pronouns}</p>
+            )}
+            {profile.website && (
+              <a
+                href={profile.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-dm-mono text-sm text-[#3AFFD4] hover:underline"
+              >
+                🌐 Website
+              </a>
+            )}
+          </div>
+          {socials.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {socials.map((s, i) => (
+                <a
+                  key={i}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-dm-mono text-xs text-neutral-300 transition hover:bg-white/5"
+                >
+                  {s.label || "Link"}
+                </a>
+              ))}
+            </div>
           )}
           {profile.bio && (
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-neutral-300">
@@ -184,6 +237,25 @@ export default async function ProfilePage({
             </div>
           )}
         </div>
+
+        {/* Artisan showcase */}
+        {isArtisan && (profile.artisan_statement || works.length > 0) && (
+          <div className="mb-8 rounded-2xl border p-6" style={{ borderColor: "#FFC93C33", background: "#FFC93C08" }}>
+            <p className="font-dm-mono text-xs uppercase tracking-[0.3em]" style={{ color: "#FFC93C" }}>
+              ◈ Artisan Showcase
+            </p>
+            {profile.artisan_statement && (
+              <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-neutral-300">
+                {profile.artisan_statement}
+              </p>
+            )}
+            {works.length > 0 && (
+              <div className="mt-5">
+                <ArtisanWorks works={works} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mb-8 grid grid-cols-4 gap-3">
