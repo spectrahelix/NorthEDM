@@ -231,9 +231,17 @@ export default async function RootLayout({
                 </ul>
               </div>
             </div>
-            <p className="mt-10 font-dm-mono text-[10px] text-neutral-700">
-              © {new Date().getFullYear()} NorthEDM. All rights reserved.
-            </p>
+            <div className="mt-10 flex flex-col gap-3 border-t border-white/5 pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-dm-mono text-[10px] text-neutral-700">
+                © {new Date().getFullYear()} NorthEDM LLC. All rights reserved. NorthEDM™, FestDash™,
+                and FestEats™ are trademarks of NorthEDM LLC.
+              </p>
+              <div className="flex flex-wrap gap-4 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">
+                <Link href="/privacy" className="hover:text-neutral-300">Privacy</Link>
+                <Link href="/terms" className="hover:text-neutral-300">Terms</Link>
+                <Link href="/feedback" className="hover:text-neutral-300">Contact</Link>
+              </div>
+            </div>
           </div>
         </footer>
         </div>

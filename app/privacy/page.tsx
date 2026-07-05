@@ -25,9 +25,9 @@ export default function PrivacyPage() {
         <p className="mt-2 font-dm-mono text-xs text-neutral-500">Last updated {UPDATED}</p>
 
         <p className="mt-6 text-sm leading-relaxed text-neutral-400">
-          NorthEDM (&quot;we&quot;, &quot;us&quot;) operates the community hub, vendor marketplace, and
-          FestDash delivery network at northedm.com. This policy explains what we collect, why, and
-          your choices.
+          NorthEDM LLC (&quot;NorthEDM&quot;, &quot;we&quot;, &quot;us&quot;) operates the community
+          hub, vendor marketplace, and FestDash delivery network at northedm.com. This policy
+          explains what we collect, why, and your choices.
         </p>
 
         <Section title="Information we collect">

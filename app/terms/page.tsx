@@ -25,8 +25,9 @@ export default function TermsPage() {
         <p className="mt-2 font-dm-mono text-xs text-neutral-500">Last updated {UPDATED}</p>
 
         <p className="mt-6 text-sm leading-relaxed text-neutral-400">
-          These terms govern your use of NorthEDM (northedm.com), including the community hub, vendor
-          marketplace, and the FestDash delivery network. By using the site you agree to them.
+          These terms govern your use of NorthEDM, operated by NorthEDM LLC (northedm.com), including
+          the community hub, vendor marketplace, and the FestDash delivery network. By using the site
+          you agree to them.
         </p>
 
         <Section title="Accounts">
