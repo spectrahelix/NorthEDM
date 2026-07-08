@@ -46,13 +46,13 @@ const S = 750;
     .sticker{position:relative;width:${S}px;height:${S}px;overflow:hidden;font-family:'DejaVu Sans',sans-serif;color:#f2f2f4;${BG}}
     ${FONTS}
     .ring{position:absolute;inset:37px;border-radius:44px;padding:2px;background:linear-gradient(135deg,#39FF14,#00D4FF,#CC00FF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.85}
-    .center{position:absolute;left:0;right:0;top:50%;transform:translateY(-52%);display:flex;flex-direction:column;align-items:center;text-align:center}
-    .tag{color:rgba(57,255,20,.62);letter-spacing:9px;font-size:16px;margin-bottom:6px}
-    .logo{width:378px;height:378px}
-    .name{font-size:70px;letter-spacing:4px;margin-top:-6px}
-    .foot{position:absolute;left:0;right:0;bottom:64px;text-align:center}
+    .center{position:absolute;left:0;right:0;top:50%;transform:translateY(-54%);display:flex;flex-direction:column;align-items:center;text-align:center}
+    .tag{color:rgba(57,255,20,.66);letter-spacing:3px;font-size:22px;margin-bottom:10px}
+    .logo{width:352px;height:352px}
+    .name{font-size:66px;letter-spacing:4px;margin-top:-2px}
+    .foot{position:absolute;left:0;right:0;bottom:52px;text-align:center}
     .url{color:#00D4FF;letter-spacing:6px;font-size:32px}
-    .sub{color:#FB923C;letter-spacing:5px;font-size:15px;margin-top:7px}
+    .sub{color:#FB923C;letter-spacing:3px;font-size:21px;margin-top:9px}
     .qr{position:absolute;top:58px;right:58px;display:flex;flex-direction:column;align-items:center;gap:6px}
     .qrtile{background:#fff;border-radius:16px;padding:8px}.qrtile img{width:104px;height:104px;display:block}
     .scan{color:#9a9aa2;letter-spacing:4px;font-size:10px}
