@@ -47,19 +47,19 @@ const S = 750;
     ${FONTS}
     .ring{position:absolute;inset:37px;border-radius:44px;padding:2px;background:linear-gradient(135deg,#39FF14,#00D4FF,#CC00FF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.85}
     .center{position:absolute;left:0;right:0;top:50%;transform:translateY(-54%);display:flex;flex-direction:column;align-items:center;text-align:center}
-    .tag{color:rgba(57,255,20,.66);letter-spacing:3px;font-size:22px;margin-bottom:10px}
-    .logo{width:352px;height:352px}
-    .name{font-size:66px;letter-spacing:4px;margin-top:-2px}
-    .foot{position:absolute;left:0;right:0;bottom:52px;text-align:center}
-    .url{color:#00D4FF;letter-spacing:6px;font-size:32px}
-    .sub{color:#FB923C;letter-spacing:3px;font-size:21px;margin-top:9px}
+    .url{color:#00D4FF;letter-spacing:5px;font-size:30px;margin-bottom:12px}
+    .logo{width:338px;height:338px}
+    .name{font-size:64px;letter-spacing:4px;margin-top:-2px}
+    .foot{position:absolute;left:0;right:0;bottom:46px;text-align:center}
+    .tag{color:rgba(57,255,20,.7);letter-spacing:3px;font-size:31px}
+    .sub{color:#FB923C;letter-spacing:1px;font-size:25px;margin-top:11px}
     .qr{position:absolute;top:58px;right:58px;display:flex;flex-direction:column;align-items:center;gap:6px}
     .qrtile{background:#fff;border-radius:16px;padding:8px}.qrtile img{width:104px;height:104px;display:block}
     .scan{color:#9a9aa2;letter-spacing:4px;font-size:10px}
   </style></head><body>
     <div class="sticker"><div class="ring"></div>
-      <div class="center"><div class="mono up tag">Unite the Northeast</div><img class="logo" src="${LOGO_C}"/><div class="word name">NorthEDM</div></div>
-      <div class="foot"><div class="mono up url">northedm.com</div><div class="mono up sub">Community · Marketplace · FestDash</div></div>
+      <div class="center"><div class="mono up url">northedm.com</div><img class="logo" src="${LOGO_C}"/><div class="word name">NorthEDM</div></div>
+      <div class="foot"><div class="mono up tag">Unite the Northeast</div><div class="mono up sub">Community · Marketplace · FestDash</div></div>
       <div class="qr"><div class="qrtile"><img src="${QR}"/></div><div class="mono up scan">Scan</div></div>
     </div>
   </body></html>`;
