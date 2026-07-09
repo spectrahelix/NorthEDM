@@ -7,8 +7,8 @@ import { getRoleColor } from "@/app/components/roleColors";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
 import { ProfileCTAs } from "@/app/components/ProfileCTAs";
-import { profileTags } from "@/utils/supabase/user-profiles";
-import type { ArtisanWork, Social } from "@/utils/supabase/user-profiles";
+import { profileTags, currentShow } from "@/utils/supabase/user-profiles";
+import type { ArtisanWork, Social, VendorShow } from "@/utils/supabase/user-profiles";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -94,6 +94,18 @@ export default async function ProfilePage({
   }
 
   const isOwn = currentUser?.id === id;
+
+  // Upcoming shows (vendors). Hidden from others if the vendor toggled hide.
+  let shows: VendorShow[] = [];
+  if (profile.is_vendor && (isOwn || !profile.hide_shows)) {
+    const { data: showData } = await supabase
+      .from("vendor_shows")
+      .select("*")
+      .eq("user_id", id)
+      .order("start_date", { ascending: true });
+    shows = (showData ?? []) as VendorShow[];
+  }
+  const cur = currentShow(shows);
 
   // Membership CTA statuses (own profile only).
   type CtaStatus = "approved" | "pending" | "none";
@@ -280,6 +292,36 @@ export default async function ProfilePage({
                 style={{ borderColor: "#E8FF4755", background: "#E8FF4712", color: "#E8FF47" }}>
                 ✦ Promoter Dashboard →
               </Link>
+            )}
+          </div>
+        )}
+
+        {/* Upcoming shows (vendors) */}
+        {shows.length > 0 && (
+          <div className="mb-8 rounded-2xl border p-5" style={{ borderColor: "#00D4FF33", background: "#00D4FF08" }}>
+            <div className="flex items-center gap-2">
+              <p className="font-dm-mono text-xs uppercase tracking-[0.3em]" style={{ color: "#00D4FF" }}>▣ Upcoming Shows</p>
+              {cur?.live && (
+                <span className="rounded-full px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest" style={{ color: "#39FF14", background: "#39FF1414" }}>
+                  🟢 Live now
+                </span>
+              )}
+            </div>
+            {cur && (
+              <p className="mt-2 text-sm text-neutral-200">
+                {cur.live ? "Currently at" : "Next"}: <span className="font-semibold" style={{ color: "#00D4FF" }}>{cur.show.festival_name}</span>
+                {cur.show.location ? <span className="text-neutral-400"> — {cur.show.location}</span> : null}
+                {cur.show.start_date ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">{cur.show.start_date}{cur.show.end_date && cur.show.end_date !== cur.show.start_date ? `→${cur.show.end_date}` : ""}</span> : null}
+              </p>
+            )}
+            {shows.length > 1 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {shows.map((s) => (
+                  <span key={s.id} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-dm-mono text-xs text-neutral-400">
+                    {s.festival_name}{s.start_date ? ` · ${s.start_date}` : ""}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         )}

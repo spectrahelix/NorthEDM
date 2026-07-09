@@ -12,6 +12,9 @@ const ALLOWED = new Set([
   "is_festdash_vendor",
   "is_promoter",
   "is_artisan",
+  "is_driver",
+  "is_forager",
+  "is_verified",
 ]);
 
 export async function POST(req: Request) {

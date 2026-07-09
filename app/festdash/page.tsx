@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { currentShow, type VendorShow } from "@/utils/supabase/user-profiles";
 
 export const metadata = {
   title: "FestDash / FestEats — Festival Delivery Network",
@@ -45,6 +46,30 @@ export default async function FestDashPage() {
   const vendorCount = vendorsRes.count ?? 0;
   const runnerCount = runnersRes.count ?? 0;
   const deliveredCount = deliveriesRes.count ?? 0;
+
+  // Active FestDash vendors + their current/next show (for the "who's on FestDash" list).
+  const { data: fdVendors } = await admin
+    .from("festdash_vendors")
+    .select("vendor_id, user_id")
+    .eq("is_active", true);
+  const vIds = (fdVendors ?? []).map((v) => v.vendor_id).filter(Boolean);
+  const uIds = (fdVendors ?? []).map((v) => v.user_id).filter(Boolean);
+  const [vRows, showRows, profRows] = await Promise.all([
+    vIds.length ? admin.from("vendors").select("id, name").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null }[] }),
+    uIds.length ? admin.from("vendor_shows").select("*").in("user_id", uIds) : Promise.resolve({ data: [] as VendorShow[] }),
+    uIds.length ? admin.from("user_profiles").select("id, hide_shows").in("id", uIds) : Promise.resolve({ data: [] as { id: string; hide_shows: boolean }[] }),
+  ]);
+  const nameById = new Map((vRows.data ?? []).map((v) => [v.id, v.name]));
+  const hideById = new Map((profRows.data ?? []).map((p) => [p.id, p.hide_shows]));
+  const showsByUser = new Map<string, VendorShow[]>();
+  for (const s of (showRows.data ?? []) as VendorShow[]) {
+    if (!showsByUser.has(s.user_id)) showsByUser.set(s.user_id, []);
+    showsByUser.get(s.user_id)!.push(s);
+  }
+  const activeVendors = (fdVendors ?? []).map((v) => {
+    const shows = hideById.get(v.user_id) ? [] : (showsByUser.get(v.user_id) ?? []);
+    return { vendorId: v.vendor_id as number, name: (nameById.get(v.vendor_id) as string) || "Vendor", cur: currentShow(shows) };
+  });
 
   return (
     <main className="min-h-screen">
@@ -148,6 +173,36 @@ export default async function FestDashPage() {
           ))}
         </div>
       </section>
+
+      {/* Active FestDash vendors */}
+      {activeVendors.length > 0 && (
+        <section className="mx-auto max-w-5xl px-6 py-16">
+          <h2 className="text-center font-bebas text-4xl tracking-wide">On FestDash Now</h2>
+          <p className="mt-2 text-center text-neutral-400">Vendors delivering through FestDash — and where to find them.</p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {activeVendors.map((v) => (
+              <Link key={v.vendorId} href={`/marketplace/${v.vendorId}`}
+                className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-[#FB923C]/40 hover:bg-white/[0.05]">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="truncate font-bebas text-2xl tracking-wide group-hover:text-[#FB923C]">{v.name}</h3>
+                  {v.cur?.live && (
+                    <span className="shrink-0 rounded-full px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest" style={{ color: "#39FF14", background: "#39FF1414" }}>🟢 Live</span>
+                  )}
+                </div>
+                {v.cur ? (
+                  <p className="mt-1.5 text-sm text-neutral-400">
+                    {v.cur.live ? "At" : "Next"}: <span className="text-neutral-200">{v.cur.show.festival_name}</span>
+                    {v.cur.show.location ? ` — ${v.cur.show.location}` : ""}
+                  </p>
+                ) : (
+                  <p className="mt-1.5 font-dm-mono text-xs text-neutral-600">Delivering on FestDash</p>
+                )}
+                <p className="mt-3 font-dm-mono text-[11px] uppercase tracking-widest text-[#FB923C]">View market →</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Vendor CTA */}
       <section className="border-y border-white/10 bg-orange-950/20 px-6 py-20">

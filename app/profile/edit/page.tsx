@@ -12,6 +12,7 @@ import { RankBadge } from "@/app/components/RankBadge";
 import { profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
 import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
 import { ArtisanEditor } from "./ArtisanEditor";
+import { ShowsEditor } from "./ShowsEditor";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -434,6 +435,12 @@ export default function EditProfilePage() {
             </button>
           </div>
         </div>
+
+        {userId && profile && profile.is_vendor && (
+          <div className="mt-10">
+            <ShowsEditor userId={userId} initialHideShows={!!profile.hide_shows} />
+          </div>
+        )}
 
         {userId && profile && (
           <ArtisanEditor userId={userId} profile={profile} />

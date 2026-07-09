@@ -42,6 +42,39 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+  // Prefill checkout from the user's saved personal info (name, phone, address)
+  // by attaching a Stripe customer. Falls back to just the email.
+  let customerId: string | null = null;
+  if (user) {
+    const { data: me } = await admin
+      .from("user_profiles")
+      .select("full_name, phone, address_line1, address_line2, city, region, postal_code")
+      .eq("id", user.id)
+      .single();
+    if (me && (me.address_line1 || me.full_name)) {
+      const address = me.address_line1
+        ? {
+            line1: me.address_line1,
+            line2: me.address_line2 || undefined,
+            city: me.city || undefined,
+            state: me.region || undefined,
+            postal_code: me.postal_code || undefined,
+            country: "US",
+          }
+        : undefined;
+      const cust = await stripe.customers.create({
+        email: user.email ?? undefined,
+        name: me.full_name || undefined,
+        phone: me.phone || undefined,
+        address,
+        ...(address ? { shipping: { name: me.full_name || user.email || "Customer", phone: me.phone || undefined, address } } : {}),
+      });
+      customerId = cust.id;
+    }
+  }
+
   const { data: order, error: orderErr } = await admin.from("shop_orders").insert({
     customer_id: user?.id ?? null,
     email: user?.email ?? null,
@@ -54,14 +87,14 @@ export async function POST(req: Request) {
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     line_items: lineItems,
     success_url: `${origin}/shop/success?order=${order.id}`,
     cancel_url: `${origin}/shop/cart`,
     shipping_address_collection: { allowed_countries: ["US"] },
-    customer_email: user?.email ?? undefined,
+    // Attach the customer (prefills name/address) or just the email.
+    ...(customerId ? { customer: customerId } : { customer_email: user?.email ?? undefined }),
     metadata: { order_id: order.id },
     client_reference_id: order.id,
   });
