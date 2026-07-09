@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { TAG_ORDER, type TagKey } from "@/app/components/roleColors";
 
 export type ForumRole = "archon" | "warden" | "merchant" | "wanderer" | "drifter";
 
@@ -22,7 +23,30 @@ export type UserProfile = {
   pronouns?: string | null;
   website?: string | null;
   socials?: Social[] | null;
+  // Approval tags (denormalized flags)
+  is_vendor?: boolean;
+  is_festdash_vendor?: boolean;
+  is_promoter?: boolean;
+  is_founder?: boolean;
+  hidden_tags?: string[] | null;
 };
+
+// The ordered tag keys a profile has earned. Pass forum=true to drop any the
+// user chose to hide from the forum (they always show on their own profile).
+export function profileTags(
+  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "hidden_tags">,
+  opts: { forum?: boolean } = {}
+): TagKey[] {
+  const has: Record<TagKey, boolean | undefined> = {
+    founder: p.is_founder,
+    vendor: p.is_vendor,
+    festdash_vendor: p.is_festdash_vendor,
+    promoter: p.is_promoter,
+    artisan: p.is_artisan,
+  };
+  const hidden = new Set(opts.forum ? p.hidden_tags ?? [] : []);
+  return TAG_ORDER.filter((k) => has[k] && !hidden.has(k));
+}
 
 export type ArtisanWork = {
   id: number;

@@ -88,6 +88,12 @@ export async function PATCH(
           .update({ role: "promoter" })
           .eq("id", app.user_id);
       }
+
+      // Light up the Promoter tag on their profile.
+      await adminClient
+        .from("user_profiles")
+        .update({ is_promoter: true })
+        .eq("id", app.user_id);
     }
   }
 

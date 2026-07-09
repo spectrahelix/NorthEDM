@@ -43,6 +43,11 @@ export async function PATCH(
         is_active: true,
       }, { onConflict: "vendor_id" });
     }
+    if (app?.user_id) {
+      // Light up the FestDash Vendor tag on their profile.
+      await adminClient.from("user_profiles")
+        .update({ is_festdash_vendor: true }).eq("id", app.user_id);
+    }
   }
 
   const { error } = await adminClient

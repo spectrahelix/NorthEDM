@@ -1,22 +1,17 @@
 "use client";
 
-import { ROLE_CONFIG, type ForumRole } from "./roleColors";
+import { ROLE_CONFIG, TAG_CONFIG, type ForumRole, type TagKey } from "./roleColors";
 
-const ARTISAN_COLOR = "#FFC93C";
-
-function ArtisanChip({ size }: { size: "sm" | "md" | "lg" }) {
+function TagChip({ tagKey, size }: { tagKey: TagKey; size: "sm" | "md" | "lg" }) {
+  const t = TAG_CONFIG[tagKey];
   const chip = size === "lg" ? "text-[11px]" : "text-[10px]";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-dm-mono ${chip} uppercase tracking-widest`}
-      style={{
-        color: ARTISAN_COLOR,
-        borderColor: `${ARTISAN_COLOR}55`,
-        background: `${ARTISAN_COLOR}14`,
-      }}
-      title="Verified Artisan"
+      style={{ color: t.color, borderColor: `${t.color}55`, background: `${t.color}14` }}
+      title={t.label}
     >
-      <span aria-hidden>◈</span> Artisan
+      <span aria-hidden>{t.glyph}</span> {t.label}
     </span>
   );
 }
@@ -25,21 +20,22 @@ export function RankBadge({
   role,
   name,
   size = "sm",
-  isArtisan = false,
+  tags = [],
 }: {
   role: string;
   name: string;
   size?: "sm" | "md" | "lg";
-  isArtisan?: boolean;
+  tags?: TagKey[];
 }) {
   const config = ROLE_CONFIG[role as ForumRole] ?? ROLE_CONFIG.drifter;
   const textSize =
     size === "lg" ? "text-lg" : size === "md" ? "text-base" : "text-sm";
   const badgeSize = size === "lg" ? "text-[11px]" : "text-[10px]";
+  const chips = tags.map((t) => <TagChip key={t} tagKey={t} size={size} />);
 
   if (config.effect === "sparkle") {
     return (
-      <span className="relative inline-flex items-center gap-1.5">
+      <span className="relative inline-flex flex-wrap items-center gap-1.5">
         <span
           className={`rank-sparkle font-semibold ${textSize}`}
           style={{ "--rank-color": config.color } as React.CSSProperties}
@@ -55,14 +51,14 @@ export function RankBadge({
         <span className="sparkle-star s1" style={{ color: config.color }}>✦</span>
         <span className="sparkle-star s2" style={{ color: config.color }}>·</span>
         <span className="sparkle-star s3" style={{ color: config.color }}>✧</span>
-        {isArtisan && <ArtisanChip size={size} />}
+        {chips}
       </span>
     );
   }
 
   if (config.effect === "pulse") {
     return (
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex flex-wrap items-center gap-1.5">
         <span
           className={`rank-pulse font-semibold ${textSize}`}
           style={{ color: config.color }}
@@ -75,13 +71,13 @@ export function RankBadge({
         >
           {config.label}
         </span>
-        {isArtisan && <ArtisanChip size={size} />}
+        {chips}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex flex-wrap items-center gap-1.5">
       <span className={`font-semibold ${textSize}`} style={{ color: config.color }}>
         {name}
       </span>
@@ -91,7 +87,7 @@ export function RankBadge({
       >
         {config.label}
       </span>
-      {isArtisan && <ArtisanChip size={size} />}
+      {chips}
     </span>
   );
 }
