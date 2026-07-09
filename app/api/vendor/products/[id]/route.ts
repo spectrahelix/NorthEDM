@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { canManageInventory } from "@/utils/marketplace";
 
 async function getVendorId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number | null> {
   const { data } = await supabase
@@ -26,6 +27,9 @@ export async function PATCH(
   const vendorId = await getVendorId(supabase, user.id);
   if (!vendorId) {
     return NextResponse.json({ error: "No vendor linked to this account" }, { status: 403 });
+  }
+  if (!(await canManageInventory(supabase, user))) {
+    return NextResponse.json({ error: "Marketplace access required." }, { status: 403 });
   }
 
   const { id } = await params;
@@ -71,6 +75,9 @@ export async function DELETE(
   const vendorId = await getVendorId(supabase, user.id);
   if (!vendorId) {
     return NextResponse.json({ error: "No vendor linked to this account" }, { status: 403 });
+  }
+  if (!(await canManageInventory(supabase, user))) {
+    return NextResponse.json({ error: "Marketplace access required." }, { status: 403 });
   }
 
   const { id } = await params;
