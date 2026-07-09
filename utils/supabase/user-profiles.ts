@@ -25,6 +25,7 @@ export type UserProfile = {
   socials?: Social[] | null;
   // Approval tags (denormalized flags)
   is_vendor?: boolean;
+  is_marketplace?: boolean;
   is_festdash_vendor?: boolean;
   is_promoter?: boolean;
   is_founder?: boolean;
@@ -42,12 +43,13 @@ export type UserProfile = {
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the
 // user chose to hide from the forum (they always show on their own profile).
 export function profileTags(
-  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "hidden_tags">,
+  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_marketplace" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "hidden_tags">,
   opts: { forum?: boolean } = {}
 ): TagKey[] {
   const has: Record<TagKey, boolean | undefined> = {
     founder: p.is_founder,
     vendor: p.is_vendor,
+    marketplace: p.is_marketplace,
     festdash_vendor: p.is_festdash_vendor,
     promoter: p.is_promoter,
     artisan: p.is_artisan,

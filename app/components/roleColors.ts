@@ -25,6 +25,7 @@ export function getRoleColor(role: string): string {
 export type TagKey =
   | "founder"
   | "vendor"
+  | "marketplace"
   | "festdash_vendor"
   | "promoter"
   | "artisan";
@@ -33,11 +34,12 @@ export const TAG_CONFIG: Record<
   TagKey,
   { label: string; color: string; glyph: string; flag: string }
 > = {
-  founder:         { label: "Founder",   color: "#CC00FF", glyph: "♛", flag: "is_founder" },
-  vendor:          { label: "Vendor",    color: "#39FF14", glyph: "⬢", flag: "is_vendor" },
-  festdash_vendor: { label: "FestDash",  color: "#FB923C", glyph: "◆", flag: "is_festdash_vendor" },
-  promoter:        { label: "Promoter",  color: "#E8FF47", glyph: "✦", flag: "is_promoter" },
-  artisan:         { label: "Artisan",   color: "#FFC93C", glyph: "◈", flag: "is_artisan" },
+  founder:         { label: "Founder",     color: "#CC00FF", glyph: "♛", flag: "is_founder" },
+  vendor:          { label: "Vendor",      color: "#39FF14", glyph: "⬢", flag: "is_vendor" },
+  marketplace:     { label: "Marketplace", color: "#00D4FF", glyph: "▣", flag: "is_marketplace" },
+  festdash_vendor: { label: "FestDash",    color: "#FB923C", glyph: "◆", flag: "is_festdash_vendor" },
+  promoter:        { label: "Promoter",    color: "#E8FF47", glyph: "✦", flag: "is_promoter" },
+  artisan:         { label: "Artisan",     color: "#FFC93C", glyph: "◈", flag: "is_artisan" },
 };
 
-export const TAG_ORDER: TagKey[] = ["founder", "vendor", "festdash_vendor", "promoter", "artisan"];
+export const TAG_ORDER: TagKey[] = ["founder", "vendor", "marketplace", "festdash_vendor", "promoter", "artisan"];

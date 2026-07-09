@@ -68,8 +68,39 @@ export default async function MarketplacePage() {
 
   const vendors = (data ?? []) as Vendor[];
 
+  // Show the "get your own Marketplace" CTA to anyone who doesn't already have access.
+  const { data: { user } } = await supabase.auth.getUser();
+  let hasMarketplace = false;
+  if (user) {
+    const { data: me } = await supabase
+      .from("user_profiles")
+      .select("is_marketplace")
+      .eq("id", user.id)
+      .single();
+    hasMarketplace = !!me?.is_marketplace;
+  }
+
   return (
     <main className="min-h-screen text-neutral-100">
+      {!hasMarketplace && (
+        <Link
+          href="/marketplace/apply"
+          className="group block border-b border-white/10"
+          style={{ background: "linear-gradient(90deg, rgba(0,212,255,0.10) 0%, rgba(57,255,20,0.08) 100%)" }}
+        >
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-1.5 px-6 py-4 text-center">
+            <span className="font-dm-mono text-xs uppercase tracking-[0.25em] text-neutral-200 sm:text-sm">
+              Want to have your own NorthEDM Marketplace?
+            </span>
+            <span
+              className="rounded-full px-5 py-1.5 font-dm-mono text-sm font-bold uppercase tracking-[0.15em] text-black transition group-hover:opacity-90 group-active:scale-95"
+              style={{ background: "linear-gradient(90deg, #00D4FF 0%, #39FF14 100%)" }}
+            >
+              &gt;&gt;CLICK HERE&lt;&lt;
+            </span>
+          </div>
+        </Link>
+      )}
       <section className="border-b border-white/10">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <p className="mb-4 text-sm uppercase tracking-[0.3em] text-green-300">
