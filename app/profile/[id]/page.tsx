@@ -6,6 +6,7 @@ import { RankBadge } from "@/app/components/RankBadge";
 import { getRoleColor } from "@/app/components/roleColors";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
+import { profileTags } from "@/utils/supabase/user-profiles";
 import type { ArtisanWork, Social } from "@/utils/supabase/user-profiles";
 
 function timeAgo(dateStr: string) {
@@ -170,7 +171,7 @@ export default async function ProfilePage({
 
         {/* Name + bio */}
         <div className="mb-6">
-          <RankBadge role={profile.role} name={profile.display_name} size="lg" isArtisan={isArtisan} />
+          <RankBadge role={profile.role} name={profile.display_name} size="lg" tags={profileTags(profile)} />
           {isArtisan && profile.stage_name && (
             <p className="mt-1 font-bebas text-2xl tracking-wide" style={{ color: "#FFC93C" }}>
               {profile.stage_name}

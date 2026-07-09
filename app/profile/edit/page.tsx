@@ -9,7 +9,8 @@ import {
   type BorderKey,
 } from "@/app/components/AvatarBorder";
 import { RankBadge } from "@/app/components/RankBadge";
-import type { UserProfile } from "@/utils/supabase/user-profiles";
+import { profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
+import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
 import { ArtisanEditor } from "./ArtisanEditor";
 
 export default function EditProfilePage() {
@@ -30,6 +31,7 @@ export default function EditProfilePage() {
   const [website, setWebsite] = useState("");
   const [avatarBorder, setAvatarBorder] = useState<BorderKey>("moss");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [hiddenTags, setHiddenTags] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -56,6 +58,7 @@ export default function EditProfilePage() {
             setWebsite(p.website || "");
             setAvatarBorder((p.avatar_border as BorderKey) || "moss");
             setAvatarUrl(p.avatar_url);
+            setHiddenTags(Array.isArray(p.hidden_tags) ? p.hidden_tags : []);
           }
           setLoading(false);
         });
@@ -121,6 +124,7 @@ export default function EditProfilePage() {
         website: website.trim() || null,
         avatar_border: avatarBorder,
         avatar_url: avatarUrl,
+        hidden_tags: hiddenTags,
       });
     setSaving(false);
     if (upsertError) {
@@ -187,7 +191,7 @@ export default function EditProfilePage() {
             </p>
             {profile && (
               <div className="mt-2">
-                <RankBadge role={profile.role} name={displayName || "Your Name"} />
+                <RankBadge role={profile.role} name={displayName || "Your Name"} tags={profileTags(profile)} />
               </div>
             )}
           </div>
@@ -299,6 +303,47 @@ export default function EditProfilePage() {
               ))}
             </div>
           </div>
+
+          {/* Forum tags — choose which of your earned tags show in the forum */}
+          {profile && profileTags(profile).length > 0 && (
+            <div>
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                Forum Tags
+              </label>
+              <p className="mb-3 text-xs text-neutral-600">
+                Your tags always show on your profile. Choose which ones also show next to your name in the forum.
+              </p>
+              <div className="space-y-2">
+                {profileTags(profile).map((k: TagKey) => {
+                  const t = TAG_CONFIG[k];
+                  const shown = !hiddenTags.includes(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() =>
+                        setHiddenTags((prev) =>
+                          shown ? [...prev, k] : prev.filter((x) => x !== k)
+                        )
+                      }
+                      className="flex w-full items-center justify-between rounded-xl border px-4 py-2.5 text-left transition"
+                      style={{
+                        borderColor: shown ? `${t.color}55` : "rgba(255,255,255,0.08)",
+                        background: shown ? `${t.color}10` : "transparent",
+                      }}
+                    >
+                      <span className="font-dm-mono text-xs uppercase tracking-widest" style={{ color: t.color }}>
+                        {t.glyph} {t.label}
+                      </span>
+                      <span className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                        {shown ? "Shown in forum ✓" : "Hidden"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-sm text-[#FF5C3A]">{error}</p>}
           {saved && (

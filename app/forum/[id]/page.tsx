@@ -7,7 +7,7 @@ import { ReportButton } from "@/app/components/ReportModal";
 import { UserPopover } from "@/app/components/UserPopover";
 import { RankBadge } from "@/app/components/RankBadge";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
-import { getUserProfileMap } from "@/utils/supabase/user-profiles";
+import { getUserProfileMap, profileTags } from "@/utils/supabase/user-profiles";
 import { getProfile } from "@/utils/supabase/profile";
 
 type Thread = {
@@ -153,7 +153,7 @@ export default async function ThreadDetailPage({
                   <RankBadge
                     role={threadAuthor.role}
                     name={threadAuthorName}
-                    isArtisan={!!threadAuthor.is_artisan}
+                    tags={profileTags(threadAuthor, { forum: true })}
                   />
                 )}
                 <span className="font-dm-mono text-xs text-neutral-600">
@@ -229,7 +229,7 @@ export default async function ThreadDetailPage({
                           <RankBadge
                             role={replyAuthor.role}
                             name={replyName}
-                            isArtisan={!!replyAuthor.is_artisan}
+                            tags={profileTags(replyAuthor, { forum: true })}
                           />
                         )}
                         <span className="font-dm-mono text-xs text-neutral-600">

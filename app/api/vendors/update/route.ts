@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const ADMIN_EMAIL = "cjblue27@gmail.com";
 
@@ -47,6 +48,25 @@ export async function POST(req: Request) {
         { success: false, error: error.message },
         { status: 500 }
       );
+    }
+
+    // Sync the Vendor tag on the owner's profile (service role — the flag is
+    // guarded against non-service-role writes).
+    const { data: vendorRow } = await supabase
+      .from("vendors")
+      .select("user_id")
+      .eq("id", data.id)
+      .single();
+    if (vendorRow?.user_id) {
+      const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
+      await admin
+        .from("user_profiles")
+        .update({ is_vendor: data.status === "approved" })
+        .eq("id", vendorRow.user_id);
     }
 
     return NextResponse.json({ success: true });

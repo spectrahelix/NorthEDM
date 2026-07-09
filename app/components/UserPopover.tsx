@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { RankBadge } from "./RankBadge";
 import { AvatarBorder } from "./AvatarBorder";
-import type { UserProfile } from "@/utils/supabase/user-profiles";
+import { profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
 
 export function UserPopover({
   profile,
@@ -44,7 +44,7 @@ export function UserPopover({
               )}
             </AvatarBorder>
             <div className="min-w-0 flex-1">
-              <RankBadge role={profile.role} name={profile.display_name} isArtisan={!!profile.is_artisan} />
+              <RankBadge role={profile.role} name={profile.display_name} tags={profileTags(profile)} />
               {profile.home_city && (
                 <p className="mt-0.5 font-dm-mono text-[10px] text-neutral-500">
                   {profile.home_city}

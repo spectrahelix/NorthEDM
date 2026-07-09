@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { RankBadge } from "@/app/components/RankBadge";
+import { profileTags } from "@/utils/supabase/user-profiles";
 import Link from "next/link";
 
 type AdminUser = {
@@ -12,6 +13,11 @@ type AdminUser = {
   role: string;
   email: string;
   created_at: string;
+  is_founder?: boolean;
+  is_vendor?: boolean;
+  is_festdash_vendor?: boolean;
+  is_promoter?: boolean;
+  is_artisan?: boolean;
 };
 
 const ROLES = ["drifter", "wanderer", "merchant", "warden", "archon"] as const;
@@ -100,6 +106,26 @@ export default function AdminUsersPage() {
     }
     setUsers((prev) =>
       prev.map((u) => (u.id === targetId ? { ...u, role: newRole } : u))
+    );
+  }
+
+  async function toggleFounder(target: AdminUser) {
+    setSavingId(target.id);
+    setError("");
+    const value = !target.is_founder;
+    const res = await fetch("/api/admin/user-tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: target.id, flag: "is_founder", value }),
+    });
+    const json = await res.json();
+    setSavingId(null);
+    if (!res.ok) {
+      setError(json.error ?? "Failed to update Founder tag");
+      return;
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.id === target.id ? { ...u, is_founder: value } : u))
     );
   }
 
@@ -223,7 +249,7 @@ export default function AdminUsersPage() {
                           href={`/profile/${u.id}`}
                           className="hover:underline"
                         >
-                          <RankBadge role={u.role} name={u.display_name} />
+                          <RankBadge role={u.role} name={u.display_name} tags={profileTags(u)} />
                         </Link>
                       </div>
                     </td>
@@ -250,6 +276,22 @@ export default function AdminUsersPage() {
                         <span className="ml-2 font-dm-mono text-[10px] text-neutral-600">
                           saving…
                         </span>
+                      )}
+                      {/* Founder is a vendor-only tag */}
+                      {u.is_vendor && (
+                        <button
+                          onClick={() => toggleFounder(u)}
+                          disabled={savingId === u.id}
+                          className="ml-2 rounded-lg border px-2.5 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50"
+                          style={
+                            u.is_founder
+                              ? { color: "#CC00FF", borderColor: "#CC00FF55", background: "#CC00FF14" }
+                              : { color: "#9aa", borderColor: "rgba(255,255,255,0.12)" }
+                          }
+                          title={u.is_founder ? "Revoke Founder" : "Grant Founder"}
+                        >
+                          ♛ {u.is_founder ? "Founder ✓" : "Founder"}
+                        </button>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
