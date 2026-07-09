@@ -29,6 +29,14 @@ export type UserProfile = {
   is_promoter?: boolean;
   is_founder?: boolean;
   hidden_tags?: string[] | null;
+  // Personal info (checkout autofill)
+  full_name?: string | null;
+  phone?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postal_code?: string | null;
 };
 
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the

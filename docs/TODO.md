@@ -33,10 +33,10 @@ _Living reference of open work. Last updated: 2026-07-08._
 Big multi-part build. Status:
 - ✅ **Approval tag chips** — Founder (magenta, admin-granted, vendor-only), Vendor (green), FestDash Vendor (orange), Promoter (yellow), Artisan (gold). Show on profile/forum/hover; forum tags user-toggleable. Approvals light them up. **Done (#60).**
 - ⬜ **Extra tags** — Driver (teal), Forager/Guide (green), Verified (checkmark). Add as admin-grantable flags.
-- ⬜ **Admin "take the wheel"** — from admin view, open any user's profile + an Edit button to manually fix account fields.
-- ⬜ **Email change w/ verification** — when admin changes a user's email, send a verification email; only hard-save after they confirm.
-- ⬜ **3 profile CTA buttons** (on your own profile): Vendor apply / FestDash apply (gated on being a vendor) / Promoter apply — conditional clickable vs "you're already X, thank you" states (+ pending).
-- ⬜ **Personal info on profile** → auto-fills checkout (shop + FestDash) screens.
+- ✅ **Admin "take the wheel"** — from admin view, open any user's profile + an Edit button to manually fix account fields.
+- ✅ **Email change w/ verification** — when admin changes a user's email, send a verification email; only hard-save after they confirm.
+- ✅ **3 profile CTA buttons** (on your own profile): Vendor apply / FestDash apply (gated on being a vendor) / Promoter apply — conditional clickable vs "you're already X, thank you" states (+ pending).
+- ✅ **Personal info on profile** → auto-fills checkout (shop + FestDash) screens.
 - ⬜ **Vendor Profile + Upcoming Shows** — add shows manually or via CSV → editable "Upcoming Shows" array + "hide from listings" toggle. Current/next show shows on marketplace + FestDash listings.
 - ⬜ **FestDash page: list Active FestDash Vendors** with their current/next show + location; "🟢 Live now" badge; filter to the customer's chosen festival.
 
