@@ -64,6 +64,10 @@ export default function CartPage() {
               className="mt-5 w-full rounded-2xl bg-[#39FF14] py-4 text-lg font-semibold text-black transition hover:opacity-90 disabled:opacity-50">
               {loading ? "Redirecting to secure checkout…" : "Checkout"}
             </button>
+            <Link href="/shop"
+              className="mt-3 block w-full rounded-2xl border border-white/15 py-3.5 text-center text-base font-medium text-neutral-200 transition hover:bg-white/5">
+              ← Keep Shopping
+            </Link>
             <p className="mt-3 text-center font-dm-mono text-[11px] text-neutral-600">🔒 Secure payment via Stripe</p>
           </>
         )}
