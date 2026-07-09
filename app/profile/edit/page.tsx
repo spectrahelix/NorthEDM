@@ -32,6 +32,13 @@ export default function EditProfilePage() {
   const [avatarBorder, setAvatarBorder] = useState<BorderKey>("moss");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hiddenTags, setHiddenTags] = useState<string[]>([]);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address1, setAddress1] = useState("");
+  const [address2, setAddress2] = useState("");
+  const [city, setCity] = useState("");
+  const [region, setRegion] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +66,13 @@ export default function EditProfilePage() {
             setAvatarBorder((p.avatar_border as BorderKey) || "moss");
             setAvatarUrl(p.avatar_url);
             setHiddenTags(Array.isArray(p.hidden_tags) ? p.hidden_tags : []);
+            setFullName(p.full_name || "");
+            setPhone(p.phone || "");
+            setAddress1(p.address_line1 || "");
+            setAddress2(p.address_line2 || "");
+            setCity(p.city || "");
+            setRegion(p.region || "");
+            setPostalCode(p.postal_code || "");
           }
           setLoading(false);
         });
@@ -125,6 +139,13 @@ export default function EditProfilePage() {
         avatar_border: avatarBorder,
         avatar_url: avatarUrl,
         hidden_tags: hiddenTags,
+        full_name: fullName.trim() || null,
+        phone: phone.trim() || null,
+        address_line1: address1.trim() || null,
+        address_line2: address2.trim() || null,
+        city: city.trim() || null,
+        region: region.trim() || null,
+        postal_code: postalCode.trim() || null,
       });
     setSaving(false);
     if (upsertError) {
@@ -280,6 +301,53 @@ export default function EditProfilePage() {
                 placeholder="https://…"
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
               />
+            </div>
+          </div>
+
+          {/* Personal info — used to auto-fill checkout */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <p className="font-dm-mono text-xs uppercase tracking-[0.2em] text-[#3AFFD4]">
+              Personal Info
+            </p>
+            <p className="mt-1 mb-4 text-xs text-neutral-500">
+              Private — never shown publicly. Used to auto-fill your name, phone &amp; address at
+              checkout (FestDash orders, Shop) so you don&apos;t retype it.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Full Name</label>
+                <input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={80}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 focus:outline-none" />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Phone</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} type="tel"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 focus:outline-none" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Address</label>
+                <input value={address1} onChange={(e) => setAddress1(e.target.value)} maxLength={120} placeholder="Street address"
+                  className="mb-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
+                <input value={address2} onChange={(e) => setAddress2(e.target.value)} maxLength={120} placeholder="Apt, suite, etc. (optional)"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">City</label>
+                <input value={city} onChange={(e) => setCity(e.target.value)} maxLength={60}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">State</label>
+                  <input value={region} onChange={(e) => setRegion(e.target.value)} maxLength={40}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">ZIP</label>
+                  <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} maxLength={20}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 focus:outline-none" />
+                </div>
+              </div>
             </div>
           </div>
 

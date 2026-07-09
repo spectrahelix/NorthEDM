@@ -6,6 +6,7 @@ import { RankBadge } from "@/app/components/RankBadge";
 import { getRoleColor } from "@/app/components/roleColors";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
+import { ProfileCTAs } from "@/app/components/ProfileCTAs";
 import { profileTags } from "@/utils/supabase/user-profiles";
 import type { ArtisanWork, Social } from "@/utils/supabase/user-profiles";
 
@@ -93,6 +94,23 @@ export default async function ProfilePage({
   }
 
   const isOwn = currentUser?.id === id;
+
+  // Membership CTA statuses (own profile only).
+  type CtaStatus = "approved" | "pending" | "none";
+  let ctas: { vendor: CtaStatus; festdash: CtaStatus; promoter: CtaStatus } | null = null;
+  if (isOwn) {
+    const [vendorApp, fdApp, promoApp] = await Promise.all([
+      supabase.from("vendors").select("status").eq("user_id", id).eq("status", "pending").limit(1),
+      supabase.from("festdash_vendor_applications").select("status").eq("user_id", id).eq("status", "pending").limit(1),
+      supabase.from("festdash_promoter_applications").select("status").eq("user_id", id).eq("status", "pending").limit(1),
+    ]);
+    ctas = {
+      vendor: profile.is_vendor ? "approved" : (vendorApp.data?.length ? "pending" : "none"),
+      festdash: profile.is_festdash_vendor ? "approved" : (fdApp.data?.length ? "pending" : "none"),
+      promoter: profile.is_promoter ? "approved" : (promoApp.data?.length ? "pending" : "none"),
+    };
+  }
+
   const roleColor = getRoleColor(profile.role);
   const initials = profile.display_name.slice(0, 2).toUpperCase() || "??";
 
@@ -238,6 +256,9 @@ export default async function ProfilePage({
             </div>
           )}
         </div>
+
+        {/* Membership CTAs (own profile) */}
+        {ctas && <ProfileCTAs vendor={ctas.vendor} festdash={ctas.festdash} promoter={ctas.promoter} />}
 
         {/* Artisan showcase */}
         {isArtisan && (profile.artisan_statement || works.length > 0) && (

@@ -82,7 +82,14 @@ export default function OrderPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setAuthed(false); setLoadingVendors(false); return; }
       setAuthed(true);
-      if (user.email) setCustomerName(user.email.split("@")[0]);
+      // Auto-fill name + phone from the user's saved profile personal info.
+      const { data: me } = await supabase
+        .from("user_profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .single();
+      setCustomerName(me?.full_name || (user.email ? user.email.split("@")[0] : ""));
+      if (me?.phone) setCustomerPhone(me.phone);
 
       const res = await fetch("/api/festdash/vendors");
       const json = await res.json();
