@@ -30,6 +30,8 @@ export function useCart() {
     const e = c.find((x) => x.id === line.id);
     if (e) e.qty += qty; else c.push({ ...line, qty });
     write(c);
+    // Signal the drawer to pop open.
+    window.dispatchEvent(new Event("ne-cart-added"));
   }, []);
   const setQty = useCallback((id: string, qty: number) => {
     write(read().map((x) => (x.id === id ? { ...x, qty } : x)).filter((x) => x.qty > 0));
