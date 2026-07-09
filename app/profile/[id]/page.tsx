@@ -260,6 +260,30 @@ export default async function ProfilePage({
         {/* Membership CTAs (own profile) */}
         {ctas && <ProfileCTAs vendor={ctas.vendor} festdash={ctas.festdash} promoter={ctas.promoter} />}
 
+        {/* Dashboard links (own profile, once approved) */}
+        {isOwn && (profile.is_vendor || profile.is_festdash_vendor || profile.is_promoter) && (
+          <div className="mb-8 flex flex-wrap gap-3">
+            {profile.is_vendor && (
+              <Link href="/vendor/dashboard" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
+                style={{ borderColor: "#00D4FF55", background: "#00D4FF12", color: "#00D4FF" }}>
+                ▣ Vendor Dashboard →
+              </Link>
+            )}
+            {profile.is_festdash_vendor && (
+              <Link href="/festdash/vendor-dashboard" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
+                style={{ borderColor: "#FB923C55", background: "#FB923C12", color: "#FB923C" }}>
+                ◆ FestDash Dashboard →
+              </Link>
+            )}
+            {profile.is_promoter && (
+              <Link href="/festdash/promoter-dashboard" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
+                style={{ borderColor: "#E8FF4755", background: "#E8FF4712", color: "#E8FF47" }}>
+                ✦ Promoter Dashboard →
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Artisan showcase */}
         {isArtisan && (profile.artisan_statement || works.length > 0) && (
           <div className="mb-8 rounded-2xl border p-6" style={{ borderColor: "#FFC93C33", background: "#FFC93C08" }}>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { canManageInventory } from "@/utils/marketplace";
 
 async function getVendorId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number | null> {
   const { data } = await supabase
@@ -51,6 +52,12 @@ export async function POST(req: Request) {
   const vendorId = await getVendorId(supabase, user.id);
   if (!vendorId) {
     return NextResponse.json({ error: "No vendor linked to this account" }, { status: 403 });
+  }
+  if (!(await canManageInventory(supabase, user))) {
+    return NextResponse.json(
+      { error: "Marketplace access required. Apply for your NorthEDM Marketplace to upload inventory." },
+      { status: 403 }
+    );
   }
 
   const body = await req.json();
