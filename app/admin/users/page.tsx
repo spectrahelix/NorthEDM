@@ -15,6 +15,7 @@ type AdminUser = {
   created_at: string;
   is_founder?: boolean;
   is_vendor?: boolean;
+  is_marketplace?: boolean;
   is_festdash_vendor?: boolean;
   is_promoter?: boolean;
   is_artisan?: boolean;
@@ -205,6 +206,24 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function toggleTag(target: AdminUser, flag: "is_founder" | "is_marketplace") {
+    setSavingId(target.id);
+    setError("");
+    const value = !target[flag];
+    const res = await fetch("/api/admin/user-tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: target.id, flag, value }),
+    });
+    const json = await res.json();
+    setSavingId(null);
+    if (!res.ok) {
+      setError(json.error ?? "Failed to update tag");
+      return;
+    }
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, [flag]: value } : u)));
+  }
+
   async function deleteUser(target: AdminUser) {
     if (
       !window.confirm(
@@ -367,6 +386,21 @@ export default function AdminUsersPage() {
                           title={u.is_founder ? "Revoke Founder" : "Grant Founder"}
                         >
                           ♛ {u.is_founder ? "Founder ✓" : "Founder"}
+                        </button>
+                      )}
+                      {u.is_vendor && (
+                        <button
+                          onClick={() => toggleTag(u, "is_marketplace")}
+                          disabled={savingId === u.id}
+                          className="ml-2 rounded-lg border px-2.5 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50"
+                          style={
+                            u.is_marketplace
+                              ? { color: "#00D4FF", borderColor: "#00D4FF55", background: "#00D4FF14" }
+                              : { color: "#9aa", borderColor: "rgba(255,255,255,0.12)" }
+                          }
+                          title={u.is_marketplace ? "Revoke Marketplace access" : "Grant Marketplace access (paid)"}
+                        >
+                          ▣ {u.is_marketplace ? "Marketplace ✓" : "Marketplace"}
                         </button>
                       )}
                     </td>

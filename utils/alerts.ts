@@ -136,6 +136,19 @@ export async function notifyNewOrder(opts: { total_cents: number; email?: string
   ]);
 }
 
+/** New Marketplace-access application — email + phone push + in-app. */
+export async function notifyMarketplaceApplication(opts: { businessName: string; email?: string }) {
+  const path = "/admin/marketplace";
+  const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
+  const who = opts.email ? ` (${opts.email})` : "";
+  const message = `New Marketplace application: ${opts.businessName}${who}.`;
+  await Promise.allSettled([
+    notifyAdminsInApp("marketplace_application", message, path),
+    emailOwner(`🏪 New Marketplace application — ${opts.businessName}`, `${message}\n\nReview it: ${reviewUrl}`),
+    pushOwner("New Marketplace application", `${opts.businessName}${who}`, reviewUrl),
+  ]);
+}
+
 /** User-submitted feedback (beta testing) — email + phone push + in-app. */
 export async function notifyFeedback(opts: { message: string; category?: string; email?: string }) {
   const cat = opts.category?.trim() || "General";

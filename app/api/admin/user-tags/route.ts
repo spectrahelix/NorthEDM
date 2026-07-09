@@ -8,6 +8,7 @@ import { adminGuard } from "@/utils/admin";
 const ALLOWED = new Set([
   "is_founder",
   "is_vendor",
+  "is_marketplace",
   "is_festdash_vendor",
   "is_promoter",
   "is_artisan",
