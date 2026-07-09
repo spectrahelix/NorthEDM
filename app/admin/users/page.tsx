@@ -42,6 +42,18 @@ export default function AdminUsersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({
+    display_name: "",
+    role: "drifter",
+    home_city: "",
+    pronouns: "",
+    website: "",
+    bio: "",
+    email: "",
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editMsg, setEditMsg] = useState("");
 
   const fetchUsers = useCallback(async () => {
     const res = await fetch("/api/admin/get-users");
@@ -127,6 +139,70 @@ export default function AdminUsersPage() {
     setUsers((prev) =>
       prev.map((u) => (u.id === target.id ? { ...u, is_founder: value } : u))
     );
+  }
+
+  async function openEdit(u: AdminUser) {
+    setEditMsg("");
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("home_city, bio, pronouns, website")
+      .eq("id", u.id)
+      .single();
+    setEditForm({
+      display_name: u.display_name || "",
+      role: u.role,
+      home_city: data?.home_city || "",
+      pronouns: data?.pronouns || "",
+      website: data?.website || "",
+      bio: data?.bio || "",
+      email: u.email || "",
+    });
+    setEditing(u);
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setEditSaving(true);
+    setEditMsg("");
+    const emailChanged =
+      editForm.email.trim().toLowerCase() !== (editing.email || "").toLowerCase();
+    const res = await fetch("/api/admin/edit-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: editing.id,
+        patch: {
+          display_name: editForm.display_name.trim(),
+          role: editForm.role,
+          home_city: editForm.home_city.trim(),
+          pronouns: editForm.pronouns.trim() || null,
+          website: editForm.website.trim() || null,
+          bio: editForm.bio,
+        },
+        newEmail: emailChanged ? editForm.email.trim() : undefined,
+      }),
+    });
+    const json = await res.json();
+    setEditSaving(false);
+    if (!res.ok) {
+      setEditMsg(json.error ?? "Failed to save.");
+      return;
+    }
+    setUsers((prev) =>
+      prev.map((x) =>
+        x.id === editing.id
+          ? { ...x, display_name: editForm.display_name.trim(), role: editForm.role }
+          : x
+      )
+    );
+    if (json.emailPending) {
+      setEditMsg(
+        "Saved. A verification email was sent to the new address — the email changes once they confirm it."
+      );
+    } else {
+      setEditing(null);
+    }
   }
 
   async function deleteUser(target: AdminUser) {
@@ -295,17 +371,25 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      {u.id === myId ? (
-                        <span className="font-dm-mono text-[10px] text-neutral-700">you</span>
-                      ) : (
+                      <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => deleteUser(u)}
-                          disabled={deletingId === u.id}
-                          className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10 disabled:opacity-50"
+                          onClick={() => openEdit(u)}
+                          className="rounded-lg border border-[#3AFFD4]/30 px-3 py-1.5 font-dm-mono text-xs text-[#3AFFD4] transition hover:bg-[#3AFFD4]/10"
                         >
-                          {deletingId === u.id ? "Deleting…" : "Delete"}
+                          Edit
                         </button>
-                      )}
+                        {u.id === myId ? (
+                          <span className="font-dm-mono text-[10px] text-neutral-700">you</span>
+                        ) : (
+                          <button
+                            onClick={() => deleteUser(u)}
+                            disabled={deletingId === u.id}
+                            className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10 disabled:opacity-50"
+                          >
+                            {deletingId === u.id ? "Deleting…" : "Delete"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -314,6 +398,114 @@ export default function AdminUsersPage() {
           </table>
         </div>
       </div>
+
+      {editing && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center"
+          onClick={() => !editSaving && setEditing(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-white/10 bg-neutral-950 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-bebas text-2xl tracking-wide">Edit account</h2>
+              <button
+                onClick={() => setEditing(null)}
+                className="rounded-lg px-2 text-neutral-500 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(
+                [
+                  ["display_name", "Display name", "text"],
+                  ["home_city", "Home city", "text"],
+                  ["pronouns", "Pronouns", "text"],
+                  ["website", "Website", "url"],
+                ] as const
+              ).map(([key, label, type]) => (
+                <div key={key}>
+                  <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    value={editForm[key]}
+                    onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
+                    className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none"
+                  />
+                </div>
+              ))}
+
+              <div>
+                <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                  Role
+                </label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                  className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none"
+                >
+                  {[...ROLES, "promoter"].map((r) => (
+                    <option key={r} value={r}>
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                  Bio
+                </label>
+                <textarea
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none"
+                />
+                <p className="mt-1 font-dm-mono text-[10px] text-neutral-600">
+                  Changing the email sends a verification link to the new address — it only
+                  switches once they confirm.
+                </p>
+              </div>
+            </div>
+
+            {editMsg && <p className="mt-4 text-sm text-[#3AFFD4]">{editMsg}</p>}
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                onClick={() => setEditing(null)}
+                className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-neutral-400 transition hover:text-white"
+              >
+                Close
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving}
+                className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              >
+                {editSaving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
