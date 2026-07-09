@@ -29,6 +29,9 @@ export type UserProfile = {
   is_festdash_vendor?: boolean;
   is_promoter?: boolean;
   is_founder?: boolean;
+  is_driver?: boolean;
+  is_forager?: boolean;
+  is_verified?: boolean;
   hidden_tags?: string[] | null;
   // Personal info (checkout autofill)
   full_name?: string | null;
@@ -38,24 +41,54 @@ export type UserProfile = {
   city?: string | null;
   region?: string | null;
   postal_code?: string | null;
+  hide_shows?: boolean;
 };
 
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the
 // user chose to hide from the forum (they always show on their own profile).
 export function profileTags(
-  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_marketplace" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "hidden_tags">,
+  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_marketplace" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "is_driver" | "is_forager" | "is_verified" | "hidden_tags">,
   opts: { forum?: boolean } = {}
 ): TagKey[] {
   const has: Record<TagKey, boolean | undefined> = {
     founder: p.is_founder,
+    verified: p.is_verified,
     vendor: p.is_vendor,
     marketplace: p.is_marketplace,
     festdash_vendor: p.is_festdash_vendor,
+    driver: p.is_driver,
     promoter: p.is_promoter,
     artisan: p.is_artisan,
+    forager: p.is_forager,
   };
   const hidden = new Set(opts.forum ? p.hidden_tags ?? [] : []);
   return TAG_ORDER.filter((k) => has[k] && !hidden.has(k));
+}
+
+export type VendorShow = {
+  id: number;
+  user_id: string;
+  festival_name: string;
+  location: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+};
+
+// The current or most-upcoming show (skips past shows). `live` = happening now.
+export function currentShow(shows: VendorShow[]): { show: VendorShow; live: boolean } | null {
+  const today = new Date().toISOString().slice(0, 10);
+  const notPast = shows.filter((s) => {
+    const end = s.end_date || s.start_date;
+    return end ? end >= today : true;
+  });
+  notPast.sort((a, b) => ((a.start_date || "9999-99-99") < (b.start_date || "9999-99-99") ? -1 : 1));
+  const show = notPast[0];
+  if (!show) return null;
+  const start = show.start_date;
+  const end = show.end_date || show.start_date;
+  const live = !!start && start <= today && !!end && end >= today;
+  return { show, live };
 }
 
 export type ArtisanWork = {

@@ -19,6 +19,9 @@ type AdminUser = {
   is_festdash_vendor?: boolean;
   is_promoter?: boolean;
   is_artisan?: boolean;
+  is_driver?: boolean;
+  is_forager?: boolean;
+  is_verified?: boolean;
 };
 
 const ROLES = ["drifter", "wanderer", "merchant", "warden", "archon"] as const;
@@ -140,6 +143,19 @@ export default function AdminUsersPage() {
     setUsers((prev) =>
       prev.map((u) => (u.id === target.id ? { ...u, is_founder: value } : u))
     );
+  }
+
+  async function toggleEditingTag(flag: "is_driver" | "is_forager" | "is_verified" | "is_artisan") {
+    if (!editing) return;
+    const value = !editing[flag];
+    const res = await fetch("/api/admin/user-tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: editing.id, flag, value }),
+    });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); setEditMsg(j.error || "Failed"); return; }
+    setEditing({ ...editing, [flag]: value });
+    setUsers((prev) => prev.map((u) => (u.id === editing.id ? { ...u, [flag]: value } : u)));
   }
 
   async function openEdit(u: AdminUser) {
@@ -517,6 +533,33 @@ export default function AdminUsersPage() {
                   Changing the email sends a verification link to the new address — it only
                   switches once they confirm.
                 </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                  Grantable Tags
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ["is_verified", "✔ Verified"],
+                    ["is_driver", "⬗ Driver"],
+                    ["is_forager", "❦ Forager"],
+                    ["is_artisan", "◈ Artisan"],
+                  ] as const).map(([flag, label]) => (
+                    <button
+                      key={flag}
+                      type="button"
+                      onClick={() => toggleEditingTag(flag)}
+                      className={`rounded-lg border px-3 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition ${
+                        editing[flag]
+                          ? "border-[#3AFFD4] bg-[#3AFFD4]/10 text-[#3AFFD4]"
+                          : "border-white/12 text-neutral-400 hover:bg-white/5"
+                      }`}
+                    >
+                      {label} {editing[flag] ? "✓" : ""}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

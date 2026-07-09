@@ -24,22 +24,30 @@ export function getRoleColor(role: string): string {
 // Order here = display order. Each maps to a boolean flag on user_profiles.
 export type TagKey =
   | "founder"
+  | "verified"
   | "vendor"
   | "marketplace"
   | "festdash_vendor"
+  | "driver"
   | "promoter"
-  | "artisan";
+  | "artisan"
+  | "forager";
 
 export const TAG_CONFIG: Record<
   TagKey,
   { label: string; color: string; glyph: string; flag: string }
 > = {
   founder:         { label: "Founder",     color: "#CC00FF", glyph: "♛", flag: "is_founder" },
+  verified:        { label: "Verified",    color: "#7DD3FC", glyph: "✔", flag: "is_verified" },
   vendor:          { label: "Vendor",      color: "#39FF14", glyph: "⬢", flag: "is_vendor" },
   marketplace:     { label: "Marketplace", color: "#00D4FF", glyph: "▣", flag: "is_marketplace" },
   festdash_vendor: { label: "FestDash",    color: "#FB923C", glyph: "◆", flag: "is_festdash_vendor" },
+  driver:          { label: "Driver",      color: "#3AFFD4", glyph: "⬗", flag: "is_driver" },
   promoter:        { label: "Promoter",    color: "#E8FF47", glyph: "✦", flag: "is_promoter" },
   artisan:         { label: "Artisan",     color: "#FFC93C", glyph: "◈", flag: "is_artisan" },
+  forager:         { label: "Forager",     color: "#7FFF6E", glyph: "❦", flag: "is_forager" },
 };
 
-export const TAG_ORDER: TagKey[] = ["founder", "vendor", "marketplace", "festdash_vendor", "promoter", "artisan"];
+export const TAG_ORDER: TagKey[] = [
+  "founder", "verified", "vendor", "marketplace", "festdash_vendor", "driver", "promoter", "artisan", "forager",
+];
