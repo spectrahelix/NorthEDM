@@ -40,6 +40,24 @@ Big multi-part build. Status:
 - ✅ **Vendor Profile + Upcoming Shows** — add shows manually or via CSV → editable "Upcoming Shows" array + "hide from listings" toggle. Current/next show shows on marketplace + FestDash listings.
 - ✅ **FestDash page: list Active FestDash Vendors** with their current/next show + location; "🟢 Live now" badge; filter to the customer's chosen festival.
 
+## 📅 Local Events aggregator (NEW — auto-updating, like the weather feature)
+This is the "why didn't it collect Briggs Farm?" answer: there was **no** event
+collector before — Upcoming Shows is vendor-entered. Now there's a real one.
+- **What it does:** a nightly job refreshes a **curated seed list** of NE-PA
+  festivals (Briggs Farm, Elements, Peach, Camp Bisco, Musikfest, NEPA Bluegrass,
+  Susquehanna Breakdown — all seeded & live now) and, if a discovery key is set,
+  pulls new nearby music events into a **pending queue** for your review.
+- **Public page:** `/events` ("Upcoming Local Events") — each event shows its
+  forecast via the same weather strip as the feed. Linked in the top nav.
+- **Admin:** `/admin` → **Local Events** → review/approve/hide/delete + **↻ Refresh now**.
+- **To turn on auto-discovery (optional):** set **`TICKETMASTER_API_KEY`** (free
+  key from developer.ticketmaster.com) in Vercel env. Without it, only the
+  curated seeds run — Briggs Farm & friends still show regardless.
+- **To secure the nightly cron:** set **`CRON_SECRET`** in Vercel env (any random
+  string). Vercel Cron sends it automatically; the schedule is in `vercel.json`
+  (08:00 UTC nightly). Curated dates are approximate — **edit them on the admin
+  screen** to lock in real 2026 dates as they're announced.
+
 ## ⚙️ Known incomplete / needs your input
 - **Shop payments:** `STRIPE_WEBHOOK_SECRET` still needs to be set so store checkout auto-confirms orders + decrements stock via webhook.
 - **FestDash:** see status section below (Stripe keys + Mapbox token + end-to-end test).

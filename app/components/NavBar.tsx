@@ -34,6 +34,13 @@ const NAV_LINKS: NavLink[] = [
     border: "rgba(0,212,255,0.28)",
   },
   {
+    href: "/events",
+    label: "Events",
+    color: "#7DD3FC",
+    bg: "rgba(125,211,252,0.08)",
+    border: "rgba(125,211,252,0.28)",
+  },
+  {
     href: "/crowdwave",
     label: "CrowdWave",
     color: "#3AFFD4",
