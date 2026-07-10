@@ -258,6 +258,14 @@ export default function OrderPage() {
       return;
     }
 
+    // If there's a balance to charge, go to Stripe's secure checkout to
+    // authorize (hold) the card. Fully credit-covered orders skip straight to
+    // tracking.
+    if (json.checkoutUrl) {
+      window.location.href = json.checkoutUrl;
+      return;
+    }
+
     router.push(`/festdash/track/${json.order.id}`);
   }
 
@@ -748,7 +756,7 @@ export default function OrderPage() {
 
           {/* Payment + confirmation notice */}
           <div className="rounded-2xl border border-orange-500/20 bg-orange-950/20 p-4 text-sm text-orange-300">
-            🔒 Secure prepayment (held in escrow until your order is delivered) is coming soon.
+            🔒 You&apos;ll be taken to secure checkout. Your card is <span className="font-semibold">authorized and held in escrow</span> — it&apos;s only charged when your order is delivered.
             On delivery, give your runner the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
           </div>
 
@@ -761,7 +769,7 @@ export default function OrderPage() {
             disabled={submitting}
             className="w-full rounded-2xl bg-orange-500 py-4 text-lg font-semibold text-white transition hover:bg-orange-400 disabled:opacity-50"
           >
-            {submitting ? "Placing Order…" : "Place Order 🎪"}
+            {submitting ? "Starting secure checkout…" : "Continue to Payment 🔒"}
           </button>
         </div>
       </div>

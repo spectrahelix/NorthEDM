@@ -59,8 +59,8 @@ collector before — Upcoming Shows is vendor-entered. Now there's a real one.
   screen** to lock in real 2026 dates as they're announced.
 
 ## ⚙️ Known incomplete / needs your input
-- **Shop payments:** `STRIPE_WEBHOOK_SECRET` still needs to be set so store checkout auto-confirms orders + decrements stock via webhook.
-- **FestDash:** see status section below (Stripe keys + Mapbox token + end-to-end test).
+- **Shop payments:** `STRIPE_WEBHOOK_SECRET` still needs to be set so store checkout auto-confirms orders + decrements stock via webhook. (The same secret serves the FestDash webhook.)
+- **FestDash escrow is now built** — remaining is config only: live Stripe keys + webhook secret + Mapbox token, then an end-to-end test. See FestDash status section below.
 
 ---
 
@@ -91,12 +91,29 @@ FestDash is **well past** the old `docs/FESTDASH.md` "~60%" note — a lot shipp
 - Structured campsite fields, car/campsite photo upload, phone capture, **last-4 confirmation code**.
 - **Driver flow:** claim orders + **live GPS location capture** (`orders/[id]/location`).
 - **Stripe Connect vendor onboarding** — real Express-account creation + account links + payout status (`stripe/connect`, `stripe/status`); `stripe_account_id` on vendors.
+- **✅ ESCROW PAYMENTS (built this session).** Checkout with **manual capture**:
+  card is authorized + **held in escrow** at order → order stays hidden
+  (`awaiting_payment`) until the hold confirms → **captured on confirmed
+  delivery** (funds transfer to vendor, minus 5% fee via Connect destination
+  charge) → **hold released** (canceled) on decline. Webhook
+  (`stripe/webhook`) promotes orders + a `stripe/confirm` fallback covers the
+  success redirect even before the webhook secret is set. Store-credit-covered
+  orders skip payment. Files: `api/festdash/orders`, `orders/[id]`,
+  `stripe/webhook`, `stripe/confirm`; migration `20260710100000_festdash_escrow`.
 - Promoter program, referral codes, commission codes, store credit, promo codes.
 
-**Remaining to be festival-ready:**
-1. **Payments / escrow finish** — Connect onboarding exists, but the money movement still needs completing + **live Stripe keys**: authorize on prepay → hold in escrow → **capture/transfer to vendor on confirmed delivery** → refund on decline/cancel.
-2. **Mapbox token** — the GPS data layer works keyless; the live **map render** on the track page needs a Mapbox API key (free tier).
-3. **End-to-end test** at a real/staged event; review order **state-machine guards** (no illegal status jumps).
+**Remaining to be festival-ready (now just config + a test — no code):**
+1. **Set live Stripe env vars in Vercel:** `STRIPE_SECRET_KEY` (sk_live),
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (pk_live), and `STRIPE_WEBHOOK_SECRET`
+   (whsec) after adding a webhook endpoint at
+   `/api/festdash/stripe/webhook` for events `payment_intent.succeeded`,
+   `payment_intent.payment_failed`, `payment_intent.canceled`,
+   `checkout.session.completed`.
+2. **`NEXT_PUBLIC_MAPBOX_TOKEN`** — the track page already renders a Mapbox
+   static map; just needs the free-tier token to light up.
+3. **End-to-end test** at a real/staged event (place → pay/hold → accept →
+   deliver + code → capture → verify vendor payout in Stripe).
 4. Confirm **realtime publication** + **storage bucket policies** SQL are applied.
 
-_Note: this is a read from route structure; a file-by-file audit can confirm exact completion if you want one._
+_Note: escrow verified by file-by-file audit + typecheck + production build; the
+`profiles.vendor_id` linkage was checked and is a real column (not a bug)._

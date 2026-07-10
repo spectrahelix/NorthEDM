@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { getStripe } from "@/utils/stripe";
 
 // Allowed status transitions — orders can't skip steps or move backwards.
 const TRANSITIONS: Record<string, string[]> = {
@@ -80,6 +82,50 @@ export async function PATCH(
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Escrow settlement, tied to the new state:
+  //   delivered → CAPTURE the authorized hold (funds move to the vendor, minus
+  //               the 5% fee if a Connect account is attached).
+  //   declined  → CANCEL the authorization (releases the hold; card untouched).
+  // Best-effort and never reverses the delivery/decline that already happened —
+  // a Stripe hiccup is recorded as *_failed for the owner to settle manually.
+  if (status === "delivered" || status === "declined") {
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const { data: full } = await admin
+      .from("festdash_orders")
+      .select("stripe_payment_intent, payment_status")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (full?.stripe_payment_intent && full.payment_status === "authorized") {
+      try {
+        const stripe = getStripe();
+        if (status === "delivered") {
+          await stripe.paymentIntents.capture(full.stripe_payment_intent);
+          await admin
+            .from("festdash_orders")
+            .update({ payment_status: "released", escrow_released_at: new Date().toISOString(), paid: true })
+            .eq("id", id);
+        } else {
+          await stripe.paymentIntents.cancel(full.stripe_payment_intent);
+          await admin
+            .from("festdash_orders")
+            .update({ payment_status: "canceled", paid: false })
+            .eq("id", id);
+        }
+      } catch (e) {
+        console.error("festdash escrow settle error:", e);
+        await admin
+          .from("festdash_orders")
+          .update({ payment_status: status === "delivered" ? "capture_failed" : "cancel_failed" })
+          .eq("id", id);
+      }
+    }
+  }
 
   return NextResponse.json({ success: true });
 }
