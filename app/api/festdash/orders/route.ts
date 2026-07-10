@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { getStripe, platformFeeCents } from "@/utils/stripe";
+
+// Stripe's minimum chargeable amount (USD). Below this we can't run a card.
+const STRIPE_MIN_CENTS = 50;
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -118,7 +122,10 @@ export async function POST(req: Request) {
       commission_cents: commissionCents,
       promo_code: promo || null,
       promo_code_id: promoCodeId,
-      status: "pending",
+      // Hold new orders out of the vendor queue until the card is authorized.
+      // The webhook / confirm step promotes them to "pending" once escrowed.
+      status: "awaiting_payment",
+      payment_status: "unpaid",
       paid: false,
     }])
     .select()
@@ -162,7 +169,98 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ order: data });
+  // The amount actually owed on a card after discount + store credit.
+  const dueCents = data.total_cents as number;
+
+  // Fully covered by store credit / discounts → nothing to charge. Mark it as
+  // settled by credit; it goes straight into the queue, no escrow needed.
+  if (dueCents <= 0) {
+    await admin
+      .from("festdash_orders")
+      .update({ paid: true, payment_status: "paid_credit", status: "pending" })
+      .eq("id", data.id);
+    data.paid = true;
+    data.payment_status = "paid_credit";
+    data.status = "pending";
+    return NextResponse.json({ order: data });
+  }
+
+  if (dueCents < STRIPE_MIN_CENTS) {
+    // Can't run a sub-$0.50 card. Roll back the order so it isn't orphaned.
+    await admin.from("festdash_orders").delete().eq("id", data.id);
+    return NextResponse.json(
+      { error: `Card orders must be at least $${(STRIPE_MIN_CENTS / 100).toFixed(2)}.` },
+      { status: 400 }
+    );
+  }
+
+  // Escrow via Stripe Checkout with MANUAL CAPTURE: the customer's card is
+  // authorized (held) now, and only captured when the driver confirms delivery.
+  // If the vendor has an onboarded Connect account, the charge is a destination
+  // transfer minus the 5% FestDash fee, so capture pays the vendor directly. If
+  // not, funds are held on the platform and settled to the vendor manually.
+  const { data: fv } = await admin
+    .from("festdash_vendors")
+    .select("stripe_account_id")
+    .eq("vendor_id", Number(vendorId))
+    .maybeSingle();
+  const vendorAccount = (fv?.stripe_account_id as string | null) || null;
+
+  const itemSummary = (items as { name: string; qty: number }[])
+    .map((i) => `${i.qty}× ${i.name}`)
+    .join(", ")
+    .slice(0, 250);
+
+  const paymentIntentData: Record<string, unknown> = {
+    capture_method: "manual",
+    metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id },
+  };
+  if (vendorAccount) {
+    paymentIntentData.application_fee_amount = platformFeeCents(dueCents);
+    paymentIntentData.transfer_data = { destination: vendorAccount };
+  }
+
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+  try {
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: dueCents,
+            product_data: {
+              name: `FestDash order — ${eventName}`,
+              description: itemSummary || undefined,
+            },
+          },
+        },
+      ],
+      payment_intent_data: paymentIntentData,
+      customer_email: user.email ?? undefined,
+      success_url: `${origin}/festdash/track/${data.id}?paid=1`,
+      cancel_url: `${origin}/festdash/order?canceled=${data.id}`,
+      metadata: { festdash_order_id: data.id },
+      client_reference_id: data.id,
+    });
+
+    await admin
+      .from("festdash_orders")
+      .update({ payment_status: "awaiting_payment", stripe_checkout_session: session.id })
+      .eq("id", data.id);
+
+    return NextResponse.json({ order: data, checkoutUrl: session.url });
+  } catch (e) {
+    // Payment setup failed — remove the unpaid order so it doesn't linger.
+    console.error("festdash checkout error:", e);
+    await admin.from("festdash_orders").delete().eq("id", data.id);
+    return NextResponse.json(
+      { error: "Couldn't start secure payment. Please try again." },
+      { status: 502 }
+    );
+  }
 }
 
 export async function GET() {

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { use } from "react";
@@ -15,7 +15,7 @@ type Order = {
   delivery_window: string;
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
-  status: "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  status: "awaiting_payment" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
   driver_lat: number | null;
   driver_lng: number | null;
   location_updated_at: string | null;
@@ -89,6 +89,23 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
     return () => { supabase.removeChannel(channel); };
   }, [id, loadOrder, supabase]);
 
+  // Fresh back from Stripe checkout: the order sits in "awaiting_payment" until
+  // the card hold is confirmed. Nudge the confirm fallback once (the webhook is
+  // the primary path); realtime picks up the promotion to "pending".
+  const confirmTried = useRef(false);
+  useEffect(() => {
+    if (order?.status === "awaiting_payment" && !confirmTried.current) {
+      confirmTried.current = true;
+      fetch("/api/festdash/stripe/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      })
+        .then(() => loadOrder())
+        .catch(() => {});
+    }
+  }, [order?.status, id, loadOrder]);
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -103,6 +120,24 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
         <div className="text-center">
           <p className="text-neutral-400">Order not found.</p>
           <Link href="/festdash" className="mt-4 block text-orange-400 hover:underline">Back to FestDash</Link>
+        </div>
+      </main>
+    );
+  }
+
+  // Payment still being authorized (just back from Stripe). Show a calm
+  // "confirming" state rather than the order tracker until it's escrowed.
+  if (order.status === "awaiting_payment") {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <div className="max-w-sm text-center">
+          <div className="mb-4 text-4xl">🔒</div>
+          <h1 className="mb-2 font-bebas text-3xl tracking-wide text-white">Confirming your payment…</h1>
+          <p className="text-neutral-500">
+            Your card is being authorized and held in escrow. This page updates automatically —
+            it usually only takes a moment.
+          </p>
+          <span className="mt-6 inline-flex h-2 w-2 animate-pulse rounded-full bg-orange-400" />
         </div>
       </main>
     );
