@@ -101,6 +101,18 @@ export default async function AdminPage() {
               Review Marketplace applications &amp; grant paid vendor access
             </p>
           </Link>
+          <Link
+            href="/admin/events"
+            className="group rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition hover:border-[#3AFFD4]/40 hover:bg-white/[0.04]"
+          >
+            <div className="mb-3 text-2xl">📅</div>
+            <h2 className="font-bebas text-2xl tracking-wide group-hover:text-[#3AFFD4]">
+              Local Events
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Review auto-collected festivals &amp; publish them to /events
+            </p>
+          </Link>
         </div>
 
         {forumAdmin && (
