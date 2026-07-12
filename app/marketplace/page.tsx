@@ -21,7 +21,12 @@ type Vendor = {
   description: string | null;
   vendor_type: string | null;
   is_founder: boolean | null;
+  website: string | null;
 };
+
+function normalizeUrl(url: string) {
+  return /^https?:\/\//.test(url) ? url : `https://${url}`;
+}
 
 const categories = [
   {
@@ -61,7 +66,7 @@ export default async function MarketplacePage() {
 
   const { data } = await supabase
     .from("vendors")
-    .select("id, name, category, description, vendor_type, is_founder")
+    .select("id, name, category, description, vendor_type, is_founder, website")
     .eq("status", "approved")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
@@ -239,12 +244,17 @@ export default async function MarketplacePage() {
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {vendors.map((vendor) => (
-              <Link
+              <div
                 key={vendor.id}
-                href={`/marketplace/${vendor.id}`}
-                className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:bg-white/[0.05]"
+                className="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:bg-white/[0.05]"
               >
-                <div className="flex items-center justify-between gap-3">
+                {/* Whole-card link to the vendor's page (sits under the Visit Site button) */}
+                <Link
+                  href={`/marketplace/${vendor.id}`}
+                  aria-label={`View ${vendor.name || "vendor"}`}
+                  className="absolute inset-0 z-0 rounded-3xl"
+                />
+                <div className="relative z-10 flex items-center justify-between gap-3">
                   <h3 className="text-2xl font-semibold">
                     {vendor.name || "Unnamed Vendor"}
                   </h3>
@@ -256,15 +266,15 @@ export default async function MarketplacePage() {
                   ) : null}
                 </div>
 
-                <p className="mt-3 text-sm text-neutral-400">
+                <p className="relative z-10 mt-3 text-sm text-neutral-400">
                   {vendor.category || "uncategorized"}
                 </p>
 
-                <p className="mt-4 text-neutral-300">
+                <p className="relative z-10 mt-4 text-neutral-300">
                   {vendor.description || "No description available."}
                 </p>
 
-                <div className="mt-5 flex flex-wrap gap-2 text-sm">
+                <div className="relative z-10 mt-5 flex flex-wrap items-center gap-2 text-sm">
                   <span className="rounded-full bg-white/10 px-3 py-1">
                     {vendor.vendor_type || "listed"}
                   </span>
@@ -273,8 +283,18 @@ export default async function MarketplacePage() {
                       Founder Vendor
                     </span>
                   ) : null}
+                  {vendor.website ? (
+                    <a
+                      href={normalizeUrl(vendor.website)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto rounded-full bg-[#3AFFD4] px-3 py-1 text-xs font-semibold text-black transition hover:opacity-90"
+                    >
+                      Visit Site →
+                    </a>
+                  ) : null}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </section>
