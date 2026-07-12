@@ -38,6 +38,7 @@ export default function VendorApplyPage() {
               email: formData.get("email"),
               category: formData.get("category"),
               description: formData.get("description"),
+              website: formData.get("website"),
               capacity: formData.get("capacity"),
               public: formData.get("public"),
               // Anti-spam: honeypot (should stay empty) + time-to-submit.
@@ -106,6 +107,14 @@ export default function VendorApplyPage() {
             name="description"
             placeholder="What do you offer?"
             required
+            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+          />
+
+          <input
+            name="website"
+            type="url"
+            inputMode="url"
+            placeholder="Website (optional) — e.g. yourshop.com"
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
           />
 

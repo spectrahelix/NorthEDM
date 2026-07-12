@@ -60,6 +60,8 @@ export async function POST(req: Request) {
     const name = String(data.name).trim();
     const category = String(data.category).trim();
     const description = String(data.description).trim();
+    // Optional website — stored as entered (the UI normalizes to https:// on display).
+    const website = data.website ? String(data.website).trim().slice(0, 200) : null;
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (
       !emailOk ||
@@ -80,6 +82,7 @@ export async function POST(req: Request) {
         email,
         category,
         description,
+        website,
         capacity: data.capacity ? String(data.capacity).trim().slice(0, 60) : null,
         is_public: data.public === "true" || data.public === true,
         status: "pending",
