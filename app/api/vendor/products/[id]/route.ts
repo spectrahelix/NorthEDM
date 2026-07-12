@@ -35,6 +35,13 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
+  // Square-synced products are managed in Square (read-only here).
+  const { data: existing } = await supabase
+    .from("products").select("source").eq("id", Number(id)).eq("vendor_id", vendorId).maybeSingle();
+  if (existing?.source === "square") {
+    return NextResponse.json({ error: "This product is synced from Square — edit it in your Square dashboard." }, { status: 409 });
+  }
+
   const { data, error } = await supabase
     .from("products")
     .update({
@@ -81,6 +88,13 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  // Square-synced products are managed in Square — disconnect Square to remove them.
+  const { data: existing } = await supabase
+    .from("products").select("source").eq("id", Number(id)).eq("vendor_id", vendorId).maybeSingle();
+  if (existing?.source === "square") {
+    return NextResponse.json({ error: "This product is synced from Square — remove it in Square, or disconnect Square." }, { status: 409 });
+  }
 
   const { error } = await supabase
     .from("products")
