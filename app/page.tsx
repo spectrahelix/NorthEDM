@@ -273,6 +273,51 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── FestDash connectivity CTA ─────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-6 pb-14">
+        <div className="relative overflow-hidden rounded-[2rem] border border-orange-500/25 bg-orange-950/20 p-8 sm:p-10">
+          <div
+            className="pointer-events-none absolute right-0 top-0 h-64 w-64 opacity-20"
+            style={{ background: "radial-gradient(circle, #FB923C 0%, transparent 70%)" }}
+          />
+          <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-orange-400">
+            FestDash · FestEats
+          </p>
+          <h2 className="mt-3 font-bebas text-3xl tracking-wide sm:text-4xl">
+            Local delivery for anywhere on Earth
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-300 sm:text-base">
+            No street address needed. From a backwoods campground to a village with
+            no postal code, FestDash delivers food, crafts, and services — guided by
+            landmarks and a live GPS ping. If it&apos;s local, it&apos;s deliverable.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 font-dm-mono text-[11px] uppercase tracking-widest">
+            {["Food", "Crafts", "Services", "Anywhere"].map((c) => (
+              <span
+                key={c}
+                className="rounded-full border border-orange-500/30 bg-orange-500/5 px-3 py-1 text-orange-300"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/festdash"
+              className="flex items-center justify-center rounded-2xl bg-orange-500 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-orange-400 active:scale-[0.98]"
+            >
+              Explore FestDash
+            </Link>
+            <Link
+              href="/festdash/order"
+              className="flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-white/5 active:scale-[0.98]"
+            >
+              Order a Delivery
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── Featured Vendors ──────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 pb-14">
         <div className="mb-6 flex items-end justify-between">

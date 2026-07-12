@@ -4,9 +4,9 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { currentShow, type VendorShow } from "@/utils/supabase/user-profiles";
 
 export const metadata = {
-  title: "FestDash / FestEats — Festival Delivery Network",
+  title: "FestDash / FestEats — Go-Anywhere Local Delivery Network",
   description:
-    "FestDash (also FestEats) brings vendor delivery straight to your campsite. Order from your favorite festival vendors, share your site location, and we handle the rest.",
+    "FestDash (also FestEats) is a go-anywhere local delivery network. No street address needed — order food, crafts, or services and a runner brings it to your campsite, your land, or your village, guided by landmark directions and a live GPS ping. Anywhere on Earth.",
 };
 
 export default async function FestDashPage() {
@@ -79,7 +79,7 @@ export default async function FestDashPage() {
         <div className="relative mx-auto max-w-3xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-orange-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-400" />
-            Now Live at Northeast Events
+            Now Live · Built for Anywhere on Earth
           </div>
           <h1 className="font-bebas text-6xl tracking-wide text-white md:text-8xl">
             Fest<span className="text-orange-400">Dash</span>
@@ -88,12 +88,23 @@ export default async function FestDashPage() {
             also known as <span className="text-orange-400">Fest</span><span className="text-white">Eats</span>
           </p>
           <p className="mt-4 text-xl text-neutral-300">
-            Festival delivery. Right to your campsite.
+            Local delivery for anywhere on Earth.
           </p>
           <p className="mx-auto mt-3 max-w-xl text-neutral-500">
-            Order from vendors at your event, drop a photo of your site, and your
-            items come to you — no missing the set, no losing your spot.
+            Backwoods campground or a village with no street signs — if someone can
+            point to it, FestDash delivers to it. Food, crafts, services… anything,
+            anywhere.
           </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2 font-dm-mono text-[11px] uppercase tracking-widest">
+            {["Food", "Crafts", "Services", "Anywhere on Earth"].map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-orange-500/30 bg-orange-500/5 px-3 py-1 text-orange-300"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/festdash/order"
@@ -128,25 +139,81 @@ export default async function FestDashPage() {
         </div>
       </section>
 
+      {/* Built for anywhere — the connectivity thesis */}
+      <section className="border-b border-white/10 px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center">
+            <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-orange-400">
+              Connectivity is the whole idea
+            </p>
+            <h2 className="mt-3 font-bebas text-5xl tracking-wide text-white">
+              No street address? No problem.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-neutral-400">
+              Every delivery app on Earth stops where the mailing addresses stop.
+              FestDash doesn&apos;t. It finds people by <span className="text-neutral-200">landmark</span>,
+              a <span className="text-neutral-200">site photo</span>, and a
+              <span className="text-neutral-200"> live GPS ping</span> — then confirms
+              handoff with a 4-digit code. That means it works where nothing else
+              reaches.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                icon: "🌍",
+                title: "Anywhere",
+                desc: "A festival campground, a backwoods holler, a village square, a block party. If you can describe it, a runner can reach it — anywhere in the world.",
+              },
+              {
+                icon: "📦",
+                title: "Anything",
+                desc: "Food, crafts, goods, services. Any vendor, any order, brought straight to the customer. FestEats for the food; FestDash for everything else.",
+              },
+              {
+                icon: "🧭",
+                title: "No infrastructure needed",
+                desc: "No addresses, no street signs, no problem. Landmark directions, a photo, a live location ping, and a handoff code do all the work.",
+              },
+            ].map((c) => (
+              <div
+                key={c.title}
+                className="rounded-2xl border border-orange-500/15 bg-orange-950/10 p-6 text-center"
+              >
+                <div className="mb-3 text-4xl">{c.icon}</div>
+                <h3 className="mb-2 font-bebas text-2xl tracking-wide text-white">{c.title}</h3>
+                <p className="text-sm leading-relaxed text-neutral-400">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mx-auto mt-10 max-w-2xl text-center font-dm-mono text-sm text-neutral-500">
+            From a muddy campground in the Poconos to a mountain village with no
+            postal code — <span className="text-orange-300">if it&apos;s local, it&apos;s deliverable.</span>
+          </p>
+        </div>
+      </section>
+
       {/* How it works — customers */}
       <section className="mx-auto max-w-5xl px-6 py-20">
         <h2 className="mb-2 text-center font-bebas text-4xl tracking-wide text-white">
           How It Works
         </h2>
-        <p className="mb-12 text-center text-neutral-500">For festival-goers</p>
+        <p className="mb-12 text-center text-neutral-500">For customers — at a festival, a campground, or your hometown</p>
         <div className="grid gap-6 md:grid-cols-4">
           {[
             {
               step: "01",
               icon: "🎪",
-              title: "Pick your event",
-              desc: "Select the festival or event you're attending from the FestDash network.",
+              title: "Pick your place",
+              desc: "A festival, a campground, or your own town — choose where you are from the FestDash network.",
             },
             {
               step: "02",
               icon: "📍",
-              title: "Share your site",
-              desc: "Enter your campground zone and snap a photo of your campsite so the runner can find you.",
+              title: "Share your spot",
+              desc: "Drop a landmark, snap a photo, and share a live location ping — no street address required.",
             },
             {
               step: "03",
@@ -158,7 +225,7 @@ export default async function FestDashPage() {
               step: "04",
               icon: "🏕️",
               title: "Receive delivery",
-              desc: "Your vendor's runner brings it straight to your site during your requested window.",
+              desc: "A runner brings it straight to you during your window — confirmed with your 4-digit code.",
             },
           ].map((s) => (
             <div
@@ -213,12 +280,14 @@ export default async function FestDashPage() {
                 For Vendors
               </div>
               <h2 className="mb-4 font-bebas text-4xl tracking-wide text-white">
-                Take FestDash wherever you vend
+                Sell anything, deliver anywhere
               </h2>
               <p className="mb-4 text-neutral-400">
-                Add FestDash as an add-on to your existing transaction setup. When
-                a delivery order comes in, it pops up right on your tablet —
-                accept or decline in one tap. Your assigned runner handles the rest.
+                Food, crafts, goods, services — whatever you sell, FestDash adds
+                delivery on top of your existing setup. When an order comes in, it
+                pops up right on your tablet — accept or decline in one tap. Your
+                assigned runner handles the rest, from a festival field to your own
+                main street.
               </p>
               <ul className="space-y-2 text-sm text-neutral-400">
                 {[
