@@ -3,6 +3,11 @@ import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import { getProfile } from "@/utils/supabase/profile";
 import { VendorEditForm } from "./components/VendorEditForm";
+import { BackBar } from "@/app/components/BackBar";
+
+function normalizeUrl(url: string) {
+  return /^https?:\/\//.test(url) ? url : `https://${url}`;
+}
 
 type Vendor = {
   id: number;
@@ -79,15 +84,23 @@ export default async function VendorDetailPage({
   return (
     <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-5xl">
-        <Link href="/marketplace" className="text-sm text-neutral-400 hover:text-white">
-          ← Back to Marketplace
-        </Link>
+        <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }]} fallback="/marketplace" />
 
         <div className="mt-6 rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-5xl font-semibold">
               {vendor.name || "Unnamed Vendor"}
             </h1>
+            {vendor.website && (
+              <a
+                href={normalizeUrl(vendor.website)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl bg-[#3AFFD4] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+              >
+                Visit Site →
+              </a>
+            )}
             {canEdit && (
               <VendorEditForm
                 vendorId={vendor.id}
@@ -153,7 +166,7 @@ export default async function VendorDetailPage({
               {vendor.website ? (
                 <p className="mt-1 text-lg">
                   <a
-                    href={/^https?:\/\//.test(vendor.website) ? vendor.website : `https://${vendor.website}`}
+                    href={normalizeUrl(vendor.website)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#3AFFD4] hover:underline"

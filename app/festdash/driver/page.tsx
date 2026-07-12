@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { BackBar } from "@/app/components/BackBar";
 
 type Order = {
   id: string;
@@ -236,6 +237,7 @@ export default function DriverPage() {
   return (
     <main className="min-h-screen p-4">
       <div className="mx-auto max-w-lg">
+        <BackBar crumbs={[{ label: "FestDash", href: "/festdash" }]} fallback="/festdash" />
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="font-bebas text-3xl tracking-wide text-white">

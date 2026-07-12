@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 
 type Code = {
@@ -95,6 +96,7 @@ export default function CommissionCodesPage() {
   return (
     <main className="min-h-screen px-6 py-16 text-neutral-100">
       <div className="mx-auto max-w-2xl">
+        <BackBar crumbs={[{ label: "FestDash", href: "/festdash" }]} fallback="/festdash" />
         <div className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-orange-400">Vendor</div>
         <h1 className="mb-3 font-bebas text-5xl tracking-wide">Commission Codes</h1>
         <p className="mb-8 max-w-xl text-sm text-neutral-400">

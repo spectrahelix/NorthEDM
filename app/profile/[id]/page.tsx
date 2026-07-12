@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/server";
 import { getUserProfile } from "@/utils/supabase/user-profiles";
 import { RankBadge } from "@/app/components/RankBadge";
@@ -141,6 +142,9 @@ export default async function ProfilePage({
 
   return (
     <main className="min-h-screen text-neutral-100">
+      <div className="mx-auto max-w-3xl px-6 pt-6">
+        <BackBar fallback="/" />
+      </div>
       {/* Banner */}
       <div
         className="h-28 border-b border-white/5"
