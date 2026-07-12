@@ -14,6 +14,15 @@ type Product = {
   image_url: string | null;
   is_public: boolean;
   status: string;
+  source?: string;
+};
+
+type SquareStatus = {
+  connected: boolean;
+  environment?: string;
+  location_id?: string;
+  last_synced_at?: string | null;
+  last_sync_status?: string | null;
 };
 
 const EMPTY = {
@@ -31,6 +40,15 @@ export default function VendorDashboard() {
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Square sync
+  const [square, setSquare] = useState<SquareStatus | null>(null);
+  const [sqToken, setSqToken] = useState("");
+  const [sqLocation, setSqLocation] = useState("");
+  const [sqEnv, setSqEnv] = useState<"sandbox" | "production">("sandbox");
+  const [sqBusy, setSqBusy] = useState(false);
+  const [sqMsg, setSqMsg] = useState("");
+  const [showSquare, setShowSquare] = useState(false);
+
   useEffect(() => {
     (async () => {
       const supabase = createClient();
@@ -46,6 +64,7 @@ export default function VendorDashboard() {
       if (!me?.is_marketplace && !isAdmin) { setAccess("no-access"); return; }
       setAccess("ok");
       loadProducts();
+      loadSquareStatus();
     })();
   }, []);
 
@@ -53,6 +72,46 @@ export default function VendorDashboard() {
     const res = await fetch("/api/vendor/products");
     const j = await res.json().catch(() => ({}));
     if (res.ok) setProducts(j.products ?? []);
+  }
+
+  async function loadSquareStatus() {
+    const res = await fetch("/api/vendor/square/status");
+    const j = await res.json().catch(() => ({}));
+    if (res.ok) setSquare(j);
+  }
+
+  async function connectSquare(e: React.FormEvent) {
+    e.preventDefault();
+    if (!sqToken.trim()) { setSqMsg("Paste your Square access token."); return; }
+    setSqBusy(true); setSqMsg("");
+    const res = await fetch("/api/vendor/square/connect", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: sqToken, locationId: sqLocation, environment: sqEnv }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setSqBusy(false);
+    if (!res.ok) { setSqMsg(j.error || "Connect failed."); return; }
+    setSqToken(""); setSqLocation("");
+    setSqMsg(j.sync ? `Connected — synced ${j.sync.created} new, ${j.sync.updated} updated.` : (j.syncError || "Connected."));
+    loadSquareStatus(); loadProducts();
+  }
+
+  async function syncSquare() {
+    setSqBusy(true); setSqMsg("");
+    const res = await fetch("/api/vendor/square/sync", { method: "POST" });
+    const j = await res.json().catch(() => ({}));
+    setSqBusy(false);
+    if (!res.ok) { setSqMsg(j.error || "Sync failed."); return; }
+    setSqMsg(`Synced ${j.sync.created} new, ${j.sync.updated} updated, ${j.sync.unpublished} hidden.`);
+    loadSquareStatus(); loadProducts();
+  }
+
+  async function disconnectSquare() {
+    if (!window.confirm("Disconnect Square? Synced products will be hidden (not deleted).")) return;
+    setSqBusy(true); setSqMsg("");
+    await fetch("/api/vendor/square/disconnect", { method: "POST" });
+    setSqBusy(false);
+    loadSquareStatus(); loadProducts();
   }
 
   async function uploadImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -129,8 +188,71 @@ export default function VendorDashboard() {
           )}
         </div>
 
+        {/* Square sync */}
+        <div className="mt-8 rounded-2xl border border-[#00D4FF]/20 bg-[#00D4FF]/[0.03] p-5">
+          {square?.connected ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-dm-mono text-xs uppercase tracking-widest text-[#00D4FF]">
+                  🟦 Square Connected <span className="text-neutral-500">({square.environment})</span>
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {square.last_synced_at
+                    ? `Last synced ${new Date(square.last_synced_at).toLocaleString()}`
+                    : "Not synced yet"}
+                  {square.last_sync_status ? ` · ${square.last_sync_status}` : ""}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={syncSquare} disabled={sqBusy}
+                  className="rounded-xl bg-[#00D4FF] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50">
+                  {sqBusy ? "Syncing…" : "↻ Sync now"}
+                </button>
+                <button onClick={disconnectSquare} disabled={sqBusy}
+                  className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-400 transition hover:bg-white/5 disabled:opacity-50">
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button onClick={() => setShowSquare((s) => !s)}
+                className="flex w-full items-center justify-between text-left">
+                <span className="font-dm-mono text-xs uppercase tracking-widest text-[#00D4FF]">
+                  🟦 Sync inventory from Square
+                </span>
+                <span className="text-neutral-500">{showSquare ? "−" : "+"}</span>
+              </button>
+              {showSquare && (
+                <form onSubmit={connectSquare} className="mt-4 space-y-3">
+                  <p className="text-xs text-neutral-500">
+                    Paste a Square access token to mirror your Square catalog + stock into your menu.
+                    Synced items are managed in Square (read-only here).
+                  </p>
+                  <input value={sqToken} onChange={(e) => setSqToken(e.target.value)} placeholder="Square access token"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
+                  <div className="flex flex-wrap gap-3">
+                    <input value={sqLocation} onChange={(e) => setSqLocation(e.target.value)} placeholder="Location ID (optional if only one)"
+                      className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
+                    <select value={sqEnv} onChange={(e) => setSqEnv(e.target.value as "sandbox" | "production")}
+                      className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-2.5 text-sm text-neutral-100 focus:outline-none">
+                      <option value="sandbox">Sandbox</option>
+                      <option value="production">Production</option>
+                    </select>
+                  </div>
+                  <button type="submit" disabled={sqBusy}
+                    className="rounded-xl bg-[#00D4FF] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50">
+                    {sqBusy ? "Connecting…" : "Connect & sync"}
+                  </button>
+                </form>
+              )}
+            </>
+          )}
+          {sqMsg && <p className="mt-3 text-sm text-neutral-300">{sqMsg}</p>}
+        </div>
+
         {/* Add / edit form */}
-        <form onSubmit={save} className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <form onSubmit={save} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
             {editingId ? "Edit product" : "Add a product"}
           </p>
@@ -189,14 +311,25 @@ export default function VendorDashboard() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.image_url || "/northedm-logo.svg"} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-white">{p.name}</p>
+                  <p className="truncate font-semibold text-white">
+                    {p.name}
+                    {p.source === "square" && (
+                      <span className="ml-2 rounded-md bg-[#00D4FF]/15 px-1.5 py-0.5 align-middle font-dm-mono text-[10px] text-[#00D4FF]">🟦 Square</span>
+                    )}
+                  </p>
                   <p className="font-dm-mono text-xs text-neutral-500">
                     ${Number(p.price).toFixed(2)} · {p.inventory_count} in stock ·{" "}
                     <span className={p.is_public ? "text-[#39FF14]" : "text-neutral-600"}>{p.is_public ? "Published" : "Draft"}</span>
                   </p>
                 </div>
-                <button onClick={() => edit(p)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/5">Edit</button>
-                <button onClick={() => del(p.id)} className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10">Delete</button>
+                {p.source === "square" ? (
+                  <span className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Managed in Square</span>
+                ) : (
+                  <>
+                    <button onClick={() => edit(p)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/5">Edit</button>
+                    <button onClick={() => del(p.id)} className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10">Delete</button>
+                  </>
+                )}
               </div>
             ))}
           </div>
