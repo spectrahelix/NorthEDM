@@ -1,6 +1,6 @@
 # NorthEDM — To-Do & Status
 
-_Living reference of open work. Last updated: 2026-07-08._
+_Living reference of open work. Last updated: 2026-07-12._
 
 ---
 
@@ -26,6 +26,56 @@ _Living reference of open work. Last updated: 2026-07-08._
 ### 4. Print collateral (ready when you are)
 - **Sticker** — blended square is finalized & downloadable (`design/stickers/sticker-blended.png`). Round die-cut also available.
 - **Business cards** — Design A finalized (`design/business-cards/card-A-front.png` + `-back.png`). ⚠️ Card shows `cj@northedm.com`; ideally wait until Workspace (#1) is live so the address works, or print with `northedm1@gmail.com` only.
+
+### 5. Square inventory sync — PAUSED (Phase 1 is live)
+- ✅ **Phase 1 shipped (#72):** vendors connect Square (Sandbox/Production) on
+  `/vendor/dashboard` → "Sync now" mirrors their Square catalog + stock into their
+  NorthEDM menu (one product per variation). Synced items are read-only (🟦 Square
+  badge). Payments stay on Stripe.
+- **To verify:** grab a free **Square Sandbox** token (developer.squareup.com/apps
+  → Sandbox → Credentials), add a couple test items in the sandbox Seller
+  Dashboard, then Connect & sync on `/vendor/dashboard`. (Leave Location ID blank.)
+- **Remaining:** Phase 2 = nightly auto-refresh cron (so vendors don't hit "Sync
+  now"). Phase 3 = Square OAuth ("Connect Square" button instead of pasting a
+  token) + Square webhooks for real-time catalog/stock changes.
+
+---
+
+## 💡 Idea — Promoter Hoodie collab with **Bright Future** (apparel partner)
+A line of **Promoter Hoodies** co-designed with Bright Future (apparel shop). Each
+hoodie carries a **unique, genuinely-scannable QR woven into the threading** —
+scan it with a phone and you land on that hoodie's Promoter and unlock their promo
+code. Whatever a customer **saves** by using that code on the site is credited **to
+the Promoter** as their earnings. Walking billboards that pay their wearer.
+
+**How it maps to what's already built** (don't rebuild — extend):
+- We already have a **Promoter program**, **referral codes**, **commission codes**,
+  and **store credit** (`festdash_promoters`, referral one-time codes,
+  `commission_codes`, `store_credit_balances`). Today a commission code gives the
+  customer `percent_off` and books that same amount as commission — currently to
+  NorthEDM. For hoodies, **book it to the Promoter** instead.
+- The woven QR encodes a short URL, e.g. `northedm.com/p/<code>` → sets a referral
+  attribution (cookie) + reveals/auto-applies the Promoter's code at checkout, so
+  the sale and the savings-as-earnings attribute to that Promoter automatically.
+
+**Decisions to make when we build it:**
+1. **Code granularity:** one code per Promoter (simplest) **vs** a unique serial per
+   hoodie that all map to the same Promoter (lets us track which physical hoodie
+   drove sales — cooler, a bit more infra).
+2. **Where the Promoter's cut lands:** store credit (instant, already built) vs cash
+   payout via Stripe Connect (needs their payout account) vs a commission ledger.
+3. **Auto-apply vs reveal:** scanning auto-applies the code at checkout (referral
+   cookie) vs just shows it to copy.
+4. **Who absorbs the discount** (NorthEDM margin vs the vendor) and percent vs fixed.
+
+**The genuinely hard/novel part — the woven QR:** a knitted/embroidered QR that
+actually scans needs high contrast, a clean quiet zone, big enough modules, and
+high error-correction. Bright Future handles production; **we generate a print-ready
+unique QR (SVG/vector) per hoodie/Promoter** and hand it off. Worth a scannability
+test swatch from Bright Future before a full run.
+
+_Status: captured, not started. Ping to scope + build when ready (pairs naturally
+with finishing the Promoter payout side)._
 
 ---
 
