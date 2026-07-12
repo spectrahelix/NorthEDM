@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { BackBar } from "@/app/components/BackBar";
 
 type Product = {
   id: number;
@@ -176,6 +177,7 @@ export default function VendorDashboard() {
   return (
     <main className="min-h-screen px-6 py-14 text-neutral-100">
       <div className="mx-auto max-w-3xl">
+        <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }]} fallback="/marketplace" />
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#00D4FF]">Vendor Dashboard</p>

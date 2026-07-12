@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 import { ComposeModal } from "./components/ComposeModal";
 import type { UserProfile } from "@/utils/supabase/user-profiles";
@@ -134,6 +135,7 @@ export default function MessagesPage() {
     <main className="min-h-screen text-neutral-100">
       <section className="border-b border-white/10">
         <div className="mx-auto max-w-3xl px-6 py-10">
+          <BackBar fallback="/" />
           <p className="mb-2 font-dm-mono text-sm uppercase tracking-[0.3em] text-[#3AFFD4]">
             NorthEDM
           </p>

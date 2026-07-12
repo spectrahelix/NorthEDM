@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 
 type Code = {
@@ -103,6 +104,7 @@ export default function ReferralsPage() {
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-2xl">
+        <BackBar crumbs={[{ label: "FestDash", href: "/festdash" }]} fallback="/festdash" />
         <div className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
           {issuerKind === "vendor" ? "Vendor" : "Promoter"} · Referrals
         </div>
