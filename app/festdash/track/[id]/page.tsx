@@ -16,6 +16,7 @@ type Order = {
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
   status: "awaiting_payment" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  confirmation_code: string | null;
   driver_lat: number | null;
   driver_lng: number | null;
   location_updated_at: string | null;
@@ -187,6 +188,22 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
           </div>
         ) : (
           <>
+            {/* Delivery code — the customer reads this to their runner to
+                confirm delivery. Hidden once delivered. */}
+            {order.status !== "delivered" && order.confirmation_code && (
+              <div className="mb-8 rounded-2xl border border-green-500/25 bg-green-950/20 p-5 text-center">
+                <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-green-400">
+                  Your Delivery Code
+                </p>
+                <p className="my-2 font-dm-mono text-4xl font-bold tracking-[0.4em] text-white">
+                  {order.confirmation_code}
+                </p>
+                <p className="text-xs text-neutral-400">
+                  Give this to your runner at drop-off to confirm delivery.
+                </p>
+              </div>
+            )}
+
             {/* Progress tracker */}
             <div className="mb-8 space-y-3">
               {STEPS.map((s, i) => {

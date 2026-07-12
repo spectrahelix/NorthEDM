@@ -38,6 +38,10 @@ export default function VendorDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [notEnrolled, setNotEnrolled] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState(false);
+  // Inline delivery-code entry (replaces window.prompt, which mobile browsers block).
+  const [deliverFor, setDeliverFor] = useState<string | null>(null);
+  const [deliverCode, setDeliverCode] = useState("");
+  const [deliverError, setDeliverError] = useState("");
   const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; onboarded: boolean } | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const prevPendingCount = useRef(0);
@@ -118,31 +122,45 @@ export default function VendorDashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [loadOrders, supabase]);
 
-  async function updateStatus(orderId: string, status: Order["status"]) {
-    let code: string | undefined;
-    if (status === "delivered") {
-      const entered = window.prompt(
-        "Enter the customer's 4-digit confirmation code (last 4 of their phone):"
-      );
-      if (!entered) return;
-      code = entered;
-    }
+  // For "delivered", pass the 4-digit code collected by the inline entry below.
+  // Returns true on success so the caller can close its UI.
+  async function updateStatus(orderId: string, status: Order["status"], code?: string): Promise<boolean> {
     setUpdating(orderId);
     const res = await fetch(`/api/festdash/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, code }),
     });
+    let ok = false;
     if (res.ok) {
+      ok = true;
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status } : o))
       );
       if (selected?.id === orderId) setSelected((s) => s ? { ...s, status } : s);
     } else {
       const j = await res.json().catch(() => ({}));
-      alert(j.error ?? "Update failed.");
+      if (status === "delivered") setDeliverError(j.error ?? "Update failed.");
+      else alert(j.error ?? "Update failed.");
     }
     setUpdating(null);
+    return ok;
+  }
+
+  async function confirmDelivery() {
+    if (!deliverFor) return;
+    const code = deliverCode.replace(/\D/g, "");
+    if (code.length !== 4) {
+      setDeliverError("Enter the 4-digit code.");
+      return;
+    }
+    setDeliverError("");
+    const ok = await updateStatus(deliverFor, "delivered", code);
+    if (ok) {
+      setDeliverFor(null);
+      setDeliverCode("");
+      setSelected(null);
+    }
   }
 
   const pending = orders.filter((o) => o.status === "pending");
@@ -258,7 +276,7 @@ export default function VendorDashboard() {
                   key={order.id}
                   order={order}
                   onView={() => setSelected(order)}
-                  onMarkDelivered={() => updateStatus(order.id, "delivered")}
+                  onMarkDelivered={() => { setDeliverFor(order.id); setDeliverCode(""); setDeliverError(""); }}
                   updating={updating === order.id}
                 />
               ))}
@@ -370,12 +388,57 @@ export default function VendorDashboard() {
               )}
               {(selected.status === "accepted" || selected.status === "in_transit") && (
                 <button
-                  onClick={() => { updateStatus(selected.id, "delivered"); setSelected(null); }}
+                  onClick={() => { setDeliverFor(selected.id); setDeliverCode(""); setDeliverError(""); }}
                   className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white"
                 >
                   Mark Delivered
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inline delivery-code entry — reliable on mobile (window.prompt is blocked
+          in many mobile browsers, which silently broke "Mark Delivered"). */}
+      {deliverFor && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-6"
+          onClick={() => { setDeliverFor(null); setDeliverError(""); }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 font-bebas text-2xl tracking-wide text-white">Confirm Delivery</h3>
+            <p className="mb-4 text-sm text-neutral-400">
+              Enter the customer&apos;s 4-digit code (last 4 of their phone).
+            </p>
+            <input
+              autoFocus
+              inputMode="numeric"
+              maxLength={4}
+              value={deliverCode}
+              onChange={(e) => { setDeliverCode(e.target.value.replace(/\D/g, "").slice(0, 4)); setDeliverError(""); }}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmDelivery(); }}
+              placeholder="0000"
+              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-center font-dm-mono text-2xl tracking-[0.5em] text-white placeholder:text-neutral-700 focus:border-green-500/50 focus:outline-none"
+            />
+            {deliverError && <p className="mt-2 text-sm text-red-400">{deliverError}</p>}
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => { setDeliverFor(null); setDeliverError(""); }}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-neutral-400 transition hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelivery}
+                disabled={updating === deliverFor || deliverCode.length !== 4}
+                className="flex-1 rounded-xl bg-green-600 py-3 font-semibold text-white transition hover:bg-green-500 disabled:opacity-50"
+              >
+                {updating === deliverFor ? "Confirming…" : "Confirm Delivery"}
+              </button>
             </div>
           </div>
         </div>
