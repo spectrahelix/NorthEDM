@@ -17,6 +17,9 @@ type Vendor = {
   is_founder: boolean | null;
   status: string | null;
   user_id: string | null;
+  website: string | null;
+  phone: string | null;
+  show_phone: boolean | null;
 };
 
 type Product = {
@@ -94,6 +97,9 @@ export default async function VendorDetailPage({
                   category: vendor.category ?? "",
                   contact: vendor.contact ?? "",
                   email: vendor.email ?? "",
+                  website: vendor.website ?? "",
+                  phone: vendor.phone ?? "",
+                  showPhone: vendor.show_phone ?? false,
                 }}
               />
             )}
@@ -133,10 +139,29 @@ export default async function VendorDetailPage({
             ) : null}
           </div>
 
-          {vendor.email ? (
+          {(vendor.email || vendor.website || (vendor.show_phone && vendor.phone)) ? (
             <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-5">
               <p className="text-sm text-neutral-400">Contact</p>
-              <p className="mt-2 text-lg text-neutral-200">{vendor.email}</p>
+              {vendor.email ? (
+                <p className="mt-2 text-lg text-neutral-200">{vendor.email}</p>
+              ) : null}
+              {vendor.show_phone && vendor.phone ? (
+                <p className="mt-1 text-lg text-neutral-200">
+                  <a href={`tel:${vendor.phone}`} className="hover:text-white">{vendor.phone}</a>
+                </p>
+              ) : null}
+              {vendor.website ? (
+                <p className="mt-1 text-lg">
+                  <a
+                    href={/^https?:\/\//.test(vendor.website) ? vendor.website : `https://${vendor.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#3AFFD4] hover:underline"
+                  >
+                    {vendor.website.replace(/^https?:\/\//, "")}
+                  </a>
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
