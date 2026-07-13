@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -72,6 +73,19 @@ export default async function MarketplacePage() {
     .order("created_at", { ascending: false });
 
   const vendors = (data ?? []) as Vendor[];
+
+  // Which vendors are active on FestDash → show an "Order on FestDash" button
+  // on their card. Read via service role (festdash_vendors isn't anon-readable).
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  const { data: fdRows } = await admin
+    .from("festdash_vendors")
+    .select("vendor_id")
+    .eq("is_active", true);
+  const festdashIds = new Set<number>((fdRows ?? []).map((r) => r.vendor_id as number));
 
   // Show the "get your own Marketplace" CTA to anyone who doesn't already have access.
   const { data: { user } } = await supabase.auth.getUser();
@@ -229,6 +243,51 @@ export default async function MarketplacePage() {
             </div>
           </div>
         </div>
+
+        {/* Find it at Frank's — featured, delivered on FestDash */}
+        <div className="relative mt-4 overflow-hidden rounded-[2rem] border border-orange-500/25 bg-orange-950/15 p-8 sm:p-10">
+          <div
+            className="pointer-events-none absolute right-0 top-0 h-72 w-72 opacity-15"
+            style={{ background: "radial-gradient(circle, #FB923C 0%, transparent 70%)" }}
+          />
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex-1">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-orange-500/15 px-3 py-0.5 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
+                  On FestDash
+                </span>
+                <span className="rounded-full bg-[#3AFFD4]/15 px-3 py-0.5 font-dm-mono text-xs uppercase tracking-widest text-[#3AFFD4]">
+                  Featured
+                </span>
+              </div>
+              <h2 className="font-bebas text-4xl tracking-wide sm:text-5xl">
+                Find it at Frank&apos;s General Store
+              </h2>
+              <p className="mt-1 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+                General Store · Delivered on FestDash
+              </p>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-neutral-300">
+                A general store with a little of everything — gear, goods, and
+                community staples. Order it on FestDash and a runner brings it
+                straight to you, wherever you are.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
+              <Link
+                href="/festdash/order?vendor=5"
+                className="rounded-xl bg-orange-500 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-orange-400"
+              >
+                Order on FestDash
+              </Link>
+              <Link
+                href="/marketplace/5"
+                className="rounded-xl border border-white/15 px-6 py-3 text-center text-sm font-medium text-white transition hover:bg-white/5"
+              >
+                View market
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
 
       {vendors.length > 0 ? (
@@ -283,16 +342,26 @@ export default async function MarketplacePage() {
                       Founder Vendor
                     </span>
                   ) : null}
-                  {vendor.website ? (
-                    <a
-                      href={normalizeUrl(vendor.website)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-auto rounded-full bg-[#3AFFD4] px-3 py-1 text-xs font-semibold text-black transition hover:opacity-90"
-                    >
-                      Visit Site →
-                    </a>
-                  ) : null}
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {festdashIds.has(vendor.id) ? (
+                      <Link
+                        href={`/festdash/order?vendor=${vendor.id}`}
+                        className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-400"
+                      >
+                        Order on FestDash
+                      </Link>
+                    ) : null}
+                    {vendor.website ? (
+                      <a
+                        href={normalizeUrl(vendor.website)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full bg-[#3AFFD4] px-3 py-1 text-xs font-semibold text-black transition hover:opacity-90"
+                      >
+                        Visit Site →
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             ))}
