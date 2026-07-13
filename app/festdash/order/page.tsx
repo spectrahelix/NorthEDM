@@ -93,8 +93,16 @@ export default function OrderPage() {
 
       const res = await fetch("/api/festdash/vendors");
       const json = await res.json();
-      setVendors(json.vendors ?? []);
+      const list = json.vendors ?? [];
+      setVendors(list);
       setLoadingVendors(false);
+
+      // Deep link: /festdash/order?vendor=<id> jumps straight into that vendor's menu.
+      const pv = new URLSearchParams(window.location.search).get("vendor");
+      if (pv) {
+        const match = list.find((v: Vendor) => String(v.id) === pv);
+        if (match) selectVendor(match);
+      }
 
       fetch("/api/store-credit")
         .then((r) => r.json())

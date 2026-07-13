@@ -379,6 +379,39 @@ export default async function HomePage() {
             </div>
           </div>
 
+          {/* Find it at Frank's — on FestDash */}
+          <div className="group flex flex-col rounded-3xl border border-orange-500/30 bg-orange-950/15 p-6 transition hover:border-orange-500/60 hover:bg-orange-950/25">
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <h3 className="font-bebas text-xl leading-snug tracking-wide">
+                Find it at Frank&apos;s General Store
+              </h3>
+              <span className="shrink-0 rounded-full bg-orange-500/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wide text-orange-400">
+                FestDash
+              </span>
+            </div>
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
+              General Store
+            </p>
+            <p className="mt-3 flex-1 text-sm leading-6 text-neutral-400">
+              A little of everything — gear, goods, and community staples. Order on
+              FestDash and a runner brings it straight to you, wherever you are.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/festdash/order?vendor=5"
+                className="rounded-full bg-orange-500 px-3 py-1 font-dm-mono text-xs font-semibold text-white transition hover:bg-orange-400"
+              >
+                Order on FestDash →
+              </Link>
+              <Link
+                href="/marketplace/5"
+                className="rounded-full bg-white/5 px-3 py-1 font-dm-mono text-xs text-neutral-300 transition hover:bg-white/10"
+              >
+                View market
+              </Link>
+            </div>
+          </div>
+
           {/* CJ's Foraging Tours — permanent founder vendor */}
           <Link
             href="/foraging"
