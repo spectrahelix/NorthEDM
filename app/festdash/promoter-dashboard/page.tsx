@@ -31,6 +31,16 @@ export default function PromoterDashboard() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [hoodies, setHoodies] = useState<Hoodie[]>([]);
   const [hoodieTotals, setHoodieTotals] = useState<HoodieTotals | null>(null);
+  const [payout, setPayout] = useState<{ connected: boolean; onboarded: boolean } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  async function connectPayouts() {
+    setConnecting(true);
+    const r = await fetch("/api/festdash/promoter/stripe/connect", { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    if (j.url) window.location.href = j.url;
+    else setConnecting(false);
+  }
 
   useEffect(() => {
     (async () => {
@@ -62,6 +72,12 @@ export default function PromoterDashboard() {
         const hj = await hr.json();
         setHoodies(hj.hoodies ?? []);
         setHoodieTotals(hj.totals ?? null);
+      } catch { /* ignore */ }
+
+      // Cash payout onboarding status.
+      try {
+        const pr = await fetch("/api/festdash/promoter/stripe/status");
+        setPayout(await pr.json());
       } catch { /* ignore */ }
 
       setLoading(false);
@@ -112,6 +128,31 @@ export default function PromoterDashboard() {
             <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">People Referred</p>
             <p className="mt-1 font-bebas text-4xl text-white">{referralCount}</p>
           </div>
+        </div>
+
+        {/* Cash payouts */}
+        <div className="mb-8 rounded-2xl border border-[#39FF14]/20 bg-[#39FF14]/[0.04] p-5">
+          <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-[#39FF14]">💵 Cash payouts</p>
+          {payout?.onboarded ? (
+            <p className="text-sm text-neutral-300">
+              ✅ Connected — commissions you earn (e.g. referring a website client) pay out to your
+              bank automatically.
+            </p>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-neutral-400">
+                Connect a payout account to receive <span className="text-[#39FF14]">real cash</span>{" "}
+                commissions when someone you refer pays for a NorthEDM product or service.
+              </p>
+              <button
+                onClick={connectPayouts}
+                disabled={connecting}
+                className="inline-flex rounded-xl bg-[#39FF14] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+              >
+                {connecting ? "Opening…" : payout?.connected ? "Finish payout setup →" : "Set up cash payouts →"}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Referral codes */}
