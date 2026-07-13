@@ -74,8 +74,18 @@ high error-correction. Bright Future handles production; **we generate a print-r
 unique QR (SVG/vector) per hoodie/Promoter** and hand it off. Worth a scannability
 test swatch from Bright Future before a full run.
 
-_Status: captured, not started. Ping to scope + build when ready (pairs naturally
-with finishing the Promoter payout side)._
+_Status: **Phase 1 BUILT** (unique QR per hoodie → `/h/<code>` scan landing →
+attribution cookie → shop discount at checkout → promoter credited what the
+customer saved, as store credit). Admin mints codes + downloads print-ready QR
+SVGs at **/admin/hoodies**; promoters see scans/orders/earnings on their
+dashboard. `promoter_hoodies` table + `shop_orders` discount columns applied._
+
+**Remaining:** (1) hand the downloaded QR SVGs to **Bright Future** and get a
+**scannability test swatch** before a full run; (2) optional **cash payouts** to
+promoters (currently store credit) via Stripe Connect; (3) decide if the
+discount % should vary per drop (per-hoodie % is already supported).
+**Economics note:** the customer's discount = the promoter's earning, so each
+redemption costs NorthEDM ~2× the discount — set the % with that in mind (default 10%).
 
 ---
 

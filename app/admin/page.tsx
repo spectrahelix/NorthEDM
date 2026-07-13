@@ -168,6 +168,18 @@ export default async function AdminPage() {
                   Approve vendors, manage orders, view the network
                 </p>
               </Link>
+              <Link
+                href="/admin/hoodies"
+                className="group rounded-2xl border border-[#CC00FF]/20 bg-[#CC00FF]/[0.06] p-6 transition hover:border-[#CC00FF]/40 hover:bg-[#CC00FF]/[0.12]"
+              >
+                <div className="mb-3 text-2xl">👕</div>
+                <h2 className="font-bebas text-2xl tracking-wide text-white group-hover:text-[#CC00FF]">
+                  Promoter Hoodies
+                </h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Mint QR hoodie codes, download print QRs, track earnings
+                </p>
+              </Link>
             </div>
           </>
         )}

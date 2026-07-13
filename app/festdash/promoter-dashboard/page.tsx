@@ -15,8 +15,12 @@ const REASON_LABEL: Record<string, string> = {
   referral_bonus: "Referral reward",
   referral_signup: "Welcome credit",
   order_redeem: "Used on order",
+  promoter_hoodie: "Hoodie earning",
   adjustment: "Adjustment",
 };
+
+type Hoodie = { id: string; code: string; label: string | null; percent_off: number; active: boolean; scans: number; redemptions: number; earned_cents: number };
+type HoodieTotals = { hoodies: number; scans: number; redemptions: number; earned_cents: number };
 
 export default function PromoterDashboard() {
   const supabase = createClient();
@@ -25,6 +29,8 @@ export default function PromoterDashboard() {
   const [referralCount, setReferralCount] = useState(0);
   const [balanceCents, setBalanceCents] = useState(0);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [hoodies, setHoodies] = useState<Hoodie[]>([]);
+  const [hoodieTotals, setHoodieTotals] = useState<HoodieTotals | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,6 +55,15 @@ export default function PromoterDashboard() {
       setReferralCount(count ?? 0);
       setBalanceCents(bal?.balance_cents ?? 0);
       setLedger(led ?? []);
+
+      // Promoter hoodies (Bright Future line).
+      try {
+        const hr = await fetch("/api/festdash/promoter/hoodies");
+        const hj = await hr.json();
+        setHoodies(hj.hoodies ?? []);
+        setHoodieTotals(hj.totals ?? null);
+      } catch { /* ignore */ }
+
       setLoading(false);
     })();
   }, [supabase]);
@@ -115,6 +130,34 @@ export default function PromoterDashboard() {
             Generate &amp; manage codes →
           </Link>
         </div>
+
+        {/* My Hoodies (Bright Future line) */}
+        {hoodieTotals && hoodieTotals.hoodies > 0 && (
+          <div className="mb-8 rounded-2xl border border-[#CC00FF]/20 bg-[#CC00FF]/[0.04] p-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="font-dm-mono text-xs uppercase tracking-widest text-[#CC00FF]">👕 My Promoter Hoodies</p>
+              <p className="font-dm-mono text-xs text-neutral-400">
+                {hoodieTotals.scans} scans · {hoodieTotals.redemptions} orders · earned{" "}
+                <span className="text-[#39FF14]">${(hoodieTotals.earned_cents / 100).toFixed(2)}</span>
+              </p>
+            </div>
+            <p className="mb-4 text-sm text-neutral-400">
+              Each hoodie&apos;s QR gives a shopper a discount — and credits you the same amount they
+              save. Wear it, share it, earn.
+            </p>
+            <div className="space-y-2">
+              {hoodies.map((h) => (
+                <div key={h.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-2.5">
+                  <div className="min-w-0">
+                    <p className="font-dm-mono text-sm text-white">{h.code}{h.label ? <span className="ml-2 text-neutral-600">· {h.label}</span> : null}</p>
+                    <p className="font-dm-mono text-[11px] text-neutral-500">{h.percent_off}% off · {h.scans} scans · {h.redemptions} orders</p>
+                  </div>
+                  <span className="shrink-0 font-dm-mono text-sm text-[#39FF14]">${(h.earned_cents / 100).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Ledger */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">

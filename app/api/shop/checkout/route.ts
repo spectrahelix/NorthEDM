@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -44,6 +45,32 @@ export async function POST(req: Request) {
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+  // Promoter hoodie attribution: a scanned hoodie leaves an `ne_hoodie` cookie.
+  // If it maps to an active hoodie, apply that promoter's discount — the amount
+  // the customer saves is credited to the promoter on payment (in the webhook).
+  const cookieStore = await cookies();
+  const hoodieCode = cookieStore.get("ne_hoodie")?.value;
+  let hoodie: { code: string; promoter_user_id: string; percent_off: number } | null = null;
+  if (hoodieCode) {
+    const { data: h } = await admin
+      .from("promoter_hoodies")
+      .select("code, promoter_user_id, percent_off, active")
+      .eq("code", hoodieCode)
+      .maybeSingle();
+    if (h && h.active) hoodie = { code: h.code, promoter_user_id: h.promoter_user_id, percent_off: h.percent_off };
+  }
+  const discountCents = hoodie ? Math.floor((subtotal * hoodie.percent_off) / 100) : 0;
+
+  let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
+  if (hoodie && discountCents > 0) {
+    const coupon = await stripe.coupons.create({
+      percent_off: hoodie.percent_off,
+      duration: "once",
+      name: `Promoter code · ${hoodie.code}`,
+    });
+    discounts = [{ coupon: coupon.id }];
+  }
+
   // Prefill checkout from the user's saved personal info (name, phone, address)
   // by attaching a Stripe customer. Falls back to just the email.
   let customerId: string | null = null;
@@ -81,8 +108,11 @@ export async function POST(req: Request) {
     items: orderItems,
     subtotal_cents: subtotal,
     shipping_cents: 0,
-    total_cents: subtotal,
+    total_cents: subtotal - discountCents,
     status: "pending",
+    hoodie_code: hoodie?.code ?? null,
+    promoter_user_id: hoodie?.promoter_user_id ?? null,
+    discount_cents: discountCents,
   }).select("id").single();
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
 
@@ -95,6 +125,7 @@ export async function POST(req: Request) {
     shipping_address_collection: { allowed_countries: ["US"] },
     // Attach the customer (prefills name/address) or just the email.
     ...(customerId ? { customer: customerId } : { customer_email: user?.email ?? undefined }),
+    ...(discounts ? { discounts } : {}),
     metadata: { order_id: order.id },
     client_reference_id: order.id,
   });

@@ -53,6 +53,38 @@ export async function POST(req: Request) {
           email: session.customer_details?.email ?? order.email,
           itemCount: items.reduce((s, i) => s + i.qty, 0),
         });
+
+        // Promoter hoodie: credit the promoter with what the customer saved
+        // (store credit), and tally the hoodie's redemption. Skips self-buys.
+        if (
+          order.promoter_user_id &&
+          order.discount_cents > 0 &&
+          order.promoter_user_id !== order.customer_id
+        ) {
+          await admin.rpc("grant_store_credit", {
+            p_user: order.promoter_user_id,
+            p_amount: order.discount_cents,
+            p_reason: "promoter_hoodie",
+            p_ref_type: "shop_order",
+            p_ref_id: order.id,
+          });
+          if (order.hoodie_code) {
+            const { data: h } = await admin
+              .from("promoter_hoodies")
+              .select("redemptions, earned_cents")
+              .eq("code", order.hoodie_code)
+              .maybeSingle();
+            if (h) {
+              await admin
+                .from("promoter_hoodies")
+                .update({
+                  redemptions: (h.redemptions ?? 0) + 1,
+                  earned_cents: (h.earned_cents ?? 0) + order.discount_cents,
+                })
+                .eq("code", order.hoodie_code);
+            }
+          }
+        }
       }
     }
   }
