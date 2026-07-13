@@ -54,34 +54,77 @@ export async function POST(req: Request) {
           itemCount: items.reduce((s, i) => s + i.qty, 0),
         });
 
-        // Promoter hoodie: credit the promoter with what the customer saved
-        // (store credit), and tally the hoodie's redemption. Skips self-buys.
+        // Promoter reward on a NorthEDM-brand (shop) purchase. The promoter earns
+        // what the customer saved — paid as CASH (Stripe transfer) when configured
+        // and they've connected payouts, otherwise store credit. Skips self-buys
+        // and (by default) repeat/alt buyers via the first-order guard. FestDash
+        // and marketplace never reach here, so third-party margins are untouched.
         if (
           order.promoter_user_id &&
           order.discount_cents > 0 &&
           order.promoter_user_id !== order.customer_id
         ) {
-          await admin.rpc("grant_store_credit", {
-            p_user: order.promoter_user_id,
-            p_amount: order.discount_cents,
-            p_reason: "promoter_hoodie",
-            p_ref_type: "shop_order",
-            p_ref_id: order.id,
-          });
+          const commission = order.discount_cents as number;
+          const { data: settings } = await admin
+            .from("promoter_program_settings")
+            .select("payout_mode, first_order_only")
+            .eq("id", 1)
+            .maybeSingle();
+          const payoutMode = settings?.payout_mode || "cash";
+          const firstOnly = settings?.first_order_only ?? true;
+
+          // First-order guard: skip if this buyer has an earlier paid order.
+          let eligible = true;
+          if (firstOnly) {
+            let priorCount = 0;
+            if (order.customer_id) {
+              const { count } = await admin.from("shop_orders")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "paid").eq("customer_id", order.customer_id).neq("id", order.id);
+              priorCount = count ?? 0;
+            } else if (order.email) {
+              const { count } = await admin.from("shop_orders")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "paid").eq("email", order.email).neq("id", order.id);
+              priorCount = count ?? 0;
+            }
+            if (priorCount > 0) eligible = false;
+          }
+
+          // Tally the hoodie redemption (earnings only count when eligible).
           if (order.hoodie_code) {
             const { data: h } = await admin
-              .from("promoter_hoodies")
-              .select("redemptions, earned_cents")
-              .eq("code", order.hoodie_code)
-              .maybeSingle();
+              .from("promoter_hoodies").select("redemptions, earned_cents").eq("code", order.hoodie_code).maybeSingle();
             if (h) {
-              await admin
-                .from("promoter_hoodies")
-                .update({
-                  redemptions: (h.redemptions ?? 0) + 1,
-                  earned_cents: (h.earned_cents ?? 0) + order.discount_cents,
-                })
-                .eq("code", order.hoodie_code);
+              await admin.from("promoter_hoodies").update({
+                redemptions: (h.redemptions ?? 0) + 1,
+                earned_cents: (h.earned_cents ?? 0) + (eligible ? commission : 0),
+              }).eq("code", order.hoodie_code);
+            }
+          }
+
+          if (eligible) {
+            let paidCash = false;
+            if (payoutMode === "cash") {
+              const { data: promoter } = await admin
+                .from("festdash_promoters").select("stripe_account_id").eq("user_id", order.promoter_user_id).maybeSingle();
+              if (promoter?.stripe_account_id) {
+                try {
+                  await stripe.transfers.create({
+                    amount: commission, currency: "usd", destination: promoter.stripe_account_id,
+                    metadata: { shop_order: order.id, kind: "promoter_commission" },
+                  });
+                  paidCash = true;
+                } catch (e) {
+                  console.error("promoter cash transfer failed — falling back to store credit:", e);
+                }
+              }
+            }
+            if (!paidCash) {
+              await admin.rpc("grant_store_credit", {
+                p_user: order.promoter_user_id, p_amount: commission,
+                p_reason: "promoter_hoodie", p_ref_type: "shop_order", p_ref_id: order.id,
+              });
             }
           }
         }

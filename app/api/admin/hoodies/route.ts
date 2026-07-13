@@ -16,12 +16,13 @@ export async function GET() {
   const g = await adminGuard();
   if (!g.ok) return NextResponse.json({ error: g.error }, { status: g.status });
 
-  const [{ data: promoters }, { data: hoodies }] = await Promise.all([
+  const [{ data: promoters }, { data: hoodies }, { data: settings }] = await Promise.all([
     g.admin.from("festdash_promoters").select("user_id, display_name, is_active").eq("is_active", true),
     g.admin
       .from("promoter_hoodies")
       .select("id, code, promoter_user_id, label, percent_off, active, scans, redemptions, earned_cents, created_at")
       .order("created_at", { ascending: false }),
+    g.admin.from("promoter_program_settings").select("payout_mode, first_order_only").eq("id", 1).maybeSingle(),
   ]);
 
   // Attach promoter display names to hoodies.
@@ -31,7 +32,11 @@ export async function GET() {
     promoter_name: nameByUser.get(h.promoter_user_id) || "—",
   }));
 
-  return NextResponse.json({ promoters: promoters ?? [], hoodies: withNames });
+  return NextResponse.json({
+    promoters: promoters ?? [],
+    hoodies: withNames,
+    settings: settings ?? { payout_mode: "cash", first_order_only: true },
+  });
 }
 
 export async function POST(req: Request) {
@@ -67,6 +72,17 @@ export async function POST(req: Request) {
     const active = !!body.active;
     if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
     const { error } = await g.admin.from("promoter_hoodies").update({ active }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "settings") {
+    const payoutMode = body.payoutMode === "credit" ? "credit" : "cash";
+    const firstOrderOnly = !!body.firstOrderOnly;
+    const { error } = await g.admin
+      .from("promoter_program_settings")
+      .update({ payout_mode: payoutMode, first_order_only: firstOrderOnly, updated_at: new Date().toISOString() })
+      .eq("id", 1);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }

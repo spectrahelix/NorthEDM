@@ -20,6 +20,8 @@ type Hoodie = {
 export default function AdminHoodiesPage() {
   const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [hoodies, setHoodies] = useState<Hoodie[]>([]);
+  const [settings, setSettings] = useState<{ payout_mode: string; first_order_only: boolean }>({ payout_mode: "cash", first_order_only: true });
+  const [settingsMsg, setSettingsMsg] = useState("");
   const [forbidden, setForbidden] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -36,9 +38,21 @@ export default function AdminHoodiesPage() {
     const j = await res.json().catch(() => ({}));
     setPromoters(j.promoters ?? []);
     setHoodies(j.hoodies ?? []);
+    if (j.settings) setSettings(j.settings);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  async function saveSettings(next: { payout_mode: string; first_order_only: boolean }) {
+    setSettings(next);
+    setSettingsMsg("");
+    await fetch("/api/admin/hoodies", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "settings", payoutMode: next.payout_mode, firstOrderOnly: next.first_order_only }),
+    });
+    setSettingsMsg("Saved");
+    setTimeout(() => setSettingsMsg(""), 1500);
+  }
 
   async function mint(e: React.FormEvent) {
     e.preventDefault();
@@ -75,8 +89,43 @@ export default function AdminHoodiesPage() {
           discount and credits them what the customer saves.
         </p>
 
+        {/* Program settings */}
+        <div className="mt-8 rounded-2xl border border-[#39FF14]/20 bg-[#39FF14]/[0.04] p-5">
+          <div className="flex items-center justify-between">
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-[#39FF14]">Promoter reward — brand purchases</p>
+            {settingsMsg && <span className="font-dm-mono text-xs text-neutral-400">{settingsMsg}</span>}
+          </div>
+          <p className="mt-2 text-sm text-neutral-400">
+            How promoters are rewarded when someone buys <span className="text-neutral-200">NorthEDM-brand</span> shop
+            items with their code. FestDash &amp; third-party vendor sales are excluded by design.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-6">
+            <div>
+              <p className="mb-1.5 font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Payout</p>
+              <div className="inline-flex overflow-hidden rounded-xl border border-white/10">
+                {(["cash", "credit"] as const).map((m) => (
+                  <button key={m}
+                    onClick={() => saveSettings({ ...settings, payout_mode: m })}
+                    className={`px-4 py-2 font-dm-mono text-xs uppercase tracking-widest transition ${settings.payout_mode === m ? "bg-[#39FF14] text-black" : "text-neutral-400 hover:bg-white/5"}`}>
+                    {m === "cash" ? "Cash" : "Store credit"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-neutral-300">
+              <input type="checkbox" checked={settings.first_order_only}
+                onChange={(e) => saveSettings({ ...settings, first_order_only: e.target.checked })} />
+              Reward only a buyer&apos;s first order (recommended for cash)
+            </label>
+          </div>
+          <p className="mt-3 font-dm-mono text-[11px] text-neutral-500">
+            Cash pays to the promoter&apos;s connected Stripe account; if they haven&apos;t connected payouts yet,
+            it falls back to store credit automatically.
+          </p>
+        </div>
+
         {/* Mint */}
-        <form onSubmit={mint} className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <form onSubmit={mint} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Mint hoodies</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <select value={promoter} onChange={(e) => setPromoter(e.target.value)}
