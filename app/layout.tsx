@@ -6,6 +6,7 @@ import { WaveField } from "./components/WaveField";
 import { PageViewTracker } from "./components/PageViewTracker";
 import { ServiceWorkerRegister } from "./components/ServiceWorkerRegister";
 import { HoodieWelcome } from "./components/HoodieWelcome";
+import { BugReporter } from "./components/BugReporter";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
@@ -119,6 +120,7 @@ export default async function RootLayout({
         <PageViewTracker />
         <ServiceWorkerRegister />
         <HoodieWelcome />
+        <BugReporter />
         <WaveField />
         <div style={{ position: "relative", zIndex: 1 }}>
         <header className="sticky top-0 z-30" style={{ position: "sticky", background: "rgba(3,3,3,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
@@ -204,6 +206,12 @@ export default async function RootLayout({
                 <p className="mt-4 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-700">
                   FestDash™ / FestEats™
                 </p>
+                <div className="mt-4 space-y-1 text-sm text-neutral-400">
+                  <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Contact</p>
+                  <p className="text-neutral-300">CJ Lewis</p>
+                  <p><a href="tel:+15709514219" className="hover:text-white">570-951-4219</a></p>
+                  <p><a href="mailto:northedm1@gmail.com" className="hover:text-white">northedm1@gmail.com</a></p>
+                </div>
               </div>
               <div>
                 <p className="mb-3 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Community</p>

@@ -21,6 +21,12 @@ export default function ForagingPage() {
             exploration, and Appalachian woodland knowledge with a licensed
             forager.
           </p>
+          <div className="mt-6 inline-flex flex-wrap items-center gap-x-5 gap-y-1 rounded-2xl border border-green-400/20 bg-green-400/[0.05] px-5 py-3 text-sm">
+            <span className="font-dm-mono text-xs uppercase tracking-widest text-green-300">Book direct</span>
+            <span className="text-neutral-200">CJ Lewis</span>
+            <a href="tel:+15709514219" className="text-neutral-200 hover:text-white">570-951-4219</a>
+            <a href="mailto:cjblue27@gmail.com" className="text-neutral-200 hover:text-white">cjblue27@gmail.com</a>
+          </div>
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
