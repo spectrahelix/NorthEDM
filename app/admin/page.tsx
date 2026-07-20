@@ -137,6 +137,18 @@ export default async function AdminPage() {
               Broadcast a post to every channel &amp; manage the /social hub
             </p>
           </Link>
+          <Link
+            href="/admin/stores"
+            className="group rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition hover:border-[#FFC93C]/40 hover:bg-white/[0.04]"
+          >
+            <div className="mb-3 text-2xl">🏪</div>
+            <h2 className="font-bebas text-2xl tracking-wide group-hover:text-[#FFC93C]">
+              Embedded Stores
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Give a partner a branded multi-vendor storefront at /&lt;slug&gt;
+            </p>
+          </Link>
         </div>
 
         {forumAdmin && (
