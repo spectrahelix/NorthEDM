@@ -139,3 +139,29 @@ These are decided in principle; not yet coded:
    FestDash + listing.
 5. Recurring monthly **web-dev maintenance** billing (also flagged in the quotes
    feature as "Phase 2").
+
+---
+
+## 7. ⭐ LIKELY DIRECTION — Frank's General Store as a multi-vendor marketplace
+
+**This is now the probable path** (as of 2026-07-20): Frank's store won't be a single
+vendor — it becomes a **marketplace that hosts other vendors and sells their
+products.** That reframes a lot above, so revisit §1/§3/§4/§5/the bundle once it's
+confirmed.
+
+**What changes:**
+- **Frank = marketplace host/operator, not a single vendor.** His pricing tier is an
+  "operator" relationship, not the $25/mo vendor sub.
+- **The site is a real multi-vendor storefront** — vendor accounts, per-vendor product
+  management, split payouts to each vendor. That's well beyond the $500 catalog tier;
+  price it as a platform build.
+- **Commission gains a layer:** NorthEDM → Frank's store → Frank's vendors. Decide how
+  NorthEDM earns from *his* vendors' sales (a cut of his GMV, or a flat operator fee),
+  separate from what Frank charges his own vendors.
+
+**The big opportunity — reuse, don't rebuild:** a multi-vendor marketplace with vendor
+onboarding + FestDash delivery + Stripe Connect payouts is *exactly* what NorthEDM
+already is. Frank's store can likely **reuse the existing NorthEDM infrastructure**
+(marketplace, vendor accounts, FestDash, escrow/Connect payouts) rather than being
+built from scratch → a repeatable **"marketplace-in-a-box"** product to sell to future
+clients, not a one-off site.
