@@ -41,8 +41,9 @@ _Living reference of open work. Last updated: 2026-07-12._
 
 ---
 
-## 💡 Idea — Promoter Hoodie collab with **Bright Future** (apparel partner)
-A line of **Promoter Hoodies** co-designed with Bright Future (apparel shop). Each
+## 💡 Promoter Hoodie line — **NorthEDM in-house** (no apparel partner at the moment)
+A NorthEDM line of **Promoter Hoodies** (produced through whichever print/apparel
+shop we choose — no outside brand association currently). Each
 hoodie carries a **unique, genuinely-scannable QR woven into the threading** —
 scan it with a phone and you land on that hoodie's Promoter and unlock their promo
 code. Whatever a customer **saves** by using that code on the site is credited **to
@@ -70,9 +71,9 @@ the Promoter** as their earnings. Walking billboards that pay their wearer.
 
 **The genuinely hard/novel part — the woven QR:** a knitted/embroidered QR that
 actually scans needs high contrast, a clean quiet zone, big enough modules, and
-high error-correction. Bright Future handles production; **we generate a print-ready
-unique QR (SVG/vector) per hoodie/Promoter** and hand it off. Worth a scannability
-test swatch from Bright Future before a full run.
+high error-correction. A print/apparel shop handles production; **we generate a
+print-ready unique QR (SVG/vector) per hoodie/Promoter** and hand it off. Worth a
+scannability test swatch from the producer before a full run.
 
 _Status: **Phase 1 BUILT** (unique QR per hoodie → `/h/<code>` scan landing →
 attribution cookie → shop discount at checkout → promoter credited what the
@@ -80,7 +81,7 @@ customer saved, as store credit). Admin mints codes + downloads print-ready QR
 SVGs at **/admin/hoodies**; promoters see scans/orders/earnings on their
 dashboard. `promoter_hoodies` table + `shop_orders` discount columns applied._
 
-**Remaining:** (1) hand the downloaded QR SVGs to **Bright Future** and get a
+**Remaining:** (1) hand the downloaded QR SVGs to a **print/apparel shop** and get a
 **scannability test swatch** before a full run; (2) optional **cash payouts** to
 promoters (currently store credit) via Stripe Connect; (3) decide if the
 discount % should vary per drop (per-hoodie % is already supported).

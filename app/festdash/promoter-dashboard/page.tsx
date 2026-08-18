@@ -66,7 +66,7 @@ export default function PromoterDashboard() {
       setBalanceCents(bal?.balance_cents ?? 0);
       setLedger(led ?? []);
 
-      // Promoter hoodies (Bright Future line).
+      // Promoter hoodies (Promoter Hoodie line).
       try {
         const hr = await fetch("/api/festdash/promoter/hoodies");
         const hj = await hr.json();
@@ -172,7 +172,7 @@ export default function PromoterDashboard() {
           </Link>
         </div>
 
-        {/* My Hoodies (Bright Future line) */}
+        {/* My Hoodies (Promoter Hoodie line) */}
         {hoodieTotals && hoodieTotals.hoodies > 0 && (
           <div className="mb-8 rounded-2xl border border-[#CC00FF]/20 bg-[#CC00FF]/[0.04] p-5">
             <div className="mb-3 flex items-center justify-between gap-2">
