@@ -1,0 +1,85 @@
+name: Weekly Site Audit
+
+# Runs a mechanical audit of the site (features, security, correctness, config)
+# every week and opens a dated GitHub issue with the findings, so the owner is
+# notified without checking anything by hand. Report-only — it never changes
+# code or deploys. Run it any time from the Actions tab via "Run workflow".
+
+on:
+  schedule:
+    # Mondays 08:13 UTC (off the :00 mark on purpose). Cron is always UTC here.
+    - cron: "13 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run site audit
+        id: audit
+        env:
+          CI: "true"
+          # Optional: set these as repo secrets to include growth/DB stats later.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/site-audit.mjs > audit-out.txt 2> audit-log.txt || true
+          # Lift the summary block into its own file for the issue body.
+          awk '/<<<AUDIT_SUMMARY>>>/{f=!f; next} f' audit-out.txt > audit-summary.md
+          cat audit-log.txt || true
+          if [ ! -s audit-summary.md ]; then
+            echo "Audit produced no summary — see the workflow logs." > audit-summary.md
+          fi
+
+      - name: Commit refreshed audit doc
+        run: |
+          if ! git diff --quiet -- docs/SITE_AUDIT.md; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/SITE_AUDIT.md
+            git commit -m "chore(audit): weekly site audit refresh [skip ci]"
+            git push || echo "Could not push doc (branch protection?) — issue still filed."
+          else
+            echo "No changes to docs/SITE_AUDIT.md."
+          fi
+
+      - name: Open audit issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DATE="$(date -u +'%Y-%m-%d')"
+          # Ensure the label exists (ignore error if it already does).
+          gh label create "weekly-audit" --color "1D76DB" --description "Automated weekly site audit" 2>/dev/null || true
+          {
+            echo "_Automated weekly audit. Report-only — nothing was changed or deployed._"
+            echo
+            cat audit-summary.md
+            echo
+            echo "---"
+            echo "Full report committed at \`docs/SITE_AUDIT.md\` on the default branch."
+            echo "For growth numbers, RLS gaps, and which features actually *work*, run \`/site-audit\` in a Claude Code session."
+          } > issue-body.md
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "🔍 Weekly Site Audit — ${DATE}" \
+            --body-file issue-body.md \
+            --label "weekly-audit" \
+            --assignee "${{ github.repository_owner }}" \
+          || gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "🔍 Weekly Site Audit — ${DATE}" \
+            --body-file issue-body.md
