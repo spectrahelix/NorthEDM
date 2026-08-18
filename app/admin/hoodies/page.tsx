@@ -81,9 +81,9 @@ export default function AdminHoodiesPage() {
     <main className="min-h-screen px-6 py-16 text-neutral-100 admin-surface">
       <div className="mx-auto max-w-4xl">
         <p className="font-dm-mono text-sm uppercase tracking-[0.3em] text-[#CC00FF]">Admin · Promoter Hoodies</p>
-        <h1 className="mt-3 font-bebas text-5xl tracking-wide">Bright Future Hoodie Line</h1>
+        <h1 className="mt-3 font-bebas text-5xl tracking-wide">Promoter Hoodie Line</h1>
         <p className="mt-2 max-w-2xl text-sm text-neutral-500">
-          Mint unique hoodie codes for a promoter, download each print-ready QR for Bright Future,
+          Mint unique hoodie codes for a promoter, download each print-ready QR to send to print,
           and track scans, redemptions, and promoter earnings. Each QR points to
           <span className="text-neutral-300"> /h/&lt;code&gt;</span>; scanning applies the promoter&apos;s
           discount and credits them what the customer saves.

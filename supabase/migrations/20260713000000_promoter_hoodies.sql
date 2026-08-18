@@ -1,4 +1,4 @@
--- Promoter Hoodies (Bright Future collab).
+-- Promoter Hoodies (NorthEDM promoter QR hoodies).
 --
 -- Each physical hoodie has a unique code woven into its QR. Scanning opens
 -- /h/<code>, which attributes the shopper to that hoodie's promoter and applies
