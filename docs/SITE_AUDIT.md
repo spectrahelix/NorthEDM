@@ -2,20 +2,19 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-08-18 04:58 UTC
-**Health:** 🔴 1 critical vulnerability · 🟠 6 high vulnerabilities · ⚪ 3 TODO/FIXME markers
+**Last run:** 2026-08-18 14:23 UTC
+**Health:** ⚪ 3 TODO/FIXME markers
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **77** routes (10 dynamic) |
 | API endpoints | **80** |
-| Security (npm audit) | 1 critical · 6 high · 0 moderate · 1 low |
+| Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
 | TypeScript | ✅ clean |
-| Migrations | 33 (latest: `20260720000000_stores.sql`) |
+| Migrations | 34 (latest: `20260818000000_audit_growth_stats.sql`) |
 | Env vars referenced | 19 |
 | TODO/FIXME | 3 |
 
-**High/critical advisories:** brace-expansion (high), js-yaml (high), nanoid (high), next (high), postcss (high), sharp (high), tar (critical)
 
 
 ---
@@ -218,7 +217,8 @@ _CI status is blank when run locally. Missing server secrets in CI is normal —
 
 ## Deeper, judgment-based audits
 
-For growth numbers (signups/funnel), RLS-policy gaps, dead notification paths, and a
-read on which features are actually *working* (not just present), run the Claude
-playbook: **`/site-audit`** in a Claude Code session (it can reach the Supabase
-data the mechanical script can't).
+Basic growth (users, recent signups, open reports) is included automatically when
+the Supabase Actions secrets are set. For the deeper read — RLS-policy gaps, dead
+notification paths, funnel analysis, and which features are actually *working*
+(not just present) — run the Claude playbook: **`/site-audit`** in a Claude Code
+session.
