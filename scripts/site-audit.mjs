@@ -93,16 +93,47 @@ const migrations = existsSync(migDir) ? readdirSync(migDir).filter((f) => f.ends
 const latestMigration = migrations.at(-1) || "(none)";
 const todoCount = (sh(`grep -rInE "TODO|FIXME" app utils 2>/dev/null || true`).out.split("\n").filter(Boolean)).length;
 
+// ── 6. Growth & backlog (optional — needs Supabase service key) ──────────────
+// Reads through a locked-down SECURITY DEFINER RPC (audit_growth_stats) that
+// only service_role may call. Absent secrets → this section is simply omitted.
+let growth = null;
+{
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && key) {
+    try {
+      const res = await fetch(`${url}/rest/v1/rpc/audit_growth_stats`, {
+        method: "POST",
+        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (res.ok) growth = await res.json();
+      else console.error(`[site-audit] growth RPC HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+    } catch (e) {
+      console.error("[site-audit] growth fetch failed:", e.message);
+    }
+  }
+}
+
 // ── Assemble ────────────────────────────────────────────────────────────────
 const now = new Date();
 const stamp = now.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+const daysSince = (iso) => (iso ? Math.floor((now - new Date(iso)) / 86400000) : null);
 const flags = [];
 if (vulns.critical > 0) flags.push(`🔴 ${vulns.critical} critical vulnerabilit${vulns.critical === 1 ? "y" : "ies"}`);
 if (vulns.high > 0) flags.push(`🟠 ${vulns.high} high vulnerabilit${vulns.high === 1 ? "y" : "ies"}`);
 if (tscErrors > 0) flags.push(`🔴 ${tscErrors} TypeScript error${tscErrors === 1 ? "" : "s"} (build likely broken)`);
+if (growth && growth.reports_open > 0) flags.push(`🟡 ${growth.reports_open} open bug/feedback report${growth.reports_open === 1 ? "" : "s"}`);
+if (growth && growth.new_30d === 0) flags.push(`⚪ no new signups in 30 days`);
 if (auditingInCI && envMissing.length) flags.push(`🟡 ${envMissing.length} env var(s) not set in CI`);
 if (todoCount > 0) flags.push(`⚪ ${todoCount} TODO/FIXME markers`);
 const health = flags.length === 0 ? "🟢 All clear" : flags.join(" · ");
+
+const growthRows = growth
+  ? `| Users | **${growth.total_users}** total · ${growth.new_7d} new (7d) · ${growth.new_30d} new (30d) |
+| Latest signup | ${growth.latest_signup ? `${growth.latest_signup.slice(0, 10)} (${daysSince(growth.latest_signup)}d ago)` : "—"} |
+| Open bug/feedback reports | ${growth.reports_open}${growth.reports_total ? ` of ${growth.reports_total} total` : ""} |\n`
+  : "";
 
 const envTable = envRows
   .map((r) => `| \`${r.k}\` | ${r.pub ? "public" : "server"} | ${auditingInCI ? (r.present ? "✅ set" : "❌ missing") : "—"} |`)
@@ -116,13 +147,13 @@ const summary = `## 🔍 NorthEDM Site Audit — ${stamp}
 | :-- | :-- |
 | Features (pages) | **${pages.length}** routes (${dynamicPages} dynamic) |
 | API endpoints | **${apis.length}** |
-| Security (npm audit) | ${vulns.critical} critical · ${vulns.high} high · ${vulns.moderate} moderate · ${vulns.low} low |
+${growthRows}| Security (npm audit) | ${vulns.critical} critical · ${vulns.high} high · ${vulns.moderate} moderate · ${vulns.low} low |
 | TypeScript | ${tscErrors === 0 ? "✅ clean" : `❌ ${tscErrors} errors`} |
 | Migrations | ${migrations.length} (latest: \`${latestMigration}\`) |
 | Env vars referenced | ${envRefs.length}${auditingInCI ? ` (${envMissing.length} missing in CI)` : ""} |
 | TODO/FIXME | ${todoCount} |
 ${topAdvisories.length ? `\n**High/critical advisories:** ${topAdvisories.join(", ")}` : ""}
-${auditingInCI && envMissing.length ? `\n**Env not set in CI:** ${envMissing.map((e) => `\`${e}\``).join(", ")} — expected for secrets; verify they're set in Vercel.` : ""}`;
+${auditingInCI && envMissing.length ? `\n**Env not set in CI:** ${envMissing.map((e) => `\`${e}\``).join(", ")} — expected for secrets; verify they're set in Vercel.` : ""}${auditingInCI && !growth ? `\n_Growth stats unavailable — set \`NEXT_PUBLIC_SUPABASE_URL\` + \`SUPABASE_SERVICE_ROLE_KEY\` as Actions secrets to include them._` : ""}`;
 
 const doc = `# NorthEDM — Site Audit
 
@@ -160,10 +191,11 @@ _CI status is blank when run locally. Missing server secrets in CI is normal —
 
 ## Deeper, judgment-based audits
 
-For growth numbers (signups/funnel), RLS-policy gaps, dead notification paths, and a
-read on which features are actually *working* (not just present), run the Claude
-playbook: **\`/site-audit\`** in a Claude Code session (it can reach the Supabase
-data the mechanical script can't).
+Basic growth (users, recent signups, open reports) is included automatically when
+the Supabase Actions secrets are set. For the deeper read — RLS-policy gaps, dead
+notification paths, funnel analysis, and which features are actually *working*
+(not just present) — run the Claude playbook: **\`/site-audit\`** in a Claude Code
+session.
 `;
 
 writeFileSync(join(ROOT, "docs", "SITE_AUDIT.md"), doc);
