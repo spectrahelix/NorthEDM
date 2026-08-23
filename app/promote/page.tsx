@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
-export default function FestDashPromoterSignup() {
+export default function PromoterSignup() {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function FestDashPromoterSignup() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/festdash/promoter-signup", {
+    const res = await fetch("/api/promote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -64,10 +64,10 @@ export default function FestDashPromoterSignup() {
             one-time promo codes to share with your people.
           </p>
           <button
-            onClick={() => router.push("/festdash")}
+            onClick={() => router.push("/promote/dashboard")}
             className="rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
           >
-            Back to FestDash
+            Go to my Promoter Dashboard
           </button>
         </div>
       </main>
@@ -78,7 +78,7 @@ export default function FestDashPromoterSignup() {
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-xl">
         <div className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
-          FestDash Promoter Program
+          NorthEDM Promoter Program
         </div>
         <h1 className="mb-2 font-bebas text-5xl tracking-wide text-white">
           Become a Promoter

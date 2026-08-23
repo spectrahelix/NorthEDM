@@ -292,13 +292,13 @@ export default async function ProfilePage({
               </Link>
             )}
             {profile.is_promoter && (
-              <Link href="/festdash/promoter-dashboard" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
+              <Link href="/promote/dashboard" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
                 style={{ borderColor: "#E8FF4755", background: "#E8FF4712", color: "#E8FF47" }}>
                 ✦ Promoter Dashboard →
               </Link>
             )}
             {profile.is_promoter && (
-              <Link href="/festdash/referrals" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
+              <Link href="/promote/codes" className="rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:opacity-90"
                 style={{ borderColor: "#E8FF4755", background: "#E8FF4712", color: "#E8FF47" }}>
                 🎟️ Referral QR Codes →
               </Link>

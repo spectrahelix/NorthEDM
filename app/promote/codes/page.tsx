@@ -113,10 +113,10 @@ export default function ReferralsPage() {
           <div className="mb-4 text-5xl">🎟️</div>
           <h1 className="mb-3 font-bebas text-4xl tracking-wide text-white">Referral codes</h1>
           <p className="mb-6 text-neutral-400">
-            Referral codes are for FestDash vendors and approved promoters. Apply to join,
+            Referral codes are for approved NorthEDM promoters (and vendors). Apply to join,
             then come back to start earning store credit.
           </p>
-          <Link href="/festdash/promoter-signup"
+          <Link href="/promote"
             className="rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400">
             Apply to Promote
           </Link>
@@ -131,7 +131,7 @@ export default function ReferralsPage() {
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-2xl">
-        <BackBar crumbs={[{ label: "FestDash", href: "/festdash" }]} fallback="/festdash" />
+        <BackBar crumbs={[{ label: "Promoter", href: "/promote/dashboard" }]} fallback="/promote/dashboard" />
         <div className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
           {issuerKind === "vendor" ? "Vendor" : "Promoter"} · Referrals
         </div>

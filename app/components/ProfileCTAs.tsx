@@ -48,10 +48,10 @@ export function ProfileCTAs({
       <Cta
         color="#E8FF47"
         status={promoter}
-        applyHref="/festdash/promoter-signup"
+        applyHref="/promote"
         apply="✦ Become a Promoter — get personal QR referral codes, give discounts & earn rewards back. Hoodie line coming soon!"
         pending="Your promoter application is under review — thank you!"
-        approved="You're a Promoter ✦ Grab your QR referral codes → /festdash/referrals"
+        approved="You're a Promoter ✦ Grab your QR referral codes → /promote/codes"
       />
     </div>
   );
