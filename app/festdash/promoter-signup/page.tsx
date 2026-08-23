@@ -83,10 +83,15 @@ export default function FestDashPromoterSignup() {
         <h1 className="mb-2 font-bebas text-5xl tracking-wide text-white">
           Become a Promoter
         </h1>
-        <p className="mb-10 text-neutral-500">
-          Send people to your favorite FestDash vendors with one-time discount
-          codes. Earn a commission on every order your codes bring in — and
-          level up your rank on the network.
+        <p className="mb-4 text-neutral-400">
+          Get your own <span className="text-white">personal QR codes</span> for referrals —
+          post them, print them, or text them anywhere. Give your people a discount, and
+          <span className="text-white"> earn rewards back</span> every time someone joins or
+          orders through you.
+        </p>
+        <p className="mb-10 rounded-xl border border-[#CC00FF]/25 bg-[#CC00FF]/[0.06] px-4 py-3 text-sm text-neutral-300">
+          👕 Promoters also get first access to the upcoming <span className="text-white font-semibold">Promoter Hoodie line</span> —
+          a wearable QR that earns while you wear it. <span className="text-[#CC00FF]">Coming soon.</span>
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">

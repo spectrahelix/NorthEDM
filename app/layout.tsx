@@ -7,6 +7,7 @@ import { PageViewTracker } from "./components/PageViewTracker";
 import { ServiceWorkerRegister } from "./components/ServiceWorkerRegister";
 import { HoodieWelcome } from "./components/HoodieWelcome";
 import { BugReporter } from "./components/BugReporter";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
@@ -121,6 +122,7 @@ export default async function RootLayout({
         <ServiceWorkerRegister />
         <HoodieWelcome />
         <BugReporter />
+        <InstallPrompt />
         <WaveField />
         <div style={{ position: "relative", zIndex: 1 }}>
         <header className="sticky top-0 z-30" style={{ position: "sticky", background: "rgba(3,3,3,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
