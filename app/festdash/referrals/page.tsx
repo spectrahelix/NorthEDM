@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 
@@ -22,7 +23,10 @@ export default function ReferralsPage() {
   const [generating, setGenerating] = useState(false);
   const [origin, setOrigin] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [qrs, setQrs] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
+
+  const linkFor = useCallback((code: string) => `${origin}/signup?ref=${code}`, [origin]);
 
   const refresh = useCallback(async (userId: string) => {
     const [{ data: codeRows }, { data: bal }] = await Promise.all([
@@ -52,6 +56,29 @@ export default function ReferralsPage() {
       setLoading(false);
     })();
   }, [supabase, refresh]);
+
+  // Render a scannable QR for every unused code (points at the signup link with
+  // the promoter's code attached). Post it, print it, or drop it on a flyer.
+  useEffect(() => {
+    if (!origin) return;
+    const unusedCodes = codes.filter((c) => !c.redeemed_by);
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, string> = {};
+      for (const c of unusedCodes) {
+        try {
+          next[c.id] = await QRCode.toDataURL(linkFor(c.code), {
+            width: 320,
+            margin: 1,
+            errorCorrectionLevel: "H",
+            color: { dark: "#000000", light: "#ffffff" },
+          });
+        } catch { /* skip a code that fails to encode */ }
+      }
+      if (!cancelled) setQrs(next);
+    })();
+    return () => { cancelled = true; };
+  }, [codes, origin, linkFor]);
 
   async function generate() {
     setGenerating(true);
@@ -132,7 +159,8 @@ export default function ReferralsPage() {
             Pull a new code
           </p>
           <p className="mb-4 text-sm text-neutral-400">
-            Each code works once. Hand it to a new person — when they sign up and confirm their
+            Each code works once and comes with its own <span className="text-white">scannable QR</span> —
+            copy the link or print/post the QR. When someone signs up through it and confirms their
             email, you both get <span className="text-[#39FF14]">$1.00 store credit</span>.
           </p>
           <button
@@ -155,23 +183,44 @@ export default function ReferralsPage() {
           ) : (
             <div className="divide-y divide-white/5">
               {codes.map((c) => (
-                <div key={c.id} className="flex items-center justify-between gap-3 py-3">
-                  <div>
-                    <span className="font-dm-mono text-lg tracking-wider text-white">{c.code}</span>
-                    {c.redeemed_by ? (
-                      <span className="ml-3 font-dm-mono text-[11px] text-neutral-500">redeemed ✓</span>
-                    ) : (
-                      <span className="ml-3 font-dm-mono text-[11px] text-[#39FF14]">unused</span>
+                <div key={c.id} className="flex items-center gap-4 py-4">
+                  {!c.redeemed_by && qrs[c.id] && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={qrs[c.id]}
+                      alt={`QR for ${c.code}`}
+                      className="h-20 w-20 shrink-0 rounded-lg bg-white p-1"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div>
+                      <span className="font-dm-mono text-lg tracking-wider text-white">{c.code}</span>
+                      {c.redeemed_by ? (
+                        <span className="ml-3 font-dm-mono text-[11px] text-neutral-500">redeemed ✓</span>
+                      ) : (
+                        <span className="ml-3 font-dm-mono text-[11px] text-[#39FF14]">unused</span>
+                      )}
+                    </div>
+                    {!c.redeemed_by && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => copy(c)}
+                          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/10"
+                        >
+                          {copiedId === c.id ? "Copied link ✓" : "Copy link"}
+                        </button>
+                        {qrs[c.id] && (
+                          <a
+                            href={qrs[c.id]}
+                            download={`northedm-referral-${c.code}.png`}
+                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/10"
+                          >
+                            Download QR
+                          </a>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {!c.redeemed_by && (
-                    <button
-                      onClick={() => copy(c)}
-                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/10"
-                    >
-                      {copiedId === c.id ? "Copied link ✓" : "Copy link"}
-                    </button>
-                  )}
                 </div>
               ))}
             </div>

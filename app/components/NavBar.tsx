@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import { NotificationBell } from "./NotificationBell";
 import { MessagesNavLink } from "./MessagesBadge";
 import { GlobalSearch } from "./GlobalSearch";
+import { ShareButton } from "./ShareButton";
 
 type NavLink = {
   href: string;
@@ -147,6 +148,12 @@ export function NavBar({
 
         <GlobalSearch userId={userId} />
 
+        <ShareButton
+          compact
+          label="Share NorthEDM"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 transition hover:bg-white/5 hover:text-white"
+        />
+
         {userId ? (
           <>
             <MessagesNavLink userId={userId} />
@@ -207,6 +214,11 @@ export function NavBar({
             <NotificationBell userId={userId} />
           </>
         )}
+        <ShareButton
+          compact
+          label="Share NorthEDM"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-neutral-300 transition hover:bg-white/5 hover:text-white"
+        />
         <button
           onClick={() => setOpen(true)}
           aria-label="Open menu"

@@ -49,9 +49,9 @@ export function ProfileCTAs({
         color="#E8FF47"
         status={promoter}
         applyHref="/festdash/promoter-signup"
-        apply="Want to support the NorthEDM Community? Become a Promoter for additional opportunities!"
+        apply="✦ Become a Promoter — get personal QR referral codes, give discounts & earn rewards back. Hoodie line coming soon!"
         pending="Your promoter application is under review — thank you!"
-        approved="NorthEDM greatly thanks you for supporting!"
+        approved="You're a Promoter ✦ Grab your QR referral codes → /festdash/referrals"
       />
     </div>
   );
