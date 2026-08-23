@@ -61,17 +61,35 @@ soon as they finish Stripe onboarding**. The money waits in NorthEDM's own Strip
 balance (our revenue), not as custodied customer funds — paying an owed commission
 later is normal business, not money transmission.
 
-## Connect bank (Stripe-hosted — we build no bank form)
+## Payout rails — promoter picks one (Stripe or PayPal)
 
+A promoter chooses a **payout method**; at commission time we route their cut down
+the chosen rail. Both are pass-through (we never hold their money).
+
+**Stripe (bank account or debit card)** — default/recommended.
 - Uses the existing `festdash_promoters.stripe_account_id` (Stripe Connect Express;
   onboarding route already exists: `/api/festdash/promoter/stripe/connect`).
 - **"Connect Bank"** opens Stripe's **hosted** onboarding: the promoter enters/saves
   bank details and sets a default payout account **on Stripe's pages**. We never see
-  or store account/routing numbers.
-- Offered at **promoter signup** (so they're ready to receive) and on the dashboard.
-- Payouts to their default bank are handled by **Stripe** (automatic on a schedule;
-  instant payout available from their Stripe Express dashboard). "Withdrawal" is
-  largely automatic — an optional manual payout button can come later.
+  or store account/routing numbers. Stripe also does the required identity/KYC.
+- Payouts handled by Stripe (automatic on a schedule; instant available in their
+  Express dashboard). Reaches any US bank or debit card — including Square users'
+  banks.
+
+**PayPal (PayPal Payouts API)** — optional alternative.
+- Promoter provides their PayPal email; commission sent via PayPal Payouts. Needs a
+  PayPal business account with Payouts enabled + its API creds. Different fee schedule.
+- Store the chosen method + PayPal email on the promoter record; never store card/bank
+  numbers for either rail.
+
+**Square — NOT a payout destination.** Square only *accepts* payments (pull); it has
+no API to *receive* a pushed payout from a platform (push). There is nothing to send
+to. Square users are still paid via the Stripe (bank) rail — the money lands in the
+same bank. Revisit only if Square ships a platform-payout product.
+
+Offered at **promoter signup** (so they're ready to receive) and on the dashboard.
+"Withdrawal" is largely automatic on both rails; an optional manual payout button can
+come later.
 
 ## Attribution (who referred whom)
 
@@ -105,5 +123,6 @@ later is normal business, not money transmission.
 3. **Commission on a paid action** (start with service invoices/quotes): discount at
    pay time + Stripe transfer to the promoter on payment success. _Live Stripe test._
 4. Extend commission hooks to shop orders, vendor listings, foraging tours, FestDash.
-5. **Connect-at-signup** + earnings/payout view (reads Stripe balance/payout status).
-6. Refund/chargeback reversal handling.
+5. **Connect-at-signup** + payout-method choice (Stripe or PayPal) + earnings/payout
+   view. PayPal rail needs PayPal Payouts API creds (PAYPAL_CLIENT_ID / SECRET).
+6. Refund/chargeback reversal handling (both rails).
