@@ -1,120 +1,109 @@
-# NorthEDM Wallet, Promoter Commissions & Payouts — design
+# NorthEDM Promoter Commissions & Payouts — design (LOCKED)
 
-Status: **design + schema landed; app logic building in verified stages.**
-Owner: CJ (cjblue27@gmail.com). This is a money system — correctness and security
-over speed. Nothing here moves real money until the stage that adds it is tested.
+Status: **design locked; payment build pending (needs Stripe + Supabase connectors
+up and live test transactions).** This is a money system — correctness and legal
+safety over speed.
 
-## Decisions (locked)
+## The model (confirmed with CJ)
 
-1. **No "Add Money" top-up.** The wallet only ever fills from money a user *earned*
-   (promoter commissions) or refunds. Letting users load their own money for later
-   spend can legally make NorthEDM a **state-licensed money transmitter** — skipped
-   on purpose. ("Use wallet at checkout" and "withdraw to bank" still ship.)
-2. **Reusable promoter codes.** Each promoter has **one permanent code + QR**, reused
-   forever. (One-time codes were the old "$1 each way" invite loop — retired.)
-3. **Commission on paid actions only.** A code earns the promoter a % **only when the
-   referred person actually pays** — a NorthEDM-brand shop order, a paid vendor
-   listing, a foraging tour, a FestDash order. **No reward for a bare signup**
-   (kills fake-account farming).
-4. **PCI: card data never touches our servers.** All card entry goes through Stripe
-   (Elements/Checkout + PaymentIntents). We store only Stripe IDs and cents amounts.
-   This keeps us in PCI **SAQ-A** scope (the lightest tier).
-5. **Withdrawals via Stripe Connect (Express).** Promoter connects a bank account to a
-   Stripe Connect account; withdrawal = ledger debit + Stripe transfer/payout.
+A promoter has **one permanent, reusable code + QR**. When a customer uses it on a
+paid action:
 
-## The wallet is the EXISTING store-credit ledger (not a new table)
+- **Customer gets 10% off** (discount applied at checkout via a code input field).
+- **Promoter earns 10% of the list price, in cash** (on a $100 sale: customer pays
+  $90, promoter receives $10).
+- **NorthEDM nets 80%.** (Two 10%s leave: the customer's discount and the promoter's
+  cash. That's the accepted cost.)
 
-NorthEDM already had a wallet and we build on it — no parallel system:
-- `store_credit_balances(user_id, balance_cents)` — the cached balance.
-- `store_credit_ledger(user_id, amount_cents, reason, ref_type, ref_id, created_at)`
-  — append-only history. Balance = sum of entries.
-- `grant_store_credit(p_user, p_amount, p_reason, p_ref_type, p_ref_id)` — hardened
-  `SECURITY DEFINER` RPC that atomically bumps the balance and writes a ledger row.
-  Users can only SELECT their own ledger; no client can write balances.
+Applies to paid actions: service invoices/quotes, NorthEDM-brand shop orders, paid
+vendor listings, foraging tours, FestDash orders. Rates are per-action and
+admin-editable (`commission_rates`, seeded at 1000 bps = 10%).
 
-> Note: an earlier migration briefly added a duplicate `wallet_ledger` /
-> `connect_accounts`; `20260823010000_wallet_consolidate_onto_store_credit.sql`
-> dropped them. The store-credit ledger is the single source of truth.
+## Legal posture — we never hold the promoter's money
 
-Commissions credit the wallet by calling `grant_store_credit(..., p_reason =
-'commission')`. Spending at checkout and withdrawals need a matching **debit** RPC
-(`spend_store_credit` / balance-checked debit) — added in the checkout/withdrawal
-stages, with the same no-negative invariant. Promoter payouts use the existing
-`festdash_promoters.stripe_account_id` (Stripe Connect), so no separate
-`connect_accounts` table.
+The only thing that creates money-transmitter exposure is **NorthEDM custodying
+other people's funds** (a held, withdrawable balance). We avoid it entirely:
 
-## Reusable codes + attribution
+- Promoter commissions are **paid through Stripe Connect at payment time** — Stripe
+  routes the promoter's cut to the promoter's connected account and pays it out to
+  their bank. **Stripe is the licensed money-mover; NorthEDM only directs the split.**
+- **No NorthEDM-held cash balance.** There is **no user "Add Money" / top-up** (that
+  would be stored value → licensing).
+- **Store credit** (the existing `$1` referral perk, `store_credit_ledger`) stays as
+  a **spend-on-site-only** credit — not withdrawable cash — so it is not money
+  transmission and is unaffected by this.
 
-- `promoter_codes(user_id UNIQUE, code UNIQUE, active)` — the permanent code/QR.
-- `referral_attributions(referred_user_id UNIQUE, promoter_user_id, code, created_at)`
-  — set once, the first time a person arrives via `?ref=<code>` (cookie) or enters a
-  code. First-touch wins; a promoter can never attribute **themselves** (no
-  self-referral).
-- When an attributed user completes a paid action, we write a `commissions` row and
-  credit the promoter's ledger.
+_Not legal advice. The Stripe Connect pass-through pattern is the standard way
+platforms stay out of money-transmitter territory; confirm against Stripe's Connect
+terms for the specific setup. Rule we never break: **pass through, never hold.**_
 
-## Commissions
+## Payment mechanics (can't bounce; pay only on secured funds)
 
-- `commission_rates(source_type PK, rate_bps, active)` — admin-editable % per action
-  type (`shop_order`, `vendor_listing`, `foraging_tour`, `festdash_order`). bps =
-  hundredths of a percent (1000 = 10%).
-- `commissions(id, promoter_user_id, referred_user_id, source_type, source_id,
-  base_cents, rate_bps, amount_cents, status, created_at)`
-  - Written **server-side only**, on confirmed payment (Stripe webhook / server
-    confirmation), idempotent on `(source_type, source_id)` so a retried webhook
-    can't double-pay.
-  - On insert, credits `wallet_ledger` (kind `commission`).
+- Customer pays by **card via Stripe** (Stripe Elements — card data never touches our
+  servers; PCI SAQ-A). A card charge is **authorized + captured**, so funds are
+  secured before anything moves. Insufficient funds → the charge fails → no sale, no
+  commission.
+- The promoter's cash is moved **only after `payment_intent.succeeded`** (webhook,
+  signature-verified). Separate charge + transfer: charge the discounted amount on
+  the platform, then `stripe.transfers.create` the commission to the promoter's
+  connected account. Idempotent via `commissions UNIQUE(source_type, source_id)` so a
+  retried webhook can't double-pay.
+- **Deposits:** commission accrues on the amount actually paid (a deposit pays a
+  proportional commission; the balance pays the rest on final payment).
+- **Refund/chargeback:** if the customer is refunded, reverse the promoter transfer
+  (`stripe.transfers.createReversal`) so we don't pay commission on undone sales.
 
-### Where commissions fire (build targets)
-- **NorthEDM-brand shop order paid** → commission on brand items only.
-- **Vendor listing / marketplace access purchased** → commission on the fee.
-- **Foraging tour request converted to paid booking** → commission on the tour price.
-- **FestDash order delivered/paid** → commission on the platform's take.
+## Promoter not yet connected
 
-## Wallet at checkout (split payment)
+If a promoter's code drives a sale before they've connected a bank, the commission is
+**recorded as pending** (`commissions.status='pending'`) and **paid via transfer as
+soon as they finish Stripe onboarding**. The money waits in NorthEDM's own Stripe
+balance (our revenue), not as custodied customer funds — paying an owed commission
+later is normal business, not money transmission.
 
-At checkout the buyer sees **"Use from wallet balance first:"** with a custom-amount
-box (capped at min(balance, order total)).
-
-1. `wallet_applied = min(requested, balance, total)`.
-2. Remaining `= total − wallet_applied` is charged via a **Stripe PaymentIntent**
-   (card entered in Stripe Elements — never on our server).
-3. On Stripe's confirmed-payment webhook: atomically debit the wallet by
-   `wallet_applied` (ledger `spend`) **and** mark the order paid, in one DB
-   transaction. If the card fails, the wallet is **not** debited.
-4. If `wallet_applied == total`, no card is needed; we still verify balance
-   server-side inside the debit function (never trust the client amount).
-
-## Withdrawals (Stripe Connect Express)
+## Connect bank (Stripe-hosted — we build no bank form)
 
 - Uses the existing `festdash_promoters.stripe_account_id` (Stripe Connect Express;
-  onboarding route already exists at `/api/festdash/promoter/stripe/connect`).
-- Promoter clicks **Connect bank** → Stripe Connect onboarding (hosted by Stripe).
-- **Withdraw** → server checks balance, writes a `withdrawal` ledger debit, creates a
-  Stripe transfer to their connected account. Reversed (re-credit) if the transfer
-  fails.
+  onboarding route already exists: `/api/festdash/promoter/stripe/connect`).
+- **"Connect Bank"** opens Stripe's **hosted** onboarding: the promoter enters/saves
+  bank details and sets a default payout account **on Stripe's pages**. We never see
+  or store account/routing numbers.
+- Offered at **promoter signup** (so they're ready to receive) and on the dashboard.
+- Payouts to their default bank are handled by **Stripe** (automatic on a schedule;
+  instant payout available from their Stripe Express dashboard). "Withdrawal" is
+  largely automatic — an optional manual payout button can come later.
+
+## Attribution (who referred whom)
+
+- `promoter_codes(user_id UNIQUE, code UNIQUE, active)` — the permanent code/QR.
+- `referral_attributions(referred_user_id UNIQUE, promoter_user_id, code, created_at,
+  CHECK referred<>promoter)` — first-touch, immutable, no self-referral. Set when a
+  customer arrives via `?ref=<code>`/QR or enters a code.
+- At a paid action, if the payer (or the entered code) maps to a promoter, we create
+  a `commissions` row and the Stripe transfer.
+
+## Data (all applied + verified; RLS on; owners read own rows only)
+
+- `promoter_codes`, `referral_attributions`, `commission_rates`, `commissions`.
+- Wallet/earnings = the existing `store_credit_*` (on-site credit only). Cash
+  commissions do **not** touch store credit — they go straight through Stripe.
 
 ## Security checklist (must hold before go-live)
 
-- [ ] `store_credit_ledger`, `commissions`, `promoter_codes`, `referral_attributions`
-      have RLS **on** with **no client INSERT/UPDATE/DELETE**; all mutations via
-      `SECURITY DEFINER` functions or the service role.
-- [ ] Users can SELECT only **their own** ledger/commissions.
-- [ ] Balance-affecting functions are idempotent and reject negative results.
-- [ ] Card data only ever entered in Stripe Elements/Checkout (SAQ-A). Verify no card
-      fields are ever POSTed to our API.
-- [ ] Stripe webhooks verify the signature (`STRIPE_WEBHOOK_SECRET`) before acting.
-- [ ] Commission writes idempotent on `(source_type, source_id)`.
-- [ ] Self-referral blocked; attribution is first-touch and immutable.
+- [ ] Card entry only via Stripe Elements/Checkout (verify no card fields POST to our API).
+- [ ] Stripe webhooks verify `STRIPE_WEBHOOK_SECRET` before acting.
+- [ ] Commission transfer only after payment success; idempotent per `(source_type, source_id)`.
+- [ ] Refund/chargeback reverses the transfer.
+- [ ] Self-referral blocked; attribution first-touch + immutable.
+- [ ] `commissions`/`promoter_codes`/`referral_attributions` RLS on; no client writes; owners read own.
 
-## Rollout stages
+## Build stages (each its own PR, verified — needs connectors up + test cards)
 
-1. **Schema + ledger primitives** (this doc's migration) + admin rate config. _No UI._
-2. **Promoter wallet UI**: balance + ledger history on profile; reusable code + QR.
-3. **Commission hooks**: credit on each paid action (start with brand shop orders).
-4. **Wallet-at-checkout** split payment.
-5. **Stripe Connect** connect-bank + withdrawal.
-
-Each stage is its own PR, verified (build + a live test on the relevant flow) before
-the next. Requires the Supabase connector up to apply migrations, and Stripe keys in
-Vercel for the payment stages.
+1. ✅ Schema (promoter_codes, referral_attributions, commission_rates, commissions).
+2. **Reusable promoter code + QR** on dashboard/referrals; **attribution** at signup
+   and via a checkout code field. _No money movement — safe to build/verify first._
+3. **Commission on a paid action** (start with service invoices/quotes): discount at
+   pay time + Stripe transfer to the promoter on payment success. _Live Stripe test._
+4. Extend commission hooks to shop orders, vendor listings, foraging tours, FestDash.
+5. **Connect-at-signup** + earnings/payout view (reads Stripe balance/payout status).
+6. Refund/chargeback reversal handling.
