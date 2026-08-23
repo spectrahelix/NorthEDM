@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 
@@ -33,6 +34,10 @@ export default function PromoterDashboard() {
   const [hoodieTotals, setHoodieTotals] = useState<HoodieTotals | null>(null);
   const [payout, setPayout] = useState<{ connected: boolean; onboarded: boolean } | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [myCode, setMyCode] = useState<string | null>(null);
+  const [myLink, setMyLink] = useState<string>("");
+  const [myQr, setMyQr] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   async function connectPayouts() {
     setConnecting(true);
@@ -49,12 +54,25 @@ export default function PromoterDashboard() {
 
       const { data: promoter } = await supabase
         .from("festdash_promoters")
-        .select("is_active")
+        .select("is_active, referral_code")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (!promoter) { setLoading(false); return; }
       setIsPromoter(true);
+
+      // Permanent, reusable code + its QR — the one they post/print/share.
+      if (promoter.referral_code) {
+        const link = `${window.location.origin}/signup?ref=${promoter.referral_code}`;
+        setMyCode(promoter.referral_code as string);
+        setMyLink(link);
+        try {
+          setMyQr(await QRCode.toDataURL(link, {
+            width: 320, margin: 1, errorCorrectionLevel: "H",
+            color: { dark: "#000000", light: "#ffffff" },
+          }));
+        } catch { /* QR is a nicety — never block the dashboard */ }
+      }
 
       const [{ count }, { data: bal }, { data: led }] = await Promise.all([
         supabase.from("referrals").select("id", { count: "exact", head: true }).eq("referrer_id", user.id),
@@ -154,6 +172,51 @@ export default function PromoterDashboard() {
             </>
           )}
         </div>
+
+        {/* Your permanent code + QR — the one you post, print, and wear. */}
+        {myCode && (
+          <div className="mb-8 rounded-2xl border border-[#E8FF47]/25 bg-[#E8FF47]/[0.05] p-5">
+            <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-[#E8FF47]">
+              ✦ Your promoter code
+            </p>
+            <div className="flex flex-wrap items-center gap-5">
+              {myQr && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={myQr} alt={`QR for ${myCode}`} className="h-28 w-28 shrink-0 rounded-xl bg-white p-1.5" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="font-dm-mono text-2xl tracking-[0.2em] text-white">{myCode}</p>
+                <p className="mt-1 text-sm text-neutral-400">
+                  Reusable — share it as much as you like. Anyone who uses it saves
+                  <span className="text-white"> 10%</span>, and you earn
+                  <span className="text-[#39FF14]"> 10% back</span> on what they pay.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(myLink).then(() => {
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      });
+                    }}
+                    className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/10"
+                  >
+                    {copiedLink ? "Copied link ✓" : "Copy my link"}
+                  </button>
+                  {myQr && (
+                    <a
+                      href={myQr}
+                      download={`northedm-promoter-${myCode}.png`}
+                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-white/10"
+                    >
+                      Download QR
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Referral codes */}
         <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5">
