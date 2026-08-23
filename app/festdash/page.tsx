@@ -311,13 +311,13 @@ export default async function FestDashPage() {
                   Join the FestDash Network
                 </Link>
                 <Link
-                  href="/festdash/promoter-signup"
+                  href="/promote"
                   className="inline-flex rounded-2xl border border-orange-500/40 px-6 py-3 font-semibold text-orange-300 transition hover:bg-orange-500/10"
                 >
                   Become a Promoter →
                 </Link>
                 <Link
-                  href="/festdash/promoter-dashboard"
+                  href="/promote/dashboard"
                   className="inline-flex items-center font-dm-mono text-xs text-neutral-500 transition hover:text-neutral-300"
                 >
                   Promoter dashboard →

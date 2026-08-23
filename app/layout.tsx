@@ -222,6 +222,7 @@ export default async function RootLayout({
                   <li><Link href="/crowdwave" className="hover:text-white">CrowdWave</Link></li>
                   <li><Link href="/feed" className="hover:text-white">Feed</Link></li>
                   <li><Link href="/social" className="hover:text-white">Social</Link></li>
+                  <li><Link href="/promote" className="text-[#E8FF47]/80 hover:text-[#E8FF47]">Become a Promoter ✦</Link></li>
                 </ul>
               </div>
               <div>

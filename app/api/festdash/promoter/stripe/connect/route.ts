@@ -38,8 +38,8 @@ export async function POST(req: Request) {
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
   const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${origin}/festdash/promoter-dashboard?stripe=refresh`,
-    return_url: `${origin}/festdash/promoter-dashboard?stripe=connected`,
+    refresh_url: `${origin}/promote/dashboard?stripe=refresh`,
+    return_url: `${origin}/promote/dashboard?stripe=connected`,
     type: "account_onboarding",
   });
   return NextResponse.json({ url: link.url });

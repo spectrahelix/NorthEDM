@@ -38,6 +38,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    // The promoter program is NorthEDM-wide, not FestDash-specific — it moved to
+    // /promote. Keep the old FestDash URLs working (QR codes, links people already
+    // shared, bookmarks) so nothing that's out in the world breaks.
+    return [
+      { source: "/festdash/promoter-signup", destination: "/promote", permanent: true },
+      { source: "/festdash/referrals", destination: "/promote/codes", permanent: true },
+      { source: "/festdash/promoter-dashboard", destination: "/promote/dashboard", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

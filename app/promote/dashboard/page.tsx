@@ -113,11 +113,11 @@ export default function PromoterDashboard() {
           <div className="mb-4 text-5xl">📣</div>
           <h1 className="mb-3 font-bebas text-4xl tracking-wide text-white">Not a promoter yet</h1>
           <p className="mb-6 text-neutral-400">
-            Apply to the FestDash Promoter Program to get your referral link and
+            Apply to the NorthEDM Promoter Program to get your referral link and
             start earning store credit.
           </p>
           <Link
-            href="/festdash/promoter-signup"
+            href="/promote"
             className="rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
           >
             Apply to Promote
@@ -130,9 +130,9 @@ export default function PromoterDashboard() {
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-2xl">
-        <BackBar crumbs={[{ label: "FestDash", href: "/festdash" }]} fallback="/festdash" />
+        <BackBar fallback="/" />
         <div className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
-          FestDash Promoter
+          NorthEDM Promoter
         </div>
         <h1 className="mb-8 font-bebas text-5xl tracking-wide text-white">Your Dashboard</h1>
 
@@ -228,7 +228,7 @@ export default function PromoterDashboard() {
             confirm their email, you both get <span className="text-[#39FF14]">$1.00 store credit</span>.
           </p>
           <Link
-            href="/festdash/referrals"
+            href="/promote/codes"
             className="inline-flex rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
           >
             Generate &amp; manage codes →
