@@ -22,20 +22,26 @@ over speed. Nothing here moves real money until the stage that adds it is tested
 5. **Withdrawals via Stripe Connect (Express).** Promoter connects a bank account to a
    Stripe Connect account; withdrawal = ledger debit + Stripe transfer/payout.
 
-## The wallet is a ledger, not a number
+## The wallet is the EXISTING store-credit ledger (not a new table)
 
-Balance is **never** an editable field. It is the **sum of an append-only ledger**
-(`wallet_ledger`). Every credit (commission, refund) and debit (checkout spend,
-withdrawal) is one immutable row. This makes the balance auditable and impossible to
-silently corrupt.
+NorthEDM already had a wallet and we build on it — no parallel system:
+- `store_credit_balances(user_id, balance_cents)` — the cached balance.
+- `store_credit_ledger(user_id, amount_cents, reason, ref_type, ref_id, created_at)`
+  — append-only history. Balance = sum of entries.
+- `grant_store_credit(p_user, p_amount, p_reason, p_ref_type, p_ref_id)` — hardened
+  `SECURITY DEFINER` RPC that atomically bumps the balance and writes a ledger row.
+  Users can only SELECT their own ledger; no client can write balances.
 
-- `wallet_ledger(user_id, kind, amount_cents, ref_type, ref_id, memo, created_at)`
-  - `kind`: `commission | refund | spend | withdrawal | adjustment`
-  - amount_cents is **signed** (+credit / −debit).
-- Balance = `sum(amount_cents)` for a user. Exposed via a `wallet_balance(user_id)`
-  function and a per-user view. **No client can write this table** — writes happen
-  only through `SECURITY DEFINER` functions that enforce invariants (never let a
-  balance go negative, never double-spend).
+> Note: an earlier migration briefly added a duplicate `wallet_ledger` /
+> `connect_accounts`; `20260823010000_wallet_consolidate_onto_store_credit.sql`
+> dropped them. The store-credit ledger is the single source of truth.
+
+Commissions credit the wallet by calling `grant_store_credit(..., p_reason =
+'commission')`. Spending at checkout and withdrawals need a matching **debit** RPC
+(`spend_store_credit` / balance-checked debit) — added in the checkout/withdrawal
+stages, with the same no-negative invariant. Promoter payouts use the existing
+`festdash_promoters.stripe_account_id` (Stripe Connect), so no separate
+`connect_accounts` table.
 
 ## Reusable codes + attribution
 
@@ -81,7 +87,8 @@ box (capped at min(balance, order total)).
 
 ## Withdrawals (Stripe Connect Express)
 
-- `connect_accounts(user_id UNIQUE, stripe_account_id, payouts_enabled, created_at)`.
+- Uses the existing `festdash_promoters.stripe_account_id` (Stripe Connect Express;
+  onboarding route already exists at `/api/festdash/promoter/stripe/connect`).
 - Promoter clicks **Connect bank** → Stripe Connect onboarding (hosted by Stripe).
 - **Withdraw** → server checks balance, writes a `withdrawal` ledger debit, creates a
   Stripe transfer to their connected account. Reversed (re-credit) if the transfer
@@ -89,9 +96,9 @@ box (capped at min(balance, order total)).
 
 ## Security checklist (must hold before go-live)
 
-- [ ] `wallet_ledger`, `commissions`, `connect_accounts` have RLS **on** with **no
-      client INSERT/UPDATE/DELETE**; all mutations via `SECURITY DEFINER` functions
-      or the service role.
+- [ ] `store_credit_ledger`, `commissions`, `promoter_codes`, `referral_attributions`
+      have RLS **on** with **no client INSERT/UPDATE/DELETE**; all mutations via
+      `SECURITY DEFINER` functions or the service role.
 - [ ] Users can SELECT only **their own** ledger/commissions.
 - [ ] Balance-affecting functions are idempotent and reject negative results.
 - [ ] Card data only ever entered in Stripe Elements/Checkout (SAQ-A). Verify no card
