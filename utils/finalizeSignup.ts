@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { awardReferralReward } from "@/utils/referrals";
+import { recordPromoterAttribution } from "@/utils/attribution";
 import { notifyNewSignup } from "@/utils/alerts";
 
 // Shared post-authentication handling, called from BOTH /auth/callback and
@@ -14,7 +15,12 @@ export async function finalizeAuthedUser(supabase: SupabaseClient): Promise<stri
   if (!user) return null;
 
   // Email confirmed → grant any pending referral reward (idempotent).
-  await awardReferralReward(user.id, user.user_metadata?.referral_code as string | undefined);
+  const referralCode = user.user_metadata?.referral_code as string | undefined;
+  await awardReferralReward(user.id, referralCode);
+
+  // If that code is a promoter's permanent code, record first-touch attribution
+  // so their later PAID actions pay the promoter a commission. No money moves here.
+  await recordPromoterAttribution(user.id, referralCode);
 
   const { data: existingProfile } = await supabase
     .from("user_profiles")
