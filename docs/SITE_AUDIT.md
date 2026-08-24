@@ -2,20 +2,24 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-08-18 14:23 UTC
-**Health:** ⚪ 3 TODO/FIXME markers
+**Last run:** 2026-08-24 09:02 UTC
+**Health:** ⚪ no new signups in 30 days · 🟡 17 env var(s) not set in CI · ⚪ 3 TODO/FIXME markers
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **77** routes (10 dynamic) |
 | API endpoints | **80** |
+| Users | **14** total · 0 new (7d) · 0 new (30d) |
+| Latest signup | 2026-07-13 (41d ago) |
+| Open bug/feedback reports | 0 of 1 total |
 | Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
 | TypeScript | ✅ clean |
-| Migrations | 34 (latest: `20260818000000_audit_growth_stats.sql`) |
-| Env vars referenced | 19 |
+| Migrations | 36 (latest: `20260823010000_wallet_consolidate_onto_store_credit.sql`) |
+| Env vars referenced | 19 (17 missing in CI) |
 | TODO/FIXME | 3 |
 
 
+**Env not set in CI:** `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `CRON_SECRET`, `GITHUB_ISSUES_REPO`, `GITHUB_ISSUES_TOKEN`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_OPENWEATHER_API_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SW_VERSION`, `NTFY_SERVER`, `NTFY_TOPIC`, `OWNER_ALERT_EMAIL`, `SQUARE_VERSION`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TICKETMASTER_API_KEY` — expected for secrets; verify they're set in Vercel.
 
 ---
 
@@ -61,9 +65,6 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/festdash/driver`
 - `/festdash/order`
 - `/festdash/orders`
-- `/festdash/promoter-dashboard`
-- `/festdash/promoter-signup`
-- `/festdash/referrals`
 - `/festdash/track/[id]`
 - `/festdash/vendor-dashboard`
 - `/festdash/vendor-signup`
@@ -82,6 +83,9 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/privacy`
 - `/profile/[id]`
 - `/profile/edit`
+- `/promote`
+- `/promote/codes`
+- `/promote/dashboard`
 - `/quote/[token]`
 - `/requests`
 - `/reset-password`
@@ -186,25 +190,25 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 
 | Variable | Scope | CI status |
 | :-- | :-- | :-- |
-| `BREVO_API_KEY` | server | — |
-| `BREVO_SENDER_EMAIL` | server | — |
-| `CRON_SECRET` | server | — |
-| `GITHUB_ISSUES_REPO` | server | — |
-| `GITHUB_ISSUES_TOKEN` | server | — |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | public | — |
-| `NEXT_PUBLIC_OPENWEATHER_API_KEY` | public | — |
-| `NEXT_PUBLIC_SITE_URL` | public | — |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | — |
-| `NEXT_PUBLIC_SUPABASE_URL` | public | — |
-| `NEXT_PUBLIC_SW_VERSION` | public | — |
-| `NTFY_SERVER` | server | — |
-| `NTFY_TOPIC` | server | — |
-| `OWNER_ALERT_EMAIL` | server | — |
-| `SQUARE_VERSION` | server | — |
-| `STRIPE_SECRET_KEY` | server | — |
-| `STRIPE_WEBHOOK_SECRET` | server | — |
-| `SUPABASE_SERVICE_ROLE_KEY` | server | — |
-| `TICKETMASTER_API_KEY` | server | — |
+| `BREVO_API_KEY` | server | ❌ missing |
+| `BREVO_SENDER_EMAIL` | server | ❌ missing |
+| `CRON_SECRET` | server | ❌ missing |
+| `GITHUB_ISSUES_REPO` | server | ❌ missing |
+| `GITHUB_ISSUES_TOKEN` | server | ❌ missing |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | public | ❌ missing |
+| `NEXT_PUBLIC_OPENWEATHER_API_KEY` | public | ❌ missing |
+| `NEXT_PUBLIC_SITE_URL` | public | ❌ missing |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | ❌ missing |
+| `NEXT_PUBLIC_SUPABASE_URL` | public | ✅ set |
+| `NEXT_PUBLIC_SW_VERSION` | public | ❌ missing |
+| `NTFY_SERVER` | server | ❌ missing |
+| `NTFY_TOPIC` | server | ❌ missing |
+| `OWNER_ALERT_EMAIL` | server | ❌ missing |
+| `SQUARE_VERSION` | server | ❌ missing |
+| `STRIPE_SECRET_KEY` | server | ❌ missing |
+| `STRIPE_WEBHOOK_SECRET` | server | ❌ missing |
+| `SUPABASE_SERVICE_ROLE_KEY` | server | ✅ set |
+| `TICKETMASTER_API_KEY` | server | ❌ missing |
 
 _CI status is blank when run locally. Missing server secrets in CI is normal — what matters is they're set in **Vercel** (Production) and, for the audit's own growth stats, as **GitHub Actions secrets**._
 
