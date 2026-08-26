@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyFeedback } from "@/utils/alerts";
+import { validateField } from "@/utils/reportQuality";
 
 // "Report a problem": stores a user's bug report (screenshot + auto-captured
 // page/browser/error context) and alerts the owner. Anyone can report. If a
 // GitHub issues token is configured, it also opens a ready-to-fix issue.
+//
+// Every required field is validated HERE, not just in the form — the client can be
+// bypassed, and low-effort junk was the main complaint. Rejections come back as a
+// 400 with a specific message so a genuine reporter can fix and resubmit.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -13,16 +18,46 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
+  const title = String(form.get("title") || "").trim().slice(0, 200);
+  const pageManual = String(form.get("pageManual") || "").trim().slice(0, 300);
   const description = String(form.get("description") || "").trim().slice(0, 4000);
+  const doingWhat = String(form.get("doingWhat") || "").trim().slice(0, 2000);
+  const reporterName = String(form.get("reporterName") || "").trim().slice(0, 120);
+  const contactConsent = String(form.get("contactConsent") || "") === "true";
+  const contactEmail = String(form.get("contactEmail") || "").trim().slice(0, 160);
+  const contactPhone = String(form.get("contactPhone") || "").trim().slice(0, 40);
+  const contactDm = String(form.get("contactDm") || "") === "true";
   const pageUrl = String(form.get("pageUrl") || "").slice(0, 500);
   const userAgent = String(form.get("userAgent") || "").slice(0, 400);
   const viewport = String(form.get("viewport") || "").slice(0, 40);
-  const email = String(form.get("email") || "").trim().slice(0, 160) || user?.email || null;
+  const email = contactEmail || user?.email || null;
   let consoleErrors: unknown = [];
   try { consoleErrors = JSON.parse(String(form.get("consoleErrors") || "[]")); } catch { /* ignore */ }
 
-  if (!description && !form.get("file")) {
-    return NextResponse.json({ error: "Add a description or a screenshot." }, { status: 400 });
+  // Required fields + garbage screening. Thresholds are deliberately lenient:
+  // a short-but-real report ("photos wont upload") passes; keyboard mash doesn't.
+  const problem =
+    validateField(title, "Title", { min: 5, minWords: 1 }) ??
+    validateField(pageManual, "Page where it happened", { min: 2, minWords: 1 }) ??
+    validateField(description, "What went wrong", { min: 15, minWords: 2 }) ??
+    validateField(doingWhat, "What you were doing", { min: 10, minWords: 2 });
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+
+  // Consent means we must actually be able to reach them.
+  if (contactConsent && !contactEmail && !contactPhone && !contactDm) {
+    return NextResponse.json(
+      { error: "You agreed to be contacted — please add an email, a phone number, or allow a NorthEDM message." },
+      { status: 400 }
+    );
+  }
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(contactEmail)) {
+    return NextResponse.json({ error: "That email address doesn't look right." }, { status: 400 });
+  }
+  if (contactDm && !user) {
+    return NextResponse.json(
+      { error: "NorthEDM messages need an account — please sign in, or leave an email or phone instead." },
+      { status: 400 }
+    );
   }
 
   const admin = createAdminClient(
@@ -54,7 +89,16 @@ export async function POST(req: Request) {
     .insert({
       user_id: user?.id ?? null,
       email,
+      title,
+      page_manual: pageManual,
       description,
+      doing_what: doingWhat,
+      reporter_name: reporterName || null,
+      contact_consent: contactConsent,
+      contact_email: contactEmail || null,
+      contact_phone: contactPhone || null,
+      contact_dm: contactDm,
+      source: "report",
       screenshot_url: screenshotUrl,
       page_url: pageUrl,
       user_agent: userAgent,
@@ -73,10 +117,15 @@ export async function POST(req: Request) {
     try {
       const errs = Array.isArray(consoleErrors) ? consoleErrors : [];
       const body = [
-        description || "_No description provided._",
+        description,
         "",
-        `**Page:** ${pageUrl || "—"}`,
-        `**Reporter:** ${email || (user?.id ? `user ${user.id}` : "anonymous")}`,
+        `**What they were doing:** ${doingWhat}`,
+        `**Page (reported):** ${pageManual || "—"}`,
+        `**Page (captured):** ${pageUrl || "—"}`,
+        `**Reporter:** ${reporterName || email || (user?.id ? `user ${user.id}` : "anonymous")}`,
+        `**Contact:** ${contactConsent
+          ? [contactEmail, contactPhone, contactDm ? "NorthEDM DM" : ""].filter(Boolean).join(" · ") || "consented"
+          : "no consent to contact"}`,
         `**Browser:** ${userAgent || "—"}`,
         `**Viewport:** ${viewport || "—"}`,
         screenshotUrl ? `\n![screenshot](${screenshotUrl})` : "",
@@ -86,7 +135,7 @@ export async function POST(req: Request) {
       const res = await fetch(`https://api.github.com/repos/${ghRepo}/issues`, {
         method: "POST",
         headers: { Authorization: `Bearer ${ghToken}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
-        body: JSON.stringify({ title: `[User report] ${(description || "Issue").slice(0, 70)}`, body, labels: ["user-report"] }),
+        body: JSON.stringify({ title: `[User report] ${title.slice(0, 90)}`, body, labels: ["user-report"] }),
       });
       if (res.ok) {
         const issue = await res.json();
@@ -98,8 +147,22 @@ export async function POST(req: Request) {
     }
   }
 
+  // Alert with enough context to triage straight from the email/push.
+  const contactLine = contactConsent
+    ? [contactEmail, contactPhone, contactDm ? "NorthEDM DM" : ""].filter(Boolean).join(" · ") || "consented (no details)"
+    : "did NOT consent to contact";
   await notifyFeedback({
-    message: `${description || "(no description)"}\n\nPage: ${pageUrl}${screenshotUrl ? `\nScreenshot: ${screenshotUrl}` : ""}${githubIssueUrl ? `\nIssue: ${githubIssueUrl}` : ""}`,
+    message: [
+      `${title}`,
+      ``,
+      `Page: ${pageManual || pageUrl || "—"}`,
+      `From: ${reporterName || email || "anonymous"} — ${contactLine}`,
+      ``,
+      `What went wrong: ${description}`,
+      `Doing at the time: ${doingWhat}`,
+      screenshotUrl ? `\nScreenshot: ${screenshotUrl}` : "",
+      githubIssueUrl ? `Issue: ${githubIssueUrl}` : "",
+    ].filter(Boolean).join("\n"),
     category: "Bug report",
     email: email || undefined,
   });
