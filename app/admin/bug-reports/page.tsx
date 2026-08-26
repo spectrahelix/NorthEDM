@@ -5,6 +5,15 @@ import { useEffect, useState } from "react";
 type Report = {
   id: string;
   email: string | null;
+  title: string | null;
+  page_manual: string | null;
+  doing_what: string | null;
+  reporter_name: string | null;
+  contact_consent: boolean | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_dm: boolean | null;
+  source: string | null;
   description: string | null;
   screenshot_url: string | null;
   page_url: string | null;
@@ -75,11 +84,39 @@ export default function AdminBugReportsPage() {
               <div key={r.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm text-neutral-200">{r.description || <span className="text-neutral-600">(no description)</span>}</p>
-                    <p className="mt-1 font-dm-mono text-[11px] text-neutral-500">
-                      {new Date(r.created_at).toLocaleString()} · {r.email || "anonymous"} · {r.viewport || "—"}
+                    {r.title && (
+                      <p className="font-bebas text-xl tracking-wide text-white">
+                        {r.source === "feedback" && (
+                          <span className="mr-2 rounded px-1.5 py-0.5 align-middle font-dm-mono text-[9px] uppercase tracking-widest text-neutral-400 ring-1 ring-white/15">
+                            feedback
+                          </span>
+                        )}
+                        {r.title}
+                      </p>
+                    )}
+                    <p className="mt-1 text-sm text-neutral-200">{r.description || <span className="text-neutral-600">(no description)</span>}</p>
+                    {r.doing_what && (
+                      <p className="mt-1.5 text-sm text-neutral-400">
+                        <span className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Doing: </span>
+                        {r.doing_what}
+                      </p>
+                    )}
+                    <p className="mt-2 font-dm-mono text-[11px] text-neutral-500">
+                      {new Date(r.created_at).toLocaleString()} · {r.reporter_name || r.email || "anonymous"} · {r.viewport || "—"}
                     </p>
+                    {r.page_manual && (
+                      <p className="mt-0.5 font-dm-mono text-[11px] text-[#E8FF47]/70">📍 reported on: {r.page_manual}</p>
+                    )}
                     {r.page_url && <p className="mt-0.5 truncate font-dm-mono text-[11px] text-neutral-600">{r.page_url}</p>}
+                    {/* Contact — only shown when the reporter consented. */}
+                    {r.contact_consent ? (
+                      <p className="mt-1.5 font-dm-mono text-[11px] text-[#39FF14]/80">
+                        ✅ OK to contact:{" "}
+                        {[r.contact_email, r.contact_phone, r.contact_dm ? "NorthEDM DM" : null].filter(Boolean).join(" · ") || "no details"}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 font-dm-mono text-[11px] text-neutral-600">✕ no consent to contact</p>
+                    )}
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest ${STATUS_STYLE[r.status] ?? ""}`}>{r.status}</span>
                 </div>
