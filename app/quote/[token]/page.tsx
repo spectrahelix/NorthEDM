@@ -20,7 +20,7 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
   );
   const { data: q } = await admin
     .from("service_quotes")
-    .select("token, title, client_name, line_items, total_cents, deposit_cents, monthly_cents, amount_paid_cents, status")
+    .select("token, title, client_name, line_items, total_cents, deposit_cents, monthly_cents, amount_paid_cents, status, discount_cents, promoter_code")
     .eq("token", token)
     .maybeSingle();
 
@@ -38,7 +38,9 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
 
   const items = (q.line_items ?? []) as LineItem[];
   const paidInFull = q.status === "paid";
-  const remaining = q.total_cents - q.amount_paid_cents;
+  const discount = q.discount_cents || 0;
+  const effectiveTotal = Math.max(0, q.total_cents - discount);
+  const remaining = effectiveTotal - q.amount_paid_cents;
   const hasDeposit = q.deposit_cents > 0 && q.amount_paid_cents === 0;
 
   return (
@@ -57,9 +59,15 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
               </div>
             ))}
           </div>
+          {discount > 0 && (
+            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-[#39FF14]">
+              <span className="text-sm">Promoter code{q.promoter_code ? ` (${q.promoter_code})` : ""} — 10% off</span>
+              <span className="font-dm-mono text-sm">−{money(discount)}</span>
+            </div>
+          )}
           <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
             <span className="font-semibold">Total</span>
-            <span className="font-bebas text-3xl text-[#39FF14]">{money(q.total_cents)}</span>
+            <span className="font-bebas text-3xl text-[#39FF14]">{money(effectiveTotal)}</span>
           </div>
           {q.monthly_cents > 0 ? (
             <p className="mt-2 text-right font-dm-mono text-[11px] text-neutral-500">
@@ -86,6 +94,7 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
               hasDeposit={hasDeposit}
               depositLabel={`Pay ${money(q.deposit_cents)} deposit`}
               fullLabel={hasDeposit ? `Pay in full — ${money(remaining)}` : `Pay ${money(remaining)}`}
+              canApplyCode={q.amount_paid_cents === 0 && discount === 0}
             />
           </>
         )}

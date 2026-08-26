@@ -50,7 +50,9 @@ export async function POST(req: Request) {
       const seen: string[] = (q?.paid_sessions ?? []) as string[];
       if (q && !seen.includes(session.id)) {
         const newPaid = (q.amount_paid_cents || 0) + portion;
-        const status = newPaid >= q.total_cents ? "paid" : "deposit_paid";
+        // What the customer actually owes after any promoter discount.
+        const effectiveTotal = Math.max(0, (q.total_cents || 0) - (q.discount_cents || 0));
+        const status = newPaid >= effectiveTotal ? "paid" : "deposit_paid";
         await db.from("service_quotes").update({
           amount_paid_cents: newPaid,
           status,
@@ -59,25 +61,47 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         }).eq("id", q.id);
 
-        // Commission pays once, on full payment, to an onboarded promoter.
+        // Commission pays once, on full payment. It's a % of the LIST price, so on
+        // a $100 quote the customer paid $90 (10% off) and the promoter gets $10.
+        // Every commission is recorded in `commissions` first — including ones we
+        // can't pay yet — so nothing is silently owed and forgotten.
         if (status === "paid" && q.promoter_user_id && (q.promoter_paid_cents || 0) === 0) {
           const commission = Math.floor((q.total_cents * (q.commission_bps || 0)) / 10000);
           if (commission > 0) {
             const { data: promoter } = await db
               .from("festdash_promoters").select("stripe_account_id").eq("user_id", q.promoter_user_id).maybeSingle();
+
+            let paid = false;
             if (promoter?.stripe_account_id) {
               try {
-                await stripe.transfers.create({
-                  amount: commission, currency: "usd", destination: promoter.stripe_account_id,
-                  metadata: { quote_id: q.id, kind: "promoter_commission" },
-                });
+                await stripe.transfers.create(
+                  {
+                    amount: commission, currency: "usd", destination: promoter.stripe_account_id,
+                    metadata: { quote_id: q.id, kind: "promoter_commission" },
+                  },
+                  // Stripe-side idempotency: a retried webhook can't double-pay.
+                  { idempotencyKey: `commission_service_quote_${q.id}` }
+                );
                 await db.from("service_quotes").update({ promoter_paid_cents: commission }).eq("id", q.id);
+                paid = true;
               } catch (e) {
-                console.error("promoter commission transfer failed (owed):", e);
+                console.error("promoter commission transfer failed (recorded as pending):", e);
               }
             } else {
-              console.warn(`promoter ${q.promoter_user_id} not onboarded for payouts — commission owed on quote ${q.id}`);
+              console.warn(`promoter ${q.promoter_user_id} not onboarded — commission pending on quote ${q.id}`);
             }
+
+            // Ledger row either way. UNIQUE(source_type, source_id) makes this
+            // idempotent, so a replayed event won't create a second obligation.
+            await db.from("commissions").insert({
+              promoter_user_id: q.promoter_user_id,
+              source_type: "service_quote",
+              source_id: q.id,
+              base_cents: q.total_cents,
+              rate_bps: q.commission_bps || 0,
+              amount_cents: commission,
+              status: paid ? "paid" : "pending",
+            });
           }
         }
       }
