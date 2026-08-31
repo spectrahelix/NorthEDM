@@ -16,3 +16,30 @@ phone)**, after which escrowed funds release to the vendor's payout account.
 Recommended integrations: **Stripe Connect** (escrow + vendor payouts — note
 GoDaddy/Square don't fit this) and **Mapbox** (live map). Read the doc before
 working on FestDash.
+
+## Weekly site audit — automated, don't rebuild it
+A GitHub Action (`.github/workflows/weekly-audit.yml`) runs **every Monday** and
+on demand (Actions → Weekly Site Audit → Run workflow). It runs
+`scripts/site-audit.mjs`, commits the refreshed [`docs/SITE_AUDIT.md`](docs/SITE_AUDIT.md),
+and opens a dated GitHub issue labeled `weekly-audit`. **Report-only — it never
+changes code or deploys.**
+
+Covers: feature/route inventory, `npm audit`, TypeScript, migrations, env-var
+checklist, and growth stats (users, recent signups, open bug reports) read via the
+`audit_growth_stats()` RPC — a `SECURITY DEFINER` function only `service_role` may
+call, using the `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` **Actions
+secrets**.
+
+For a deeper, judgment-based pass (RLS gaps, dead notification paths,
+working-vs-merely-present features) run the **`/site-audit`** Claude command
+(`.claude/commands/site-audit.md`).
+
+## Promoter program & commissions
+Lives at **`/promote`** (site-wide, not FestDash — old `/festdash/*` promoter URLs
+redirect). Model and legal posture are in [`docs/WALLET.md`](docs/WALLET.md):
+a promoter's permanent code gives the customer **10% off** and pays the promoter
+**10% of list in cash**, so NorthEDM nets 80%. Commissions are **passed straight
+through Stripe Connect** to the promoter's connected account — NorthEDM never holds
+their money (this is deliberate: holding it would raise money-transmitter concerns).
+There is **no user-funded wallet top-up** for the same reason. Read the doc before
+touching commissions or payouts.
