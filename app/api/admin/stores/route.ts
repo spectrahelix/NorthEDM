@@ -53,10 +53,29 @@ export async function POST(req: Request) {
     owner_user_id: owner.id,
     accent_color: /^#[0-9a-fA-F]{6}$/.test(String(body.accentColor)) ? body.accentColor : "#39FF14",
     operator_fee_bps: Math.max(0, Math.min(5000, Math.round(Number(body.operatorFeeBps) || 0))),
+    // Always born as a DRAFT: only you (and the operator) can see it until you
+    // explicitly publish. Prevents a half-built storefront going live by accident.
+    active: false,
   });
   if (error) {
     const msg = /duplicate/i.test(error.message) ? "That slug is already taken." : error.message;
     return NextResponse.json({ error: msg }, { status: 500 });
   }
   return NextResponse.json({ ok: true, url: `/${slug}` });
+}
+
+// Publish or unpublish a store. Publishing is the single moment a storefront
+// becomes visible to the public, so it's a deliberate, separate action.
+export async function PATCH(req: Request) {
+  const g = await adminGuard();
+  if (!g.ok) return NextResponse.json({ error: g.error }, { status: g.status });
+
+  const body = await req.json().catch(() => ({}));
+  const slug = String(body.slug || "").trim().toLowerCase();
+  const active = body.active === true;
+  if (!slug) return NextResponse.json({ error: "Missing slug." }, { status: 400 });
+
+  const { error } = await g.admin.from("stores").update({ active }).eq("slug", slug);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, active });
 }

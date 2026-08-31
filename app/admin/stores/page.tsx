@@ -9,6 +9,7 @@ type Store = {
 
 export default function AdminStoresPage() {
   const [stores, setStores] = useState<Store[]>([]);
+  const [publishing, setPublishing] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -39,9 +40,22 @@ export default function AdminStoresPage() {
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) { setMsg(j.error || "Failed."); return; }
-    setMsg(`Created — live at ${j.url}`);
+    setMsg(`Created as a DRAFT — preview at ${j.url} (only you and the operator can see it until you publish)`);
     setSlug(""); setName(""); setOwnerEmail(""); setTagline(""); setFeePct("");
     load();
+  }
+
+  async function togglePublish(slug: string, active: boolean) {
+    // Publishing is the moment a storefront becomes visible to everyone, so make
+    // it a conscious choice rather than a stray click.
+    if (active && !confirm(`Publish /${slug}? It becomes visible to the public immediately.`)) return;
+    setPublishing(slug);
+    const res = await fetch("/api/admin/stores", {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slug, active }),
+    });
+    setPublishing(null);
+    if (res.ok) load();
   }
 
   if (loading) return <main className="flex min-h-screen items-center justify-center admin-surface"><p className="font-dm-mono text-sm text-neutral-500">Loading…</p></main>;
@@ -92,11 +106,31 @@ export default function AdminStoresPage() {
               <div key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-white/10 bg-white/[0.02] p-4">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: s.accent_color }} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white">{s.name} <span className="ml-1 font-dm-mono text-xs text-neutral-500">/{s.slug}</span></p>
+                  <p className="font-semibold text-white">
+                    {s.name} <span className="ml-1 font-dm-mono text-xs text-neutral-500">/{s.slug}</span>
+                    <span className={`ml-2 rounded-full px-2 py-0.5 align-middle font-dm-mono text-[10px] uppercase tracking-widest ${
+                      s.active ? "bg-[#39FF14]/15 text-[#39FF14]" : "bg-[#FFC93C]/15 text-[#FFC93C]"
+                    }`}>
+                      {s.active ? "live" : "draft"}
+                    </span>
+                  </p>
                   <p className="font-dm-mono text-xs text-neutral-500">operator: {s.owner_email || "—"} · fee {(s.operator_fee_bps / 100)}%</p>
                 </div>
-                <a href={`/${s.slug}`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-[#3AFFD4] hover:underline">storefront ↗</a>
+                <a href={`/${s.slug}`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-[#3AFFD4] hover:underline">
+                  {s.active ? "storefront ↗" : "preview ↗"}
+                </a>
                 <a href={`/${s.slug}/manage`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-neutral-400 hover:underline">manage ↗</a>
+                <button
+                  onClick={() => togglePublish(s.slug, !s.active)}
+                  disabled={publishing === s.slug}
+                  className={`rounded-lg px-3 py-1.5 font-dm-mono text-xs transition disabled:opacity-50 ${
+                    s.active
+                      ? "border border-white/15 text-neutral-300 hover:bg-white/5"
+                      : "bg-[#39FF14] font-semibold text-black hover:opacity-90"
+                  }`}
+                >
+                  {publishing === s.slug ? "…" : s.active ? "Unpublish" : "Publish"}
+                </button>
               </div>
             ))}
           </div>

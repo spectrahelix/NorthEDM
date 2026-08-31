@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
+import { storeAdminClient, viewerCanPreviewStore } from "@/utils/store";
 import { BackBar } from "@/app/components/BackBar";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,10 @@ type Product = { id: number; vendor_id: number; name: string | null; category: s
 export async function generateMetadata({ params }: { params: Promise<{ store: string }> }): Promise<Metadata> {
   const { store } = await params;
   const supabase = await createClient();
+  // Only a LIVE store gets real metadata. A draft must never leak its name into a
+  // link preview or a search result, so it stays generic and noindex.
   const { data } = await supabase.from("stores").select("name, tagline").eq("slug", store).eq("active", true).maybeSingle();
-  if (!data) return { title: "Store" };
+  if (!data) return { title: "Store", robots: { index: false, follow: false } };
   return { title: data.name, description: data.tagline || `${data.name} on NorthEDM` };
 }
 
@@ -22,10 +25,18 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   const { store: slug } = await params;
   const supabase = await createClient();
 
-  const { data: storeData } = await supabase
-    .from("stores").select("id, slug, name, tagline, accent_color").eq("slug", slug).eq("active", true).maybeSingle();
+  // Look the store up regardless of `active`, then decide who may see it. A DRAFT
+  // store renders only for a NorthEDM admin or its own operator, so a half-built
+  // storefront can be worked on in place without the public ever reaching it —
+  // everyone else gets the same 404 as a store that doesn't exist.
+  const admin = storeAdminClient();
+  const { data: storeData } = await admin
+    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id").eq("slug", slug).maybeSingle();
   if (!storeData) notFound();
-  const store = storeData as Store;
+
+  const isDraft = !storeData.active;
+  if (isDraft && !(await viewerCanPreviewStore(storeData.owner_user_id as string))) notFound();
+  const store = storeData as unknown as Store;
 
   const { data: members } = await supabase
     .from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("status", "approved");
@@ -46,6 +57,19 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
 
   return (
     <main className="min-h-screen text-neutral-100">
+      {isDraft && (
+        <div className="sticky top-0 z-40 border-b border-[#FFC93C]/30 bg-[#FFC93C]/[0.12] px-6 py-3 backdrop-blur">
+          <p className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-dm-mono text-xs uppercase tracking-widest text-[#FFC93C]">● Draft — not public</span>
+            <span className="text-neutral-300">
+              Only you and this store&apos;s operator can see this page. The public gets a 404.
+            </span>
+            <Link href="/admin/stores" className="font-dm-mono text-xs text-[#FFC93C] underline hover:opacity-80">
+              Publish it →
+            </Link>
+          </p>
+        </div>
+      )}
       <section className="relative overflow-hidden border-b border-white/10">
         <div className="pointer-events-none absolute inset-0 opacity-20" style={{ background: `radial-gradient(ellipse at top, ${accent}55, transparent 60%)` }} />
         <div className="relative mx-auto max-w-6xl px-6 py-16">
