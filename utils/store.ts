@@ -22,6 +22,26 @@ export function storeAdminClient(): SupabaseClient {
 
 type StoreRow = { id: string; slug: string; owner_user_id: string };
 
+/**
+ * May the current viewer see a store that is still a DRAFT (active = false)?
+ * True for a NorthEDM admin and for the store's own operator; false for everyone
+ * else, including logged-out visitors — they get a 404, so an unfinished store is
+ * indistinguishable from one that doesn't exist.
+ *
+ * Unlike guardStoreOperator this never errors for anonymous visitors, because the
+ * public storefront must still render for them when the store IS live.
+ */
+export async function viewerCanPreviewStore(ownerUserId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  if (user.id === ownerUserId) return true;
+  if (user.email === OWNER_EMAIL) return true;
+  const { data: up } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).maybeSingle();
+  return up?.role === "archon" || up?.role === "warden";
+}
+
 // Authorize the caller to manage a given store: they must be the store's operator
 // (owner) or a NorthEDM admin. Returns a service-role client for the writes.
 export async function guardStoreOperator(slug: string): Promise<
