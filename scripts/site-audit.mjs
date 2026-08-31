@@ -91,7 +91,7 @@ const auditingInCI = !!process.env.CI;
 const migDir = join(ROOT, "supabase", "migrations");
 const migrations = existsSync(migDir) ? readdirSync(migDir).filter((f) => f.endsWith(".sql")).sort() : [];
 const latestMigration = migrations.at(-1) || "(none)";
-const todoCount = (sh(`grep -rInE "TODO|FIXME" app utils 2>/dev/null || true`).out.split("\n").filter(Boolean)).length;
+const todoCount = (sh(`grep -rInE "\\b(TODO|FIXME)\\b" app utils 2>/dev/null || true`).out.split("\n").filter(Boolean)).length;
 
 // ── 6. Growth & backlog (optional — needs Supabase service key) ──────────────
 // Reads through a locked-down SECURITY DEFINER RPC (audit_growth_stats) that
@@ -125,7 +125,6 @@ if (vulns.high > 0) flags.push(`🟠 ${vulns.high} high vulnerabilit${vulns.high
 if (tscErrors > 0) flags.push(`🔴 ${tscErrors} TypeScript error${tscErrors === 1 ? "" : "s"} (build likely broken)`);
 if (growth && growth.reports_open > 0) flags.push(`🟡 ${growth.reports_open} open bug/feedback report${growth.reports_open === 1 ? "" : "s"}`);
 if (growth && growth.new_30d === 0) flags.push(`⚪ no new signups in 30 days`);
-if (auditingInCI && envMissing.length) flags.push(`🟡 ${envMissing.length} env var(s) not set in CI`);
 if (todoCount > 0) flags.push(`⚪ ${todoCount} TODO/FIXME markers`);
 const health = flags.length === 0 ? "🟢 All clear" : flags.join(" · ");
 
@@ -150,10 +149,10 @@ const summary = `## 🔍 NorthEDM Site Audit — ${stamp}
 ${growthRows}| Security (npm audit) | ${vulns.critical} critical · ${vulns.high} high · ${vulns.moderate} moderate · ${vulns.low} low |
 | TypeScript | ${tscErrors === 0 ? "✅ clean" : `❌ ${tscErrors} errors`} |
 | Migrations | ${migrations.length} (latest: \`${latestMigration}\`) |
-| Env vars referenced | ${envRefs.length}${auditingInCI ? ` (${envMissing.length} missing in CI)` : ""} |
+| Env vars referenced | ${envRefs.length} |
 | TODO/FIXME | ${todoCount} |
 ${topAdvisories.length ? `\n**High/critical advisories:** ${topAdvisories.join(", ")}` : ""}
-${auditingInCI && envMissing.length ? `\n**Env not set in CI:** ${envMissing.map((e) => `\`${e}\``).join(", ")} — expected for secrets; verify they're set in Vercel.` : ""}${auditingInCI && !growth ? `\n_Growth stats unavailable — set \`NEXT_PUBLIC_SUPABASE_URL\` + \`SUPABASE_SERVICE_ROLE_KEY\` as Actions secrets to include them._` : ""}`;
+${auditingInCI && envMissing.length ? `\n<sub>FYI (not a problem): ${envMissing.length} env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>` : ""}${auditingInCI && !growth ? `\n_Growth stats unavailable — set \`NEXT_PUBLIC_SUPABASE_URL\` + \`SUPABASE_SERVICE_ROLE_KEY\` as Actions secrets to include them._` : ""}`;
 
 const doc = `# NorthEDM — Site Audit
 

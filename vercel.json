@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/local-events",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/release-commissions",
+      "schedule": "20 9 * * *"
     }
   ]
 }
