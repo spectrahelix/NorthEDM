@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { storeAdminClient, viewerCanPreviewStore } from "@/utils/store";
 import { BackBar } from "@/app/components/BackBar";
+import { StoreCart, type StoreProduct } from "./StoreCart";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   // everyone else gets the same 404 as a store that doesn't exist.
   const admin = storeAdminClient();
   const { data: storeData } = await admin
-    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id").eq("slug", slug).maybeSingle();
+    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status").eq("slug", slug).maybeSingle();
   if (!storeData) notFound();
 
   const isDraft = !storeData.active;
@@ -54,6 +55,24 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   const products = (productsData ?? []) as Product[];
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
   const accent = store.accent_color || "#39FF14";
+
+  // A store takes money only when it's public AND its operator is paid up. Draft or
+  // unpaid → browse-only, with the reason shown rather than a dead button.
+  const billing = (storeData as { billing_status?: string }).billing_status ?? "unpaid";
+  const canOrder = !isDraft && billing === "active";
+  const closedReason = isDraft
+    ? "This store is still a draft — ordering opens when it's published."
+    : billing === "unpaid"
+      ? "This store isn't open for orders yet."
+      : billing === "past_due" || billing === "canceled"
+        ? "This store has paused ordering. Browsing is still available."
+        : undefined;
+  const cartProducts: StoreProduct[] = products.map((p) => ({
+    id: p.id,
+    name: p.name ?? "Item",
+    price_cents: Math.round(Number(p.price ?? 0) * 100),
+    vendor_name: vendorName.get(p.vendor_id) ?? null,
+  })).filter((p) => p.price_cents > 0);
 
   return (
     <main className="min-h-screen text-neutral-100">
@@ -121,6 +140,16 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
               </Link>
             ))}
           </div>
+        )}
+
+        {cartProducts.length > 0 && (
+          <StoreCart
+            slug={store.slug}
+            products={cartProducts}
+            accent={accent}
+            canOrder={canOrder}
+            closedReason={closedReason}
+          />
         )}
       </div>
     </main>

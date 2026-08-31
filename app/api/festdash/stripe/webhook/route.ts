@@ -78,7 +78,11 @@ export async function POST(req: Request) {
         }
       }
     }
-  } else if (event.type === "checkout.session.completed") {
+  } else if (event.type === "checkout.session.completed" &&
+      !(event.data.object as Stripe.Checkout.Session).metadata?.kind) {
+    // FestDash order — the fallback for sessions with no `kind`. The guard matters:
+    // without it this branch swallows every other checkout kind (store orders,
+    // quotes) before their handlers are reached, and they silently never complete.
     const session = event.data.object as Stripe.Checkout.Session;
     const orderId = session.metadata?.festdash_order_id || session.client_reference_id;
     if (orderId) {
@@ -98,6 +102,39 @@ export async function POST(req: Request) {
             stripe_payment_intent: (session.payment_intent as string) ?? null,
           })
           .eq("id", orderId);
+      }
+    }
+  } else if (event.type === "checkout.session.completed" && event.data.object &&
+      (event.data.object as Stripe.Checkout.Session).metadata?.kind === "store_order") {
+    // ── Embedded-store order paid → record it + decrement stock ───────────────
+    const session = event.data.object as Stripe.Checkout.Session;
+    const orderId = session.metadata?.store_order_id;
+    if (orderId) {
+      const { data: order } = await db
+        .from("store_orders").select("*").eq("id", orderId).maybeSingle();
+      // Idempotent: a replayed event must not decrement stock twice.
+      if (order && order.status === "pending") {
+        const ship = session.customer_details;
+        await db.from("store_orders").update({
+          status: "paid",
+          stripe_payment_intent: (session.payment_intent as string) ?? null,
+          email: ship?.email ?? order.email,
+          ship_name: ship?.name ?? null,
+          ship_address: ship?.address ?? null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", order.id).eq("status", "pending");
+
+        const items = (order.items ?? []) as { product_id: number; qty: number }[];
+        for (const it of items) {
+          // products.inventory_count is the marketplace vendor's stock.
+          const { data: p } = await db
+            .from("products").select("inventory_count").eq("id", it.product_id).maybeSingle();
+          if (p) {
+            await db.from("products")
+              .update({ inventory_count: Math.max(0, (p.inventory_count ?? 0) - it.qty) })
+              .eq("id", it.product_id);
+          }
+        }
       }
     }
   } else if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
