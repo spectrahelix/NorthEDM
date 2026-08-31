@@ -2,19 +2,19 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-08-24 09:02 UTC
+**Last run:** 2026-08-31 16:08 UTC
 **Health:** ⚪ no new signups in 30 days · 🟡 17 env var(s) not set in CI · ⚪ 3 TODO/FIXME markers
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **77** routes (10 dynamic) |
-| API endpoints | **80** |
+| API endpoints | **81** |
 | Users | **14** total · 0 new (7d) · 0 new (30d) |
-| Latest signup | 2026-07-13 (41d ago) |
+| Latest signup | 2026-07-13 (48d ago) |
 | Open bug/feedback reports | 0 of 1 total |
 | Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
 | TypeScript | ✅ clean |
-| Migrations | 36 (latest: `20260823010000_wallet_consolidate_onto_store_credit.sql`) |
+| Migrations | 38 (latest: `20260826000000_quote_promoter_discount.sql`) |
 | Env vars referenced | 19 (17 missing in CI) |
 | TODO/FIXME | 3 |
 
@@ -103,7 +103,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (80)
+## API endpoints (81)
 
 - `/api/admin/artisan`
 - `/api/admin/bug-reports`
@@ -161,6 +161,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/marketplace/apply`
 - `/api/moderate`
 - `/api/products`
+- `/api/promote/validate-code`
 - `/api/quote/[token]/pay`
 - `/api/referrals/generate`
 - `/api/report`
