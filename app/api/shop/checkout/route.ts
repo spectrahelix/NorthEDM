@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import Stripe from "stripe";
+import { resolvePromoterCode, DISCOUNT_BPS } from "@/utils/promoterCode";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
@@ -59,14 +60,32 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (h && h.active) hoodie = { code: h.code, promoter_user_id: h.promoter_user_id, percent_off: h.percent_off };
   }
-  const discountCents = hoodie ? Math.floor((subtotal * hoodie.percent_off) / 100) : 0;
+
+  // A promoter's PERMANENT referral code also works here — typed at checkout or
+  // left by their QR link. Same deal as an invoice: the customer saves 10% and the
+  // promoter earns 10% of list, recorded (not paid) by the webhook. A hoodie code
+  // already in play wins, so the two schemes never stack.
+  let promoter: { code: string; userId: string } | null = null;
+  if (!hoodie) {
+    const typed = String(body.promoterCode || "").trim() || cookieStore.get("ne_ref")?.value || "";
+    if (typed) {
+      const resolved = await resolvePromoterCode(typed);
+      // Never let someone discount their own purchase with their own code.
+      if (resolved && resolved.userId !== user?.id) {
+        promoter = { code: resolved.code, userId: resolved.userId };
+      }
+    }
+  }
+
+  const percentOff = hoodie ? hoodie.percent_off : promoter ? DISCOUNT_BPS / 100 : 0;
+  const discountCents = percentOff ? Math.floor((subtotal * percentOff) / 100) : 0;
 
   let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
-  if (hoodie && discountCents > 0) {
+  if (percentOff > 0 && discountCents > 0) {
     const coupon = await stripe.coupons.create({
-      percent_off: hoodie.percent_off,
+      percent_off: percentOff,
       duration: "once",
-      name: `Promoter code · ${hoodie.code}`,
+      name: `Promoter code · ${hoodie?.code ?? promoter?.code}`,
     });
     discounts = [{ coupon: coupon.id }];
   }
@@ -111,7 +130,8 @@ export async function POST(req: Request) {
     total_cents: subtotal - discountCents,
     status: "pending",
     hoodie_code: hoodie?.code ?? null,
-    promoter_user_id: hoodie?.promoter_user_id ?? null,
+    promoter_code: promoter?.code ?? null,
+    promoter_user_id: hoodie?.promoter_user_id ?? promoter?.userId ?? null,
     discount_cents: discountCents,
   }).select("id").single();
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });

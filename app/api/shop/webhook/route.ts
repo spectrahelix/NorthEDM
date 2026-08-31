@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyNewOrder } from "@/utils/alerts";
+import { recordCommission, commissionTerms } from "@/utils/commissions";
 
 // Stripe webhook: on a completed Checkout, mark the order paid, decrement stock,
 // and alert the owner. Idempotent (skips if already paid). Needs raw body for
@@ -104,23 +105,26 @@ export async function POST(req: Request) {
           }
 
           if (eligible) {
-            let paidCash = false;
             if (payoutMode === "cash") {
-              const { data: promoter } = await admin
-                .from("festdash_promoters").select("stripe_account_id").eq("user_id", order.promoter_user_id).maybeSingle();
-              if (promoter?.stripe_account_id) {
-                try {
-                  await stripe.transfers.create({
-                    amount: commission, currency: "usd", destination: promoter.stripe_account_id,
-                    metadata: { shop_order: order.id, kind: "promoter_commission" },
-                  });
-                  paidCash = true;
-                } catch (e) {
-                  console.error("promoter cash transfer failed — falling back to store credit:", e);
-                }
-              }
-            }
-            if (!paidCash) {
+              // Cash commissions are RECORDED, not paid here. They become payable
+              // only after the refund-protection window closes, so a refund in the
+              // meantime voids the obligation instead of needing a clawback.
+              // /api/cron/release-commissions does the paying.
+              const { holdDays } = await commissionTerms(admin, "shop_order");
+              await recordCommission(admin, {
+                promoterUserId: order.promoter_user_id,
+                referredUserId: order.customer_id ?? null,
+                source: "shop_order",
+                sourceId: String(order.id),
+                // The customer's saving IS the promoter's cut, so bill it at 100%
+                // of that amount rather than re-deriving a rate from the subtotal.
+                baseCents: commission,
+                rateBps: 10000,
+                holdDays,
+              });
+            } else {
+              // Store-credit mode: on-site credit only, no cash leaves — safe to
+              // grant immediately.
               await admin.rpc("grant_store_credit", {
                 p_user: order.promoter_user_id, p_amount: commission,
                 p_reason: "promoter_hoodie", p_ref_type: "shop_order", p_ref_id: order.id,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
 // completed Checkout means the card is AUTHORIZED (funds held in escrow), not
@@ -61,48 +62,19 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         }).eq("id", q.id);
 
-        // Commission pays once, on full payment. It's a % of the LIST price, so on
-        // a $100 quote the customer paid $90 (10% off) and the promoter gets $10.
-        // Every commission is recorded in `commissions` first — including ones we
-        // can't pay yet — so nothing is silently owed and forgotten.
-        if (status === "paid" && q.promoter_user_id && (q.promoter_paid_cents || 0) === 0) {
-          const commission = Math.floor((q.total_cents * (q.commission_bps || 0)) / 10000);
-          if (commission > 0) {
-            const { data: promoter } = await db
-              .from("festdash_promoters").select("stripe_account_id").eq("user_id", q.promoter_user_id).maybeSingle();
-
-            let paid = false;
-            if (promoter?.stripe_account_id) {
-              try {
-                await stripe.transfers.create(
-                  {
-                    amount: commission, currency: "usd", destination: promoter.stripe_account_id,
-                    metadata: { quote_id: q.id, kind: "promoter_commission" },
-                  },
-                  // Stripe-side idempotency: a retried webhook can't double-pay.
-                  { idempotencyKey: `commission_service_quote_${q.id}` }
-                );
-                await db.from("service_quotes").update({ promoter_paid_cents: commission }).eq("id", q.id);
-                paid = true;
-              } catch (e) {
-                console.error("promoter commission transfer failed (recorded as pending):", e);
-              }
-            } else {
-              console.warn(`promoter ${q.promoter_user_id} not onboarded — commission pending on quote ${q.id}`);
-            }
-
-            // Ledger row either way. UNIQUE(source_type, source_id) makes this
-            // idempotent, so a replayed event won't create a second obligation.
-            await db.from("commissions").insert({
-              promoter_user_id: q.promoter_user_id,
-              source_type: "service_quote",
-              source_id: q.id,
-              base_cents: q.total_cents,
-              rate_bps: q.commission_bps || 0,
-              amount_cents: commission,
-              status: paid ? "paid" : "pending",
-            });
-          }
+        // Commission is RECORDED, not paid. It becomes payable only after the
+        // refund-protection window closes (see utils/commissions.ts) — during the
+        // window nothing has moved, so a refund is a void rather than a clawback.
+        if (status === "paid" && q.promoter_user_id) {
+          const { holdDays } = await commissionTerms(db, "service_quote");
+          await recordCommission(db, {
+            promoterUserId: q.promoter_user_id,
+            source: "service_quote",
+            sourceId: q.id,
+            baseCents: q.total_cents,            // % of LIST, not the discounted price
+            rateBps: q.commission_bps || 0,
+            holdDays,
+          });
         }
       }
     }
@@ -127,6 +99,30 @@ export async function POST(req: Request) {
           })
           .eq("id", orderId);
       }
+    }
+  } else if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
+    // ── Sale undone → void the promoter's commission ──────────────────────────
+    // Almost always this lands while the commission is still held, so nothing has
+    // moved and the void is pure bookkeeping. voidCommission() falls back to a
+    // transfer reversal only for the rare already-released case.
+    const charge = event.data.object as Stripe.Charge | Stripe.Dispute;
+    const paymentIntent =
+      typeof (charge as Stripe.Charge).payment_intent === "string"
+        ? ((charge as Stripe.Charge).payment_intent as string)
+        : typeof (charge as Stripe.Dispute).payment_intent === "string"
+          ? ((charge as Stripe.Dispute).payment_intent as string)
+          : null;
+    const reason = event.type === "charge.refunded" ? "refunded" : "disputed";
+
+    if (paymentIntent) {
+      // Map the payment back to whatever it paid for.
+      const { data: quote } = await db
+        .from("service_quotes").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
+      if (quote) await voidCommission(db, "service_quote", quote.id, reason);
+
+      const { data: order } = await db
+        .from("shop_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
+      if (order) await voidCommission(db, "shop_order", String(order.id), reason);
     }
   } else if (
     event.type === "payment_intent.canceled" ||

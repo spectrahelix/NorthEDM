@@ -37,6 +37,39 @@ _Not legal advice. The Stripe Connect pass-through pattern is the standard way
 platforms stay out of money-transmitter territory; confirm against Stripe's Connect
 terms for the specific setup. Rule we never break: **pass through, never hold.**_
 
+## Refund protection — commissions are HELD, not paid at sale time
+
+A commission is **recorded as an unpaid obligation** and only transferred once a
+**protection window** (default 30 days, per-action via `commission_rates.hold_days`)
+has closed. This resolves what looks like a contradiction — "nobody can withdraw it
+during protection" vs "I'm not ready to hold people's money":
+
+- **Refunds can't go wrong.** During the window nothing has moved, so a refund
+  simply **voids** the obligation. Clawing back a completed transfer is the fragile
+  path (it fails if the promoter already withdrew), so reversal exists only as a
+  backstop for the rare already-released case.
+- **NorthEDM isn't holding anyone's money.** The funds are NorthEDM's **own revenue**
+  from the sale; the promoter holds an unvested claim — ordinary **accounts payable**.
+  That is categorically different from custodying customer funds, which is what
+  raises money-transmitter exposure. This is *more* conservative than paying instantly.
+- **Nobody can pull it early.** `commission_release_guard()` is a database trigger
+  that rejects any attempt to mark a commission released before `payable_after`, and
+  makes `released_at` immutable once set. A bug, a bad admin click, or a direct SQL
+  update cannot bypass it. `/api/admin/commissions` refuses early release too.
+- **One path pays.** `/api/cron/release-commissions` (daily, `CRON_SECRET`-guarded)
+  is the only code that moves commission money.
+
+**The honest limit:** the reserved amount sits in NorthEDM's own Stripe balance until
+release, so it is not *technically* frozen against the owner — no app can freeze its
+owner's own bank balance. It is instead made unmistakable: `/admin/promoter-payouts`
+shows **"Reserved for promoters — do not spend"** with the live total. If a hard
+ring-fence is ever wanted, the upgrade is to transfer at sale time into the promoter's
+connected account with a payout delay longer than the refund window — at the cost of
+depending on reversal, which is why it wasn't chosen here.
+
+Lifecycle: `held → paid` (window closed, transfer sent) or `held → reversed`
+(refund/dispute, nothing moved) or `paid → reversed|failed` (backstop clawback).
+
 ## Payment mechanics (can't bounce; pay only on secured funds)
 
 - Customer pays by **card via Stripe** (Stripe Elements — card data never touches our

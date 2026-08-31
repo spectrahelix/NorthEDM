@@ -63,11 +63,18 @@ export default function PromoterSignup() {
             application and, once you&apos;re approved, you&apos;ll get
             one-time promo codes to share with your people.
           </p>
+          <div className="mx-auto max-w-sm rounded-2xl border border-[#39FF14]/25 bg-[#39FF14]/[0.06] p-4 text-left">
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-[#39FF14]">Next: get paid</p>
+            <p className="mt-1.5 text-sm text-neutral-300">
+              Once you&apos;re approved, connect a payout account so your commissions can reach your bank.
+              Until you do, earnings are recorded but can&apos;t be sent.
+            </p>
+          </div>
           <button
             onClick={() => router.push("/promote/dashboard")}
-            className="rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
+            className="mt-5 rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"
           >
-            Go to my Promoter Dashboard
+            Go to my Promoter Dashboard →
           </button>
         </div>
       </main>
