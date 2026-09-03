@@ -69,3 +69,62 @@ Pure recurring revenue that scales with Frank's success — cleaner than a one-o
   checkout Connect flow. Needs Frank's cut % set + live-key testing (money-critical).
 - **Phase 3 (polish):** custom domain mapping, operator order dashboard, store-scoped
   promoters/deals.
+
+---
+
+## Pay-before-handover (the launch gate)
+
+CJ's sequence: **build it privately → publish → Frank pays → he gets control and can
+take orders.** Note this supersedes the "embedding removes the one-time build" line
+above: CJ is charging a **setup fee** as well, because the setup work is real even
+though the store is embedded rather than a separate site.
+
+A store therefore has two independent switches:
+
+| Switch | Controls | Who flips it |
+| :-- | :-- | :-- |
+| `active` (draft/live) | whether the **public** can see the storefront | CJ, from `/admin/stores` |
+| `billing_status` | whether **Frank** can manage it and whether it can **take orders** | payment (Stripe), not a person |
+
+Keeping them separate is deliberate: CJ can publish a store for people to browse
+before Frank has paid, or keep a paid store private while it's being reworked.
+
+**`billing_status`:** `unpaid → active → past_due → canceled`
+
+- **unpaid** — CJ can build it; Frank can look but not edit; checkout is closed.
+- **active** — Frank manages it and the store takes orders.
+- **past_due / canceled** — orders close, storefront can stay up (read-only) so the
+  store doesn't vanish over a failed card. Frank keeps read access to his data.
+
+**What Frank pays** (numbers live in PRICING.md):
+1. **One-time setup fee** — invoice via the existing `service_quotes` flow (already
+   supports deposit-or-full and a promoter code).
+2. **Monthly operator fee** — a Stripe **subscription**; its webhook drives
+   `billing_status`, so nobody has to remember to switch anything off.
+3. **Platform % of store GMV** — taken per order at checkout, not billed separately.
+
+**Order of build:** the ordering rail (below) must exist before the gate is worth
+anything — there's nothing to gate until the store can take money.
+
+## Ordering — store cart + Stripe checkout
+
+Decided: a real storefront cart, not FestDash's delivery flow and not
+catalog-plus-contact. `/marketplace/[id]` is a **catalog** (it renders prices but has
+no cart or checkout), so this is genuinely new.
+
+- Cart lives client-side on `/[store]`; **prices and stock are re-read server-side at
+  checkout** from `products` — the client cart is never trusted (same rule as
+  `/api/shop/checkout`).
+- One Stripe Checkout session per order; a pending `store_orders` row carries the id
+  so the webhook can mark it paid and decrement stock.
+- **Fee accounting at order time:** platform cut and the operator's cut
+  (`stores.operator_fee_bps`) are computed and stored on the order, so what's owed is
+  never re-derived later from a changed setting.
+- **Payouts to vendors and the operator reuse the promoter-commission machinery**
+  (`commissions`-style hold → release, see docs/WALLET.md): recorded as obligations at
+  order time, paid after the refund-protection window. Same reasoning — NorthEDM never
+  holds anyone's money, and a refund voids rather than claws back.
+
+**Phasing:** collect money + record what's owed first (a store that takes orders and
+tracks obligations is useful immediately); automatic vendor/operator transfers follow,
+since they need connected accounts and live-key testing.
