@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { WeatherStrip } from "../feed/components/WeatherStrip";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const metadata: Metadata = {
   title: "Upcoming Local Events",
@@ -27,6 +28,8 @@ type LocalEvent = {
   region: string | null;
   start_date: string | null;
   end_date: string | null;
+  featured?: boolean | null;
+  vendor_ids?: number[] | null;
   lat: number | null;
   lng: number | null;
   description: string | null;
@@ -59,12 +62,43 @@ export default async function EventsPage() {
 
   const { data } = await supabase
     .from("local_events")
-    .select("id, name, venue, city, region, start_date, end_date, lat, lng, description, source_url")
+    .select("id, name, venue, city, region, start_date, end_date, lat, lng, description, source_url, featured, vendor_ids")
     .eq("status", "approved")
     .or(`end_date.gte.${todayISO},start_date.gte.${todayISO}`)
+    .order("featured", { ascending: false })
     .order("start_date", { ascending: true, nullsFirst: false });
 
   const events = (data ?? []) as LocalEvent[];
+
+  // Which NorthEDM vendors are on site at these events, so a card can name them
+  // instead of just asserting "vendors are here". One query for the whole page.
+  const vendorIds = [...new Set(events.flatMap((e) => e.vendor_ids ?? []))];
+  const { data: vendorRows } = vendorIds.length
+    ? await supabase.from("vendors").select("id, name").in("id", vendorIds)
+    : { data: [] };
+  const vendorById = new Map(((vendorRows ?? []) as { id: number; name: string | null }[])
+    .map((v) => [v.id, v.name]));
+
+  // Every venue we've ever listed, past events included — the standing record of
+  // where this scene actually happens, rather than only what's coming up.
+  // Read with the service role on purpose: the public RLS policy exposes only
+  // status='approved', so a normal client would silently drop every ARCHIVED
+  // event — i.e. all the history this list exists to show. Venue/city/region are
+  // public information, so nothing sensitive is widened by reading them here.
+  const venueAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  const { data: venueRows } = await venueAdmin
+    .from("local_events")
+    .select("venue, city, region")
+    .not("venue", "is", null);
+  const venues = [...new Map(
+    ((venueRows ?? []) as { venue: string | null; city: string | null; region: string | null }[])
+      .filter((v) => v.venue)
+      .map((v) => [`${v.venue}|${v.city}`, v])
+  ).values()].sort((a, b) => (a.venue ?? "").localeCompare(b.venue ?? ""));
 
   return (
     <main className="min-h-screen text-neutral-100">
@@ -98,6 +132,9 @@ export default async function EventsPage() {
             {events.map((event) => {
               const live = isLive(event.start_date, event.end_date, todayISO);
               const place = [event.venue, event.city, event.region].filter(Boolean).join(", ");
+              const onSite = (event.vendor_ids ?? [])
+                .map((id) => vendorById.get(id))
+                .filter(Boolean) as string[];
               return (
                 <div
                   key={event.id}
@@ -112,6 +149,11 @@ export default async function EventsPage() {
                             🟢 Live now
                           </span>
                         )}
+                        {event.featured && (
+                          <span className="rounded-full bg-[#CC00FF]/15 px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest text-[#CC00FF]">
+                            ★ Featured
+                          </span>
+                        )}
                       </div>
                       {place && <p className="mt-1 text-sm text-neutral-400">{place}</p>}
                     </div>
@@ -122,6 +164,17 @@ export default async function EventsPage() {
 
                   {event.description && (
                     <p className="mt-3 text-sm leading-relaxed text-neutral-400">{event.description}</p>
+                  )}
+
+                  {onSite.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-[#39FF14]/25 bg-[#39FF14]/[0.06] px-4 py-3">
+                      <p className="font-dm-mono text-[11px] uppercase tracking-widest text-[#39FF14]">
+                        🏪 NorthEDM {onSite.length === 1 ? "vendor" : "vendors"} on site
+                      </p>
+                      <p className="mt-1 text-sm text-neutral-200">
+                        {onSite.join(" · ")} — find {onSite.length === 1 ? "them" : "them"} at the event.
+                      </p>
+                    </div>
                   )}
 
                   <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -144,6 +197,30 @@ export default async function EventsPage() {
               );
             })}
           </div>
+        )}
+
+        {venues.length > 0 && (
+          <section className="mt-16 border-t border-white/10 pt-10">
+            <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#3AFFD4]">
+              The circuit
+            </p>
+            <h2 className="mt-2 font-bebas text-4xl tracking-wide">Venues we cover</h2>
+            <p className="mt-2 max-w-2xl text-sm text-neutral-500">
+              Every venue that has hosted an event on our radar — past and upcoming. The standing
+              map of where this scene actually happens.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {venues.map((v) => (
+                <span
+                  key={`${v.venue}|${v.city}`}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-neutral-300"
+                >
+                  {v.venue}
+                  {v.city && <span className="ml-1.5 font-dm-mono text-[11px] text-neutral-600">{v.city}</span>}
+                </span>
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </main>

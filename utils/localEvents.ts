@@ -195,6 +195,7 @@ export type IngestResult = {
   updated: number;
   discovered: number;
   skipped: number;
+  archived: number;
   discoverySource: string | null;
 };
 
@@ -221,6 +222,7 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
     updated: 0,
     discovered: 0,
     skipped: 0,
+    archived: 0,
     discoverySource: discovered.length ? "ticketmaster" : null,
   };
 
@@ -267,6 +269,39 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
     const { error } = await admin.from("local_events").insert(toInsert);
     if (error) console.error("local_events insert error:", error.message);
   }
+
+  // ── Garbage collection ──────────────────────────────────────────────────
+  // Retire events that have already finished. Without this the list only ever
+  // grows and silently rots: every seeded event carries a fixed year, so once
+  // its dates pass /events shows nothing at all while the table still holds a
+  // pile of finished festivals. (That is exactly the state this was found in —
+  // 7 approved events, all past.)
+  //
+  // Archived, not deleted: the row is kept for history and the "venues we've
+  // covered" list, and the public RLS policy only exposes status='approved',
+  // so archiving removes it from the site the moment it runs.
+  // Two passes because end_date is nullable: a single-day event stores only
+  // start_date, and `end_date < today` never matches NULL — so filtering on
+  // end_date alone would leave every one-day event behind forever.
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const multiDay = await admin
+    .from("local_events")
+    .update({ status: "archived", featured: false })
+    .eq("status", "approved")
+    .lt("end_date", todayISO)
+    .select("id");
+  if (multiDay.error) console.error("local_events archive error:", multiDay.error.message);
+
+  const singleDay = await admin
+    .from("local_events")
+    .update({ status: "archived", featured: false })
+    .eq("status", "approved")
+    .is("end_date", null)
+    .lt("start_date", todayISO)
+    .select("id");
+  if (singleDay.error) console.error("local_events archive error:", singleDay.error.message);
+
+  result.archived = (multiDay.data?.length ?? 0) + (singleDay.data?.length ?? 0);
 
   return result;
 }
