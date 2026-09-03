@@ -43,3 +43,28 @@ through Stripe Connect** to the promoter's connected account — NorthEDM never 
 their money (this is deliberate: holding it would raise money-transmitter concerns).
 There is **no user-funded wallet top-up** for the same reason. Read the doc before
 touching commissions or payouts.
+
+## Local events pipeline — automated, don't hand-edit rows
+`/events` is filled by a nightly Vercel cron (`/api/cron/local-events`, 08:00 UTC)
+running `runLocalEventsIngest()` in [`utils/localEvents.ts`](utils/localEvents.ts).
+Review and approve at **`/admin/events`**.
+
+Three sources, geo-scoped ~100mi around Nescopeck PA:
+1. **Curated seeds** — auto-approved. Ones marked `annual: true` roll themselves
+   forward a year once they finish, landing in the review queue as a *dated
+   estimate* rather than going live unverified.
+2. **Ticketmaster Discovery** — needs `TICKETMASTER_API_KEY`.
+3. **SeatGeek Platform API** — needs `SEATGEEK_CLIENT_ID` (free, no secret used).
+
+Discovery is optional but the page **goes stale without it** — that is exactly how
+`/events` reached zero live events in Aug 2026. `/admin/events` shows which keys
+are actually set, so check there before assuming discovery is running.
+
+Garbage collection runs on the same pass: finished events and un-reviewed pending
+events past their date flip to `status = 'archived'` — kept as the standing venue
+record on `/events`, gone from the public list. Junk listings (parking passes,
+hotel bundles, meet-and-greets) are filtered before they reach review.
+
+**Identity is `dedup_key`**, computed by `dedupKey()`. Never hand-write one in SQL:
+a non-canonical key inserts a duplicate instead of matching the existing row. A
+unique index on `(name, city, start_date)` now backstops this.
