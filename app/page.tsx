@@ -63,8 +63,20 @@ export default async function HomePage() {
       .order("created_at", { ascending: false }),
   ]);
 
+  // Vendors that already have a bespoke, hand-written card in the grid below.
+  // They must not ALSO render from this generic list or they appear twice —
+  // which is exactly what happened to Frank's after its curated card was added.
+  //
+  // Keyed by id, not name: this filter used to match on name, and renaming a
+  // vendor (e.g. "Find it at Franks..." → "Find It @ Franks...") silently breaks
+  // name matching. Ids survive renames.
+  const CURATED_VENDOR_IDS = new Set([
+    5, // Find it at Frank's General Store — FestDash card
+    6, // Homestead Life — founder card
+    8, // CarlyIsFunny — created-by-NorthEDM card
+  ]);
   const vendors = ((data ?? []) as Vendor[])
-    .filter((v) => v.name !== "Homestead Life" && v.name !== "CarlyIsFunny")
+    .filter((v) => !CURATED_VENDOR_IDS.has(Number(v.id)))
     .slice(0, 1);
 
   return (
