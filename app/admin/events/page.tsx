@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { EventActions, RefreshButton } from "./EventActions";
 import { AddEventForm } from "./AddEventForm";
+import { VENUE_FEEDS } from "@/utils/venueFeeds";
 
 export const metadata = { title: "Admin · Local Events" };
 
@@ -70,6 +71,12 @@ export default async function AdminEventsPage() {
   const discovery = [
     { name: "Ticketmaster", env: "TICKETMASTER_API_KEY", on: !!process.env.TICKETMASTER_API_KEY },
     { name: "SeatGeek", env: "SEATGEEK_CLIENT_ID", on: !!process.env.SEATGEEK_CLIENT_ID },
+    // Venue calendars need no credential — they're on whenever the watchlist is.
+    {
+      name: `Venue calendars (${VENUE_FEEDS.length})`,
+      env: "utils/venueFeeds.ts",
+      on: VENUE_FEEDS.length > 0,
+    },
   ];
   const anyDiscovery = discovery.some((d) => d.on);
 
@@ -110,10 +117,17 @@ export default async function AdminEventsPage() {
               </span>
             ))}
           </div>
-          {!anyDiscovery && (
+          {!anyDiscovery ? (
             <p className="mt-3 text-sm text-neutral-300">
               No discovery keys are configured, so nothing new is ever found — the curated seed list
               is the only source. Add the keys in Vercel and redeploy.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-neutral-500">
+              Ticketing APIs only index events sold through a box office. The smaller rooms come from
+              venue calendars — check a new venue with{" "}
+              <code className="text-neutral-400">node scripts/probe-venue-feed.mjs &lt;url&gt;</code>{" "}
+              before adding it to the watchlist. Anything no feed carries goes in by hand below.
             </p>
           )}
         </div>

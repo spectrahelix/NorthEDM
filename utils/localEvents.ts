@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchVenueFeeds, VENUE_FEEDS } from "./venueFeeds";
 
 // Local Events ingest: shared by the nightly cron (app/api/cron/local-events)
 // and the admin "Refresh now" button. Several sources feed one table:
@@ -11,8 +12,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 //   2. Ticketmaster Discovery — optional, only if TICKETMASTER_API_KEY is set.
 //   3. SeatGeek Platform API — optional, only if SEATGEEK_CLIENT_ID is set.
 //      Catches a lot of the independent/regional bills Ticketmaster misses.
+//   4. Venue calendar feeds (utils/venueFeeds) — always on, no key needed.
+//      Reads regional venues' own published calendars, which is the only place
+//      the smaller rooms and community stages ever appear.
 //
-// Both discovery sources are geo-scoped to the region center and paginated.
+// The ticketing sources are geo-scoped to the region center and paginated; the
+// venue feeds are inherently in-region because the venue list is curated.
 // New finds land as 'pending' for review; already-known events are left alone.
 //
 // Region center used for discovery + a sensible default for undated seeds:
@@ -26,7 +31,7 @@ export const REGION_RADIUS_MILES = 100;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 3;
 
-export type EventSource = "seed" | "ticketmaster" | "seatgeek" | "manual";
+export type EventSource = "seed" | "ticketmaster" | "seatgeek" | "venue" | "manual";
 
 export type IngestEvent = {
   name: string;
@@ -454,16 +459,23 @@ async function insertRows(
 export async function runLocalEventsIngest(admin: SupabaseClient): Promise<IngestResult> {
   const today = todayISO();
 
-  // Both discovery sources run concurrently — they're independent HTTP calls
+  // All discovery sources run concurrently — they're independent HTTP calls
   // and the cron has a 60s budget.
-  const [tmEvents, sgEvents] = await Promise.all([fetchTicketmaster(), fetchSeatGeek()]);
+  const [tmEvents, sgEvents, venueEvents] = await Promise.all([
+    fetchTicketmaster(),
+    fetchSeatGeek(),
+    fetchVenueFeeds(today),
+  ]);
 
   const sources: SourceReport[] = [
     { name: "ticketmaster", configured: !!process.env.TICKETMASTER_API_KEY, found: tmEvents.length },
     { name: "seatgeek", configured: !!process.env.SEATGEEK_CLIENT_ID, found: sgEvents.length },
+    // Venue calendars need no credential, so they're configured whenever the
+    // watchlist isn't empty.
+    { name: "venue calendars", configured: VENUE_FEEDS.length > 0, found: venueEvents.length },
   ];
 
-  const rawDiscovered = [...tmEvents, ...sgEvents];
+  const rawDiscovered = [...tmEvents, ...sgEvents, ...venueEvents];
   const discovered = rawDiscovered.filter((e) => !isNoise(e.name));
   const filtered = rawDiscovered.length - discovered.length;
 
