@@ -51,8 +51,13 @@ export function VendorEditForm({
       return;
     }
 
-    // Only update the vendor row that belongs to the current user
-    const { error: dbError } = await supabase
+    // Authorization is RLS's job, not this filter's. The old `.eq("user_id",
+    // user.id)` here silently matched ZERO rows for any listing with a null
+    // user_id (most of them — they were seeded rather than claimed by an account),
+    // so the save quietly did nothing. RLS already allows exactly the right people:
+    // "vendor update own" (auth.uid() = user_id) and "admin update vendors".
+    // `.select()` makes the result observable so a no-op can't masquerade as a save.
+    const { data: updated, error: dbError } = await supabase
       .from("vendors")
       .update({
         name: fields.name.trim(),
@@ -65,10 +70,14 @@ export function VendorEditForm({
         show_phone: fields.showPhone,
       })
       .eq("id", vendorId)
-      .eq("user_id", user.id);
+      .select("id");
     setSaving(false);
     if (dbError) {
       setError(dbError.message);
+      return;
+    }
+    if (!updated || updated.length === 0) {
+      setError("Nothing was saved — you don't have permission to edit this listing.");
       return;
     }
     setOpen(false);
