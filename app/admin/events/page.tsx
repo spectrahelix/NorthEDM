@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { EventActions, RefreshButton } from "./EventActions";
+import { AddEventForm } from "./AddEventForm";
 
 export const metadata = { title: "Admin · Local Events" };
 
@@ -117,8 +118,12 @@ export default async function AdminEventsPage() {
           )}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <RefreshButton />
+        </div>
+
+        <div className="mt-6">
+          <AddEventForm />
         </div>
 
         <Section title={`Pending review (${pending.length})`} events={pending} showActions />
