@@ -2,28 +2,28 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-08-31 16:08 UTC
-**Health:** ⚪ no new signups in 30 days · 🟡 17 env var(s) not set in CI · ⚪ 3 TODO/FIXME markers
+**Last run:** 2026-09-07 14:14 UTC
+**Health:** 🟡 1 open bug/feedback report · ⚪ no new signups in 30 days
 
 | Area | Result |
 | :-- | :-- |
-| Features (pages) | **77** routes (10 dynamic) |
-| API endpoints | **81** |
+| Features (pages) | **78** routes (10 dynamic) |
+| API endpoints | **84** |
 | Users | **14** total · 0 new (7d) · 0 new (30d) |
-| Latest signup | 2026-07-13 (48d ago) |
-| Open bug/feedback reports | 0 of 1 total |
+| Latest signup | 2026-07-13 (55d ago) |
+| Open bug/feedback reports | 1 of 2 total |
 | Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
 | TypeScript | ✅ clean |
-| Migrations | 38 (latest: `20260826000000_quote_promoter_discount.sql`) |
-| Env vars referenced | 19 (17 missing in CI) |
-| TODO/FIXME | 3 |
+| Migrations | 41 (latest: `20260901000000_store_orders.sql`) |
+| Env vars referenced | 22 |
+| TODO/FIXME | 0 |
 
 
-**Env not set in CI:** `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `CRON_SECRET`, `GITHUB_ISSUES_REPO`, `GITHUB_ISSUES_TOKEN`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_OPENWEATHER_API_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SW_VERSION`, `NTFY_SERVER`, `NTFY_TOPIC`, `OWNER_ALERT_EMAIL`, `SQUARE_VERSION`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TICKETMASTER_API_KEY` — expected for secrets; verify they're set in Vercel.
+<sub>FYI (not a problem): 20 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
 ---
 
-## Feature inventory (77 pages)
+## Feature inventory (78 pages)
 
 - `/[store]`
 - `/[store]/manage`
@@ -40,6 +40,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/admin/hoodies`
 - `/admin/marketplace`
 - `/admin/products`
+- `/admin/promoter-payouts`
 - `/admin/quotes`
 - `/admin/reports`
 - `/admin/requests`
@@ -103,10 +104,11 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (81)
+## API endpoints (84)
 
 - `/api/admin/artisan`
 - `/api/admin/bug-reports`
+- `/api/admin/commissions`
 - `/api/admin/create-user`
 - `/api/admin/delete-user`
 - `/api/admin/edit-user`
@@ -131,6 +133,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/avatar/purchase`
 - `/api/booking`
 - `/api/cron/local-events`
+- `/api/cron/release-commissions`
 - `/api/feedback`
 - `/api/festdash/admin/applications`
 - `/api/festdash/admin/applications/[id]`
@@ -172,6 +175,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/social/broadcast`
 - `/api/store-credit`
 - `/api/store/[slug]`
+- `/api/store/[slug]/checkout`
 - `/api/track`
 - `/api/vendor/products`
 - `/api/vendor/products/[id]`
@@ -187,7 +191,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/auth/confirm`
 - `/h/[code]`
 
-## Environment variables (19 referenced)
+## Environment variables (22 referenced)
 
 | Variable | Scope | CI status |
 | :-- | :-- | :-- |
@@ -205,6 +209,9 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 | `NTFY_SERVER` | server | ❌ missing |
 | `NTFY_TOPIC` | server | ❌ missing |
 | `OWNER_ALERT_EMAIL` | server | ❌ missing |
+| `PAYPAL_CLIENT_ID` | server | ❌ missing |
+| `PAYPAL_ENV` | server | ❌ missing |
+| `PAYPAL_SECRET` | server | ❌ missing |
 | `SQUARE_VERSION` | server | ❌ missing |
 | `STRIPE_SECRET_KEY` | server | ❌ missing |
 | `STRIPE_WEBHOOK_SECRET` | server | ❌ missing |
