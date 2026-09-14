@@ -58,12 +58,23 @@ Four sources, scoped to ~100mi around Nescopeck PA:
 4. **Venue calendars** ([`utils/venueFeeds.ts`](utils/venueFeeds.ts)) — no key needed.
 
 Sources 2 and 3 only index events sold through a box office, so they will never
-find a 200-cap room or a farm stage. Source 4 is what covers those: a curated
-watchlist of venues running WordPress's *The Events Calendar*, read through its
-public REST API (`/wp-json/tribe/events/v1/events`). **Before adding a venue, run
-`node scripts/probe-venue-feed.mjs <site-url>`** — it says whether the site can be
-automated and prints a ready-to-paste `VENUE_FEEDS` entry. A venue that fails the
-probe can't be automated; use the manual add form on `/admin/events`.
+find a 200-cap room or a farm stage. Source 4 is what covers those: a **curated**
+watchlist read two ways — `kind: "events-calendar"` (default) hits WordPress's
+*The Events Calendar* REST API, `kind: "jsonld"` reads schema.org
+`Event`/`MusicEvent` markup off a page. **Before adding a venue, run
+`node scripts/probe-venue-feed.mjs <site-url>`** — it tries both readers and
+prints a ready-to-paste `VENUE_FEEDS` entry. A venue that fails both can't be
+automated (its calendar is JS-rendered); use the manual add form on
+`/admin/events`. Check the site's `robots.txt` before adding it.
+
+The watchlist is curated, **not distance-filtered** — that's deliberate. A venue
+worth covering goes in regardless of how tight the automated geo radius is set
+(The Ave Live in Philadelphia is there for exactly this reason).
+
+⚠️ **Timezones:** JSON-LD `startDate` often arrives as a UTC instant. A club show
+stamped `01:30:00Z` happens the *previous* evening in Eastern, so slicing the
+first ten characters lists every late show a day late. `localDate()` handles
+this; don't bypass it.
 
 Discovery is otherwise optional but the page **goes stale without it** — that is
 exactly how `/events` reached zero live events in Aug 2026. `/admin/events` shows
