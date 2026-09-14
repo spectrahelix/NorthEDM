@@ -3,18 +3,23 @@
 //
 //   node scripts/probe-venue-feed.mjs https://www.somevenue.com
 //
-// Checks whether a site publishes a machine-readable event calendar we can
-// ingest — specifically WordPress's "The Events Calendar" REST API, which is
-// what most small venues and arts centers in the region turn out to run. Prints
-// the event count, the categories in use, and a ready-to-paste VENUE_FEEDS
-// entry for utils/venueFeeds.ts.
+// Checks both readers the ingest supports:
+//   1. The Events Calendar REST API (WordPress) — what most regional arts
+//      centers and small venues turn out to run.
+//   2. schema.org JSON-LD Event / MusicEvent markup — what custom-built venue
+//      sites publish for search engines. Checked on the homepage and the usual
+//      calendar paths.
 //
-// Run this BEFORE adding a venue to the watchlist. A site that fails here can't
-// be automated and needs the manual "Add an event" form in /admin/events.
+// Prints what it found and a ready-to-paste VENUE_FEEDS entry for
+// utils/venueFeeds.ts. Run this BEFORE adding a venue. A site that fails both
+// can't be automated — its shows go in through the manual "Add an event" form
+// on /admin/events.
 
 const UA = "NorthEDM-EventBot/1.0 (+https://northedm.com/events)";
-const input = process.argv[2];
+const JSONLD_PATHS = ["/", "/events", "/calendar", "/shows", "/schedule"];
+const EVENT_TYPE = /(^|[^a-z])(Music)?Event$|Festival/i;
 
+const input = process.argv[2];
 if (!input) {
   console.error("usage: node scripts/probe-venue-feed.mjs <site-url>");
   process.exit(1);
@@ -29,71 +34,150 @@ function decode(s = "") {
     .replace(/&amp;/g, "&");
 }
 
-async function api(params) {
-  const res = await fetch(`${origin}/wp-json/tribe/events/v1/events?${params}`, {
-    headers: { "User-Agent": UA, Accept: "application/json" },
+async function get(url, accept) {
+  const res = await fetch(url, {
+    headers: { "User-Agent": UA, Accept: accept },
     signal: AbortSignal.timeout(20000),
+    redirect: "follow",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return res;
 }
 
 console.log(`Probing ${origin} …\n`);
 
-let all;
+// ── Reader 1: The Events Calendar ───────────────────────────────────────────
+let tec = null;
 try {
-  all = await api(`per_page=50&start_date=${today}`);
+  const res = await get(
+    `${origin}/wp-json/tribe/events/v1/events?per_page=50&start_date=${today}`,
+    "application/json"
+  );
+  tec = await res.json();
 } catch (e) {
-  console.log(`❌ No Events Calendar API here (${e.message}).`);
-  console.log(`   This venue can't be automated — add its shows by hand at /admin/events.`);
-  process.exit(0);
+  console.log(`   The Events Calendar API: no (${e.message})`);
 }
 
-const events = all.events ?? [];
-console.log(`✅ The Events Calendar API is live.`);
-console.log(`   ${all.total ?? "?"} upcoming events, ${all.total_pages ?? "?"} pages of 50.\n`);
+if (tec) {
+  const events = tec.events ?? [];
+  console.log(`✅ The Events Calendar API is live.`);
+  console.log(`   ${tec.total ?? "?"} upcoming events, ${tec.total_pages ?? "?"} pages of 50.\n`);
 
-if (!events.length) {
-  console.log("   …but nothing is scheduled from today onward. Recheck in season.");
-  process.exit(0);
-}
-
-const categories = new Map();
-for (const e of events) for (const c of e.categories ?? []) {
-  const name = decode(c.name);
-  categories.set(name, (categories.get(name) ?? 0) + 1);
-}
-
-console.log("   Categories in the next 50 events:");
-if (categories.size === 0) {
-  console.log("     (none — events aren't categorised, so the music filter will run locally)");
-} else {
-  for (const [name, n] of [...categories].sort((a, b) => b[1] - a[1])) {
-    console.log(`     ${String(n).padStart(3)}  ${name}`);
+  if (!events.length) {
+    console.log("   …but nothing is scheduled from today onward. Recheck in season.");
+    process.exit(0);
   }
-}
 
-const sample = events[0];
-const venue = sample.venue ?? {};
-console.log(`\n   Sample: "${decode(sample.title)}"`);
-console.log(`           ${sample.start_date} @ ${decode(venue.venue) || "(no venue on the event)"} ${venue.city ?? ""} ${venue.state ?? ""}`);
-if (!venue.city) {
-  console.log(`   ⚠  Events carry no venue/city. Set city/region/lat/lng on the feed entry.`);
-}
+  const categories = new Map();
+  for (const e of events)
+    for (const c of e.categories ?? []) {
+      const name = decode(c.name);
+      categories.set(name, (categories.get(name) ?? 0) + 1);
+    }
 
-const musicCategory = [...categories.keys()].find((c) => /concert|music|live/i.test(c));
-console.log(`\n   Paste into VENUE_FEEDS in utils/venueFeeds.ts:\n`);
-console.log(`  {
+  console.log("   Categories in the next 50 events:");
+  if (categories.size === 0) {
+    console.log("     (none — the ingest's non-show denylist will filter locally)");
+  } else {
+    for (const [name, n] of [...categories].sort((a, b) => b[1] - a[1])) {
+      console.log(`     ${String(n).padStart(3)}  ${name}`);
+    }
+  }
+
+  const sample = events[0];
+  const venue = sample.venue ?? {};
+  console.log(`\n   Sample: "${decode(sample.title)}"`);
+  console.log(`           ${sample.start_date} @ ${decode(venue.venue) || "(no venue on the event)"} ${venue.city ?? ""} ${venue.state ?? ""}`);
+
+  const musicCategory = [...categories.keys()].find((c) => /concert|music|live/i.test(c));
+  console.log(`\n   Paste into VENUE_FEEDS in utils/venueFeeds.ts:\n`);
+  console.log(`  {
     label: ${JSON.stringify(decode(venue.venue) || new URL(origin).hostname)},
     origin: ${JSON.stringify(origin)},
     city: ${JSON.stringify(venue.city ?? "")},
     region: ${JSON.stringify(venue.state ?? "PA")},
     lat: 0, // fill these in — without them the card shows no weather strip
     lng: 0,${musicCategory ? `\n    categories: [${JSON.stringify(musicCategory)}],` : ""}
-    maxPages: ${Math.min(all.total_pages ?? 1, 2)},
+    maxPages: ${Math.min(tec.total_pages ?? 1, 2)},
   },`);
 
-if (!musicCategory && categories.size > 0) {
-  console.log(`\n   No music-ish category found. Left off deliberately: the ingest will`);
-  console.log(`   filter locally instead. Check the list above for the right name first.`);
+  if (!musicCategory && categories.size > 0) {
+    console.log(`\n   No music-specific category to request server-side, so it's left off`);
+    console.log(`   and the ingest filters locally. Check the list above for the right name.`);
+  }
+  process.exit(0);
 }
+
+// ── Reader 2: schema.org JSON-LD ────────────────────────────────────────────
+function collect(html) {
+  const found = [];
+  for (const block of html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  )) {
+    let parsed;
+    try {
+      parsed = JSON.parse(block[1].trim());
+    } catch {
+      continue;
+    }
+    const stack = Array.isArray(parsed) ? [...parsed] : [parsed];
+    while (stack.length) {
+      const node = stack.pop();
+      if (!node || typeof node !== "object") continue;
+      if (Array.isArray(node["@graph"])) stack.push(...node["@graph"]);
+      const types = [].concat(node["@type"] ?? []).map(String);
+      if (types.some((t) => EVENT_TYPE.test(t))) found.push(node);
+    }
+  }
+  return found;
+}
+
+let best = null;
+for (const path of JSONLD_PATHS) {
+  try {
+    const res = await get(origin + path, "text/html");
+    const events = collect(await res.text());
+    if (events.length && (!best || events.length > best.events.length)) {
+      best = { path, events };
+    }
+  } catch {
+    /* a missing path is normal, keep trying the others */
+  }
+}
+
+if (!best) {
+  console.log(`   schema.org JSON-LD events: none on ${JSONLD_PATHS.join(", ")}`);
+  console.log(`\n❌ This venue can't be automated — its calendar is probably rendered`);
+  console.log(`   by JavaScript. Add its shows by hand at /admin/events.`);
+  process.exit(0);
+}
+
+console.log(`✅ schema.org JSON-LD: ${best.events.length} events on ${best.path}\n`);
+
+const sample = best.events[0];
+const place = sample.location ?? {};
+const address = place.address ?? {};
+const zoned = /(?:Z|[+-]\d{2}:?\d{2})$/.test(String(sample.startDate ?? ""));
+
+console.log(`   Sample: "${decode(sample.name ?? "")}"`);
+console.log(`           ${sample.startDate} @ ${decode(place.name ?? "?")} ${address.addressLocality ?? ""} ${address.addressRegion ?? ""}`);
+console.log(
+  zoned
+    ? `   ⚠  Timestamps carry a timezone, so they're instants — the reader converts\n      them to the venue's local date. A 1:30am UTC door time is the PREVIOUS\n      evening in Eastern. Set timeZone if this venue isn't America/New_York.`
+    : `   Timestamps carry no zone, so they're read as local wall time.`
+);
+
+console.log(`\n   Paste into VENUE_FEEDS in utils/venueFeeds.ts:\n`);
+console.log(`  {
+    label: ${JSON.stringify(decode(place.name ?? new URL(origin).hostname))},
+    origin: ${JSON.stringify(origin)},
+    city: ${JSON.stringify(address.addressLocality ?? "")},
+    region: ${JSON.stringify(address.addressRegion ?? "PA")},
+    lat: 0, // fill these in — without them the card shows no weather strip
+    lng: 0,
+    kind: "jsonld",
+    path: ${JSON.stringify(best.path)},
+  },`);
+
+console.log(`\n   Check robots.txt allows this path before adding it:`);
+console.log(`     ${origin}/robots.txt`);

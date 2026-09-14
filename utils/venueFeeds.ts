@@ -26,6 +26,23 @@ export type VenueFeed = {
   lat?: number;
   lng?: number;
   /**
+   * How to read this venue.
+   *   "events-calendar" (default) — WordPress's The Events Calendar REST API.
+   *   "jsonld" — schema.org Event/MusicEvent objects embedded in a page. Plenty
+   *     of custom-built venue sites publish these even though they run no CMS
+   *     we recognise; it's the same structured data Google reads.
+   */
+  kind?: "events-calendar" | "jsonld";
+  /** For kind "jsonld": the page carrying the markup. Defaults to "/". */
+  path?: string;
+  /**
+   * IANA zone for interpreting event timestamps. Only matters for "jsonld",
+   * where times often arrive as UTC instants — a 1:30am UTC door time is
+   * 9:30pm the PREVIOUS evening in Eastern, so without this every late show at
+   * a nightclub lands on /events a day late.
+   */
+  timeZone?: string;
+  /**
    * Categories to request from the feed. Filtering server-side is the
    * difference between 63 music events and 590 rows of film screenings, gallery
    * shows and drawing classes burying the review queue. Omit to pull everything
@@ -62,6 +79,25 @@ export const VENUE_FEEDS: VenueFeed[] = [
     lat: 41.4098,
     lng: -75.6624,
     maxPages: 1,
+  },
+  {
+    // Philadelphia EDM room — touring headliners, themed raves, afterparties.
+    // Outside the NEPA discovery radius on purpose: the watchlist is curated by
+    // hand, not filtered by distance, so a venue worth covering is covered
+    // regardless of how tight the automated geo sweep is set.
+    //
+    // No CMS we recognise, but it publishes schema.org MusicEvent markup on its
+    // homepage. robots.txt allows "/" (only /admin/ and /api/ are disallowed)
+    // and it serves our own bot user-agent a full page, so nothing here depends
+    // on pretending to be a browser.
+    label: "The Ave Live",
+    origin: "https://theavelive.com",
+    city: "Philadelphia",
+    region: "PA",
+    lat: 39.9612,
+    lng: -75.1387,
+    kind: "jsonld",
+    path: "/",
   },
 ];
 
@@ -212,11 +248,132 @@ async function fetchFeed(feed: VenueFeed, today: string): Promise<IngestEvent[]>
   return out;
 }
 
+// ── Reader: schema.org JSON-LD ──────────────────────────────────────────────
+// Many venue sites run no CMS we can query but still embed schema.org Event /
+// MusicEvent objects for search engines. That's a documented, stable contract —
+// far sturdier than parsing their HTML — so we read the same markup Google does.
+
+const EVENT_TYPE = /(^|[^a-z])(Music)?Event$|Festival/i;
+
+/**
+ * The calendar date an event falls on, in the venue's own timezone.
+ *
+ * A timestamp carrying a zone (…Z or ±hh:mm) is an instant, and slicing its
+ * first ten characters gives the UTC date, which is wrong for anything after
+ * 8pm Eastern: a club show stamped 2026-09-19T01:30:00Z actually happens on the
+ * evening of the 18th. A timestamp with no zone is already local wall time and
+ * is taken as-is.
+ */
+export function localDate(iso: string, timeZone: string): string | null {
+  const value = String(iso || "").trim();
+  if (!value) return null;
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/.test(value)) {
+    const plain = value.slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(plain) ? plain : null;
+  }
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  // en-CA formats as YYYY-MM-DD, which is exactly the shape the column wants.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at);
+}
+
+type JsonLdEvent = {
+  "@type"?: unknown;
+  name?: string;
+  url?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  location?: { name?: string; address?: { addressLocality?: string; addressRegion?: string } };
+  offers?: { url?: string } | { url?: string }[];
+};
+
+// Walk every ld+json block, flattening arrays and @graph containers, and return
+// the nodes that describe an event.
+function collectJsonLdEvents(html: string): JsonLdEvent[] {
+  const found: JsonLdEvent[] = [];
+  const blocks = html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  );
+  for (const block of blocks) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(block[1].trim());
+    } catch {
+      continue; // a malformed block is not a reason to abandon the page
+    }
+    const stack: unknown[] = Array.isArray(parsed) ? [...parsed] : [parsed];
+    while (stack.length) {
+      const node = stack.pop();
+      if (!node || typeof node !== "object") continue;
+      const record = node as Record<string, unknown>;
+      if (Array.isArray(record["@graph"])) stack.push(...(record["@graph"] as unknown[]));
+      const types = ([] as unknown[]).concat(record["@type"] ?? []).map(String);
+      if (types.some((t) => EVENT_TYPE.test(t))) found.push(record as JsonLdEvent);
+    }
+  }
+  return found;
+}
+
+async function fetchJsonLdFeed(feed: VenueFeed, today: string): Promise<IngestEvent[]> {
+  const url = `${feed.origin}${feed.path ?? "/"}`;
+  let html: string;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      console.warn(`venue feed ${feed.label} returned ${res.status}`);
+      return [];
+    }
+    html = await res.text();
+  } catch (e) {
+    console.warn(`venue feed ${feed.label} failed:`, e instanceof Error ? e.message : e);
+    return [];
+  }
+
+  const zone = feed.timeZone ?? "America/New_York";
+  const out: IngestEvent[] = [];
+  for (const ev of collectJsonLdEvents(html)) {
+    const name = decodeEntities(String(ev.name ?? "")).trim();
+    const start = localDate(String(ev.startDate ?? ""), zone);
+    // Past events are dropped here rather than relying on the nightly sweep:
+    // a page like this lists its whole back catalogue.
+    if (!name || !start || start < today) continue;
+    const end = ev.endDate ? localDate(String(ev.endDate), zone) : null;
+    const offer = Array.isArray(ev.offers) ? ev.offers[0] : ev.offers;
+    out.push({
+      name,
+      venue: ev.location?.name ? decodeEntities(ev.location.name) : feed.label,
+      city: feed.city || ev.location?.address?.addressLocality || null,
+      region: feed.region || ev.location?.address?.addressRegion || null,
+      start_date: start,
+      end_date: end && end >= start ? end : start,
+      lat: feed.lat ?? null,
+      lng: feed.lng ?? null,
+      description: ev.description ? toPlainText(String(ev.description)) : null,
+      source: "venue",
+      source_url: ev.url || offer?.url || feed.origin,
+    });
+  }
+  return out;
+}
+
 /**
  * Pull every configured venue calendar. Feeds run concurrently and failures are
  * contained per-feed, so this resolves to whatever succeeded — never throws.
  */
 export async function fetchVenueFeeds(today: string): Promise<IngestEvent[]> {
-  const batches = await Promise.all(VENUE_FEEDS.map((feed) => fetchFeed(feed, today)));
+  const batches = await Promise.all(
+    VENUE_FEEDS.map((feed) =>
+      feed.kind === "jsonld" ? fetchJsonLdFeed(feed, today) : fetchFeed(feed, today)
+    )
+  );
   return batches.flat().slice(0, GLOBAL_CAP);
 }
