@@ -2,22 +2,23 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-09-07 14:14 UTC
-**Health:** 🟡 1 open bug/feedback report · ⚪ no new signups in 30 days
+**Last run:** 2026-09-14 14:59 UTC
+**Health:** 🔴 1 critical vulnerability · 🟠 2 high vulnerabilities · 🟡 1 open bug/feedback report · ⚪ no new signups in 30 days
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **78** routes (10 dynamic) |
 | API endpoints | **84** |
 | Users | **14** total · 0 new (7d) · 0 new (30d) |
-| Latest signup | 2026-07-13 (55d ago) |
+| Latest signup | 2026-07-13 (62d ago) |
 | Open bug/feedback reports | 1 of 2 total |
-| Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
+| Security (npm audit) | 1 critical · 2 high · 0 moderate · 0 low |
 | TypeScript | ✅ clean |
 | Migrations | 41 (latest: `20260901000000_store_orders.sql`) |
 | Env vars referenced | 22 |
 | TODO/FIXME | 0 |
 
+**High/critical advisories:** js-yaml (high), next (critical), sharp (high)
 
 <sub>FYI (not a problem): 20 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
