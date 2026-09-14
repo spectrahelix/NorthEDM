@@ -64,6 +64,7 @@ export async function POST(req: Request) {
       lng: body.lng != null && body.lng !== "" ? Number(body.lng) : null,
       description: body.description?.trim() || null,
       source: "manual" as const,
+      source_url: body.source_url?.trim() || null,
     };
     const { error } = await g.admin.from("local_events").insert({
       ...e,

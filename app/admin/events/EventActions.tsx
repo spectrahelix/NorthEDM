@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { SourceReport } from "@/utils/localEvents";
 
 async function post(body: Record<string, unknown>) {
   const res = await fetch("/api/admin/local-events", {
@@ -67,8 +68,26 @@ export function RefreshButton() {
     const r = await post({ action: "refresh" });
     setBusy(false);
     if (r?.ok) {
-      const src = r.discoverySource ? ` · discovery: ${r.discoverySource}` : " · discovery: off (no key)";
-      setMsg(`Seeded ${r.seeded}, updated ${r.updated}, new discovered ${r.discovered}${src}`);
+      // Name the sources that are actually switched on. "discovery: off" was
+      // hiding the real problem for months — the page looked healthy while
+      // nothing was ever being found.
+      const configured = (r.sources ?? []).filter((s: SourceReport) => s.configured);
+      const src = configured.length
+        ? `discovery: ${configured.map((s: SourceReport) => `${s.name} (${s.found})`).join(", ")}`
+        : "discovery: OFF — no API keys set";
+      setMsg(
+        [
+          `Seeded ${r.seeded}`,
+          `updated ${r.updated}`,
+          `new ${r.discovered}`,
+          r.rolled ? `rolled forward ${r.rolled}` : null,
+          r.filtered ? `junk filtered ${r.filtered}` : null,
+          r.archived ? `archived ${r.archived}` : null,
+          src,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      );
       router.refresh();
     } else {
       setMsg(r?.error || "Refresh failed.");

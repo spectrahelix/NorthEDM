@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { EventActions, RefreshButton } from "./EventActions";
+import { AddEventForm } from "./AddEventForm";
+import { VENUE_FEEDS } from "@/utils/venueFeeds";
 
 export const metadata = { title: "Admin · Local Events" };
 
@@ -32,6 +34,7 @@ const STATUS_STYLE: Record<string, string> = {
   approved: "bg-[#39FF14]/10 text-[#39FF14]",
   pending: "bg-[#E8FF47]/10 text-[#E8FF47]",
   hidden: "bg-white/5 text-neutral-500",
+  archived: "bg-white/5 text-neutral-600",
 };
 
 export default async function AdminEventsPage() {
@@ -58,6 +61,24 @@ export default async function AdminEventsPage() {
   const pending = events.filter((e) => e.status === "pending");
   const approved = events.filter((e) => e.status === "approved");
   const hidden = events.filter((e) => e.status === "hidden");
+  // Archived = finished events the nightly GC retired. They're off the public
+  // page but kept as the standing record of venues/shows we've covered.
+  const archived = events.filter((e) => e.status === "archived");
+
+  // Whether discovery can actually find anything. This is shown because the
+  // silent failure mode — a healthy-looking screen with no keys configured —
+  // is what let /events go completely empty without anyone noticing.
+  const discovery = [
+    { name: "Ticketmaster", env: "TICKETMASTER_API_KEY", on: !!process.env.TICKETMASTER_API_KEY },
+    { name: "SeatGeek", env: "SEATGEEK_CLIENT_ID", on: !!process.env.SEATGEEK_CLIENT_ID },
+    // Venue calendars need no credential — they're on whenever the watchlist is.
+    {
+      name: `Venue calendars (${VENUE_FEEDS.length})`,
+      env: "utils/venueFeeds.ts",
+      on: VENUE_FEEDS.length > 0,
+    },
+  ];
+  const anyDiscovery = discovery.some((d) => d.on);
 
   return (
     <main className="min-h-screen px-6 py-16 text-neutral-100 admin-surface">
@@ -65,18 +86,70 @@ export default async function AdminEventsPage() {
         <p className="font-dm-mono text-sm uppercase tracking-[0.3em] text-[#00D4FF]">Admin · Local Events</p>
         <h1 className="mt-3 font-bebas text-5xl tracking-wide">Upcoming Local Events</h1>
         <p className="mt-2 max-w-2xl text-sm text-neutral-500">
-          Auto-collected from a curated seed list of regional festivals plus optional Ticketmaster
-          discovery. Curated events auto-approve; discovered events wait here for your review before
-          appearing on the public <span className="text-neutral-300">/events</span> page.
+          Auto-collected nightly from a curated seed list of regional festivals plus Ticketmaster and
+          SeatGeek discovery. Curated events auto-approve; discovered events — and annual festivals
+          whose dates were rolled forward a year — wait here for your review before appearing on the
+          public <span className="text-neutral-300">/events</span> page. Finished events archive
+          themselves on the same run.
         </p>
 
-        <div className="mt-6">
+        <div
+          className={`mt-6 rounded-2xl border p-4 ${
+            anyDiscovery
+              ? "border-[#39FF14]/25 bg-[#39FF14]/[0.05]"
+              : "border-[#FF5C3A]/30 bg-[#FF5C3A]/[0.07]"
+          }`}
+        >
+          <p className="font-dm-mono text-[11px] uppercase tracking-widest text-neutral-400">
+            Discovery sources
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {discovery.map((d) => (
+              <span
+                key={d.env}
+                className={`rounded-full px-3 py-1 font-dm-mono text-xs ${
+                  d.on ? "bg-[#39FF14]/15 text-[#39FF14]" : "bg-white/5 text-neutral-500"
+                }`}
+              >
+                {d.on ? "● " : "○ "}
+                {d.name}
+                {!d.on && <span className="ml-1.5 text-neutral-600">{d.env} not set</span>}
+              </span>
+            ))}
+          </div>
+          {!anyDiscovery ? (
+            <p className="mt-3 text-sm text-neutral-300">
+              No discovery keys are configured, so nothing new is ever found — the curated seed list
+              is the only source. Add the keys in Vercel and redeploy.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-neutral-500">
+              Ticketing APIs only index events sold through a box office. The smaller rooms come from
+              venue calendars — check a new venue with{" "}
+              <code className="text-neutral-400">node scripts/probe-venue-feed.mjs &lt;url&gt;</code>{" "}
+              before adding it to the watchlist. Anything no feed carries goes in by hand below.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <RefreshButton />
+        </div>
+
+        <div className="mt-6">
+          <AddEventForm />
         </div>
 
         <Section title={`Pending review (${pending.length})`} events={pending} showActions />
         <Section title={`Approved — live on /events (${approved.length})`} events={approved} showActions />
         {hidden.length > 0 && <Section title={`Hidden (${hidden.length})`} events={hidden} showActions />}
+        {archived.length > 0 && (
+          <Section
+            title={`Archived — finished, kept for the venue record (${archived.length})`}
+            events={archived}
+            showActions
+          />
+        )}
       </div>
     </main>
   );

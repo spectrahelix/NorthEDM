@@ -43,3 +43,37 @@ through Stripe Connect** to the promoter's connected account — NorthEDM never 
 their money (this is deliberate: holding it would raise money-transmitter concerns).
 There is **no user-funded wallet top-up** for the same reason. Read the doc before
 touching commissions or payouts.
+
+## Local events pipeline — automated, don't hand-edit rows
+`/events` is filled by a nightly Vercel cron (`/api/cron/local-events`, 08:00 UTC)
+running `runLocalEventsIngest()` in [`utils/localEvents.ts`](utils/localEvents.ts).
+Review and approve at **`/admin/events`**.
+
+Four sources, scoped to ~100mi around Nescopeck PA:
+1. **Curated seeds** — auto-approved. Ones marked `annual: true` roll themselves
+   forward a year once they finish, landing in the review queue as a *dated
+   estimate* rather than going live unverified.
+2. **Ticketmaster Discovery** — needs `TICKETMASTER_API_KEY`.
+3. **SeatGeek Platform API** — needs `SEATGEEK_CLIENT_ID` (free, no secret used).
+4. **Venue calendars** ([`utils/venueFeeds.ts`](utils/venueFeeds.ts)) — no key needed.
+
+Sources 2 and 3 only index events sold through a box office, so they will never
+find a 200-cap room or a farm stage. Source 4 is what covers those: a curated
+watchlist of venues running WordPress's *The Events Calendar*, read through its
+public REST API (`/wp-json/tribe/events/v1/events`). **Before adding a venue, run
+`node scripts/probe-venue-feed.mjs <site-url>`** — it says whether the site can be
+automated and prints a ready-to-paste `VENUE_FEEDS` entry. A venue that fails the
+probe can't be automated; use the manual add form on `/admin/events`.
+
+Discovery is otherwise optional but the page **goes stale without it** — that is
+exactly how `/events` reached zero live events in Aug 2026. `/admin/events` shows
+which sources are actually live, so check there before assuming any are running.
+
+Garbage collection runs on the same pass: finished events and un-reviewed pending
+events past their date flip to `status = 'archived'` — kept as the standing venue
+record on `/events`, gone from the public list. Junk listings (parking passes,
+hotel bundles, meet-and-greets) are filtered before they reach review.
+
+**Identity is `dedup_key`**, computed by `dedupKey()`. Never hand-write one in SQL:
+a non-canonical key inserts a duplicate instead of matching the existing row. A
+unique index on `(name, city, start_date)` now backstops this.
