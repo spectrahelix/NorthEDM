@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { notifyNewApplication } from "@/utils/alerts";
 
+// Promoter applications. This handler lived at /api/festdash/promoter-signup
+// until the promoter program moved site-wide to /promote. The page moved and
+// started POSTing to /api/promote, but the route didn't come with it — so every
+// application since then hit the HTML catch-all, `res.json()` threw on the HTML
+// body, and the submit button hung on "Submitting…" forever with no error and
+// nothing written. The one path into the entire commission pipeline was dead.
+//
+// Keep this colocated with /promote. The field names below are the form's, so
+// the two move together.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
