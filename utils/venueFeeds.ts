@@ -31,9 +31,11 @@ export type VenueFeed = {
    *   "jsonld" — schema.org Event/MusicEvent objects embedded in a page. Plenty
    *     of custom-built venue sites publish these even though they run no CMS
    *     we recognise; it's the same structured data Google reads.
+   *   "dice" — a dice.fm venue page. For the rooms that publish nothing at all
+   *     of their own; see the DICE note below.
    */
-  kind?: "events-calendar" | "jsonld";
-  /** For kind "jsonld": the page carrying the markup. Defaults to "/". */
+  kind?: "events-calendar" | "jsonld" | "dice";
+  /** For kind "jsonld"/"dice": the page carrying the data. Defaults to "/". */
   path?: string;
   /**
    * IANA zone for interpreting event timestamps. Only matters for "jsonld",
@@ -81,6 +83,32 @@ export const VENUE_FEEDS: VenueFeed[] = [
     maxPages: 1,
   },
   {
+    // ── Read via dice.fm ──────────────────────────────────────────────────
+    // NOTO and Warehouse on Watts are two of Philadelphia's main EDM rooms and
+    // neither can be read from its own site: NOTO publishes no structured data
+    // and Warehouse on Watts wasn't reachable at all. Ticketmaster has neither,
+    // because Dice sells their tickets — which is the whole reason this gap
+    // existed. See the DICE note above fetchDiceFeed().
+    label: "NOTO Nightclub",
+    origin: "https://dice.fm",
+    city: "Philadelphia",
+    region: "PA",
+    lat: 39.9564,
+    lng: -75.1580,
+    kind: "dice",
+    path: "/venue/noto-nightclub-nvvyq",
+  },
+  {
+    label: "Warehouse on Watts",
+    origin: "https://dice.fm",
+    city: "Philadelphia",
+    region: "PA",
+    lat: 39.9707,
+    lng: -75.1510,
+    kind: "dice",
+    path: "/venue/warehouse-on-watts-dede",
+  },
+  {
     // Philadelphia EDM room — touring headliners, themed raves, afterparties.
     // Outside the NEPA discovery radius on purpose: the watchlist is curated by
     // hand, not filtered by distance, so a venue worth covering is covered
@@ -112,6 +140,10 @@ export const VENUE_FEEDS: VenueFeed[] = [
 // avoid a handful of gallery listings, which is the wrong trade. What genuinely
 // doesn't belong is the non-performance programming these buildings also run:
 // film screenings, standing exhibitions, classes, building tours.
+// Dice lists pass/bundle products in the same feed as shows ("All Access Party
+// Pass"). Narrow on purpose — anything less specific risks eating a real event.
+const NON_SHOW_TITLE = /\ball[- ]access (party )?pass\b/i;
+
 const NON_SHOW_CATEGORY =
   /(film|movie|screening|exhibit|gallery|class|workshop|lecture|tour|meeting|fundrais|volunteer)/i;
 
@@ -365,6 +397,126 @@ async function fetchJsonLdFeed(feed: VenueFeed, today: string): Promise<IngestEv
   return out;
 }
 
+// ── Reader: dice.fm venue pages ─────────────────────────────────────────────
+//
+// WHY THIS EXISTS. Ticketmaster and SeatGeek index what they sell, and EDM
+// clubs almost never sell through either — they sell through Dice. A coverage
+// check of Philadelphia's dedicated EDM rooms found ZERO of them in the
+// Ticketmaster sweep, so for the genre this site is actually about, the
+// ticketing APIs are close to useless. Dice is where that scene lives.
+//
+// ACCESS. dice.fm/robots.txt gives `User-agent: *` an `Allow: /` with only
+// `/api/` disallowed, and declares `Content-Signal: search=yes, ai-train=no,
+// use=reference` — which is what a linked, attributed event listing is. It does
+// disallow several named AI crawlers (ClaudeBot, GPTBot, CCBot…); those target
+// model-training crawlers, and this is NorthEDM's own aggregator identifying
+// itself honestly as NorthEDM-EventBot. The site owner reviewed that
+// distinction and authorised this. We touch only public venue pages and the
+// published sitemaps, never `/api/`, once per venue per night, and every card
+// links back to Dice.
+//
+// FRAGILITY — READ BEFORE DEBUGGING. Unlike The Events Calendar (a documented
+// REST API) and JSON-LD (a published schema), `__NEXT_DATA__` is Next.js's
+// internal SSR payload. It is not a contract and can change or vanish with any
+// Dice deploy — if they move to the App Router it becomes `self.__next_f` and
+// this reader goes quiet. That is why it fails soft and logs loudly rather than
+// throwing: a silent zero here means "check whether Dice changed", not "no
+// events". Prefer a venue's own JSON-LD whenever it has some (The Ave Live is
+// read from its own site for exactly this reason, even though Dice also has it).
+type DiceEvent = {
+  id?: string;
+  name?: string;
+  status?: string;
+  dates?: {
+    timezone?: string;
+    event_start_date?: string;
+    event_end_date?: string;
+    is_multi_days_event?: boolean;
+  };
+  venues?: {
+    name?: string;
+    city?: { name?: string; location?: { lat?: number; lng?: number } };
+  }[];
+};
+
+async function fetchDiceFeed(feed: VenueFeed, today: string): Promise<IngestEvent[]> {
+  const url = `${feed.origin}${feed.path ?? "/"}`;
+  let html: string;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      console.warn(`dice feed ${feed.label} returned ${res.status}`);
+      return [];
+    }
+    html = await res.text();
+  } catch (e) {
+    console.warn(`dice feed ${feed.label} failed:`, e instanceof Error ? e.message : e);
+    return [];
+  }
+
+  const block = html.match(
+    /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/
+  );
+  if (!block) {
+    console.warn(`dice feed ${feed.label}: no __NEXT_DATA__ payload — Dice's page shape likely changed`);
+    return [];
+  }
+
+  let sections: { events?: DiceEvent[] }[];
+  try {
+    const parsed = JSON.parse(block[1]) as {
+      props?: { pageProps?: { profile?: { sections?: { events?: DiceEvent[] }[] } } };
+    };
+    sections = parsed.props?.pageProps?.profile?.sections ?? [];
+  } catch (e) {
+    console.warn(`dice feed ${feed.label}: unparseable payload:`, e instanceof Error ? e.message : e);
+    return [];
+  }
+
+  const out: IngestEvent[] = [];
+  for (const section of sections) {
+    for (const ev of section.events ?? []) {
+      const name = decodeEntities(String(ev.name ?? "")).trim();
+      if (!name || NON_SHOW_TITLE.test(name)) continue;
+      // A cancelled show shouldn't reach the review queue; sold-out still
+      // happens, so it stays — people want to know it's on.
+      if (/cancel|postpon/i.test(ev.status ?? "")) continue;
+
+      // Dice stamps offsets ("2026-09-18T22:00:00-04:00") and names the venue's
+      // own zone, so use that rather than assuming Eastern.
+      const zone = ev.dates?.timezone || feed.timeZone || "America/New_York";
+      const start = localDate(String(ev.dates?.event_start_date ?? ""), zone);
+      if (!start || start < today) continue;
+
+      // A club night ends at 2am the NEXT day. Taking event_end_date at face
+      // value would render every single show as a two-day event, so the feed's
+      // own multi-day flag decides.
+      const end = ev.dates?.is_multi_days_event
+        ? localDate(String(ev.dates?.event_end_date ?? ""), zone) ?? start
+        : start;
+
+      const venue = ev.venues?.[0];
+      out.push({
+        name,
+        venue: venue?.name ? decodeEntities(venue.name) : feed.label,
+        city: feed.city || venue?.city?.name || null,
+        region: feed.region || null,
+        start_date: start,
+        end_date: end >= start ? end : start,
+        lat: feed.lat ?? venue?.city?.location?.lat ?? null,
+        lng: feed.lng ?? venue?.city?.location?.lng ?? null,
+        description: null,
+        source: "venue",
+        source_url: ev.id ? `https://dice.fm/event/${ev.id}` : url,
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * Pull every configured venue calendar. Feeds run concurrently and failures are
  * contained per-feed, so this resolves to whatever succeeded — never throws.
@@ -372,7 +524,11 @@ async function fetchJsonLdFeed(feed: VenueFeed, today: string): Promise<IngestEv
 export async function fetchVenueFeeds(today: string): Promise<IngestEvent[]> {
   const batches = await Promise.all(
     VENUE_FEEDS.map((feed) =>
-      feed.kind === "jsonld" ? fetchJsonLdFeed(feed, today) : fetchFeed(feed, today)
+      feed.kind === "dice"
+        ? fetchDiceFeed(feed, today)
+        : feed.kind === "jsonld"
+          ? fetchJsonLdFeed(feed, today)
+          : fetchFeed(feed, today)
     )
   );
   return batches.flat().slice(0, GLOBAL_CAP);
