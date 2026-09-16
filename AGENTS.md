@@ -58,14 +58,29 @@ Four sources, scoped to ~100mi around Nescopeck PA:
 4. **Venue calendars** ([`utils/venueFeeds.ts`](utils/venueFeeds.ts)) — no key needed.
 
 Sources 2 and 3 only index events sold through a box office, so they will never
-find a 200-cap room or a farm stage. Source 4 is what covers those: a **curated**
-watchlist read two ways — `kind: "events-calendar"` (default) hits WordPress's
-*The Events Calendar* REST API, `kind: "jsonld"` reads schema.org
-`Event`/`MusicEvent` markup off a page. **Before adding a venue, run
-`node scripts/probe-venue-feed.mjs <site-url>`** — it tries both readers and
-prints a ready-to-paste `VENUE_FEEDS` entry. A venue that fails both can't be
-automated (its calendar is JS-rendered); use the manual add form on
-`/admin/events`. Check the site's `robots.txt` before adding it.
+find a 200-cap room or a farm stage. **They are also near-useless for EDM** — a
+coverage check of Philadelphia's dedicated EDM rooms found *zero* of them in the
+Ticketmaster sweep, because those clubs sell through Dice. Treat Ticketmaster as
+a secondary source for big regional shows, not the backbone.
+
+Source 4 is what actually covers this scene: a **curated** watchlist read three
+ways —
+- `kind: "events-calendar"` (default) — WordPress's *The Events Calendar* REST API
+- `kind: "jsonld"` — schema.org `Event`/`MusicEvent` markup on a page
+- `kind: "dice"` — a `dice.fm/venue/<slug>` page, for clubs that publish nothing
+  of their own (most EDM rooms)
+
+**Before adding a venue, run `node scripts/probe-venue-feed.mjs <site-url>`** — it
+tries every reader and prints a ready-to-paste `VENUE_FEEDS` entry. If the venue's
+own site is unreadable, find it on Dice with
+`node scripts/probe-venue-feed.mjs --find "<venue name>"`. A venue that fails all
+three can't be automated; use the manual add form on `/admin/events`. Check the
+site's `robots.txt` before adding it.
+
+⚠️ **Dice is read from `__NEXT_DATA__`**, Next.js's internal SSR payload — not a
+documented API like the other two. It can change or vanish with any Dice deploy,
+so the reader fails soft and logs loudly; a silent zero there means "check whether
+Dice changed", not "no events". Prefer a venue's own JSON-LD when it has some.
 
 The watchlist is curated, **not distance-filtered** — that's deliberate. A venue
 worth covering goes in regardless of how tight the automated geo radius is set
