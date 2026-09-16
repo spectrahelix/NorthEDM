@@ -82,6 +82,7 @@ export function RefreshButton() {
           `new ${r.discovered}`,
           r.rolled ? `rolled forward ${r.rolled}` : null,
           r.filtered ? `junk filtered ${r.filtered}` : null,
+          r.offGenre ? `off-genre ${r.offGenre}` : null,
           r.archived ? `archived ${r.archived}` : null,
           src,
         ]

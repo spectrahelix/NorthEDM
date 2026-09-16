@@ -49,7 +49,9 @@ touching commissions or payouts.
 running `runLocalEventsIngest()` in [`utils/localEvents.ts`](utils/localEvents.ts).
 Review and approve at **`/admin/events`**.
 
-Four sources, scoped to ~100mi around Nescopeck PA:
+Four sources, scoped to **75mi** around Nescopeck PA (100mi reached Philadelphia,
+whose ticketed volume swamped NEPA entirely — 33 of 45 finds came from the
+80–100mi band while Scranton and Wilkes-Barre returned nothing):
 1. **Curated seeds** — auto-approved. Ones marked `annual: true` roll themselves
    forward a year once they finish, landing in the review queue as a *dated
    estimate* rather than going live unverified.
@@ -85,6 +87,19 @@ Dice changed", not "no events". Prefer a venue's own JSON-LD when it has some.
 The watchlist is curated, **not distance-filtered** — that's deliberate. A venue
 worth covering goes in regardless of how tight the automated geo radius is set
 (The Ave Live in Philadelphia is there for exactly this reason).
+
+**Genre gate.** Individual shows from sources 2 and 3 must match `EDM_JAM_GENRES`
+in `utils/localEvents.ts` — matched against the API's own genre classifications,
+never the title. Multi-day events skip the gate (that's the festival this site
+exists for). Curated seeds and the venue watchlist are hand-picked and never
+gated. The gate is a **taste setting**: widen or narrow that one regex. Dropped
+counts surface as `off-genre` in the `/admin/events` refresh readout, so a gate
+that's too tight shows up as a number rather than a quiet empty page.
+
+⚠️ Do **not** re-add a name-based festival exemption. It was tried and is worse
+than useless: promoters put "festival" on anything, and the live queue contained
+single-day listings called "The Nu-Metal Values Tribute Festival" and "Smoke on
+the Mountain - Wellness Festival" that a name test waved past the gate.
 
 ⚠️ **Timezones:** JSON-LD `startDate` often arrives as a UTC instant. A club show
 stamped `01:30:00Z` happens the *previous* evening in Eastern, so slicing the
