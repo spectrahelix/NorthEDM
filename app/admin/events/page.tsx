@@ -90,7 +90,8 @@ export default async function AdminEventsPage() {
           SeatGeek discovery. Curated events auto-approve; discovered events — and annual festivals
           whose dates were rolled forward a year — wait here for your review before appearing on the
           public <span className="text-neutral-300">/events</span> page. Finished events archive
-          themselves on the same run.
+          themselves on the same run. Individual shows from the ticketing APIs are gated to
+          EDM and jam-band genres; multi-day festivals skip the gate.
         </p>
 
         <div

@@ -21,10 +21,17 @@ import { fetchVenueFeeds, VENUE_FEEDS } from "./venueFeeds";
 // New finds land as 'pending' for review; already-known events are left alone.
 //
 // Region center used for discovery + a sensible default for undated seeds:
-// Nescopeck, PA (Briggs Farm country). ~100mi radius covers the NE PA footprint.
+// Nescopeck, PA (Briggs Farm country).
+//
+// 75mi, not 100. At 100 the circle reached Philadelphia, and Philly's ticketed
+// volume is so much larger than NEPA's that it swamped the feed: 33 of 45
+// discovered events came from the 80-100mi band (Philadelphia, Camden NJ,
+// Wilmington DE) while Scranton and Wilkes-Barre returned nothing at all. The
+// curated venue watchlist is not distance-filtered, so the Philadelphia rooms
+// actually worth covering stay covered regardless of this number.
 
 export const REGION_CENTER = { lat: 41.0459, lng: -76.2205 };
-export const REGION_RADIUS_MILES = 100;
+export const REGION_RADIUS_MILES = 75;
 
 // How deep to page each discovery source. 3 × 100 is far more than this region
 // produces in a night; it exists so a busy festival week isn't truncated at 50.
@@ -32,6 +39,56 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 3;
 
 export type EventSource = "seed" | "ticketmaster" | "seatgeek" | "venue" | "manual";
+
+// ── Genre gate for individual shows ────────────────────────────────────────
+//
+// This site is about EDM and the jam/festival scene. Left ungated, the
+// ticketing APIs fill the review queue with everything a region sells —
+// Broadway, arena rock, tribute acts, comedy — which is noise here however
+// legitimate it is elsewhere.
+//
+// So INDIVIDUAL SHOWS from Ticketmaster and SeatGeek must match a genre below.
+// FESTIVALS do not: a multi-day festival is the thing this site exists for, and
+// its billing is usually mixed anyway, so it's kept whatever its listed genre.
+// Curated seeds and the venue watchlist are hand-picked and never gated.
+//
+// TUNE HERE. This is a taste judgement, not a technical constraint — edit this
+// one regex to widen or narrow what counts. Jam-adjacent genres (funk,
+// bluegrass, reggae, psychedelic) are included on purpose: they're what the
+// Peach Fest / Camp Bisco end of the scene actually books.
+export const EDM_JAM_GENRES =
+  /(dance\s*\/\s*electronic|electronic|\bedm\b|\bhouse\b|techno|trance|dubstep|drum\s*(?:&|and|n)\s*bass|\bdnb\b|bass music|\brave\b|hardstyle|breakbeat|\bjungle\b|downtempo|\bdisco\b|\bnu[- ]disco\b|jam\s*band|\bjam\b|improvisational|psychedelic|\bfunk\b|bluegrass|\bgroove\b|reggae|\bdub\b)/i;
+
+/**
+ * A multi-day event is exempt from the genre gate: that's the festival this
+ * site exists for, and its billing is mixed by nature.
+ *
+ * Deliberately NOT name-based. Matching /festival/ on the title was tried and
+ * is worse than useless here — the live queue contained "The Nu-Metal Values
+ * Tribute Festival" and "Smoke on the Mountain - Wellness Festival", both
+ * single-day, both of which a name test would have waved straight past the
+ * genre gate. Promoters put "festival" on anything. A real multi-day run is
+ * the honest signal.
+ *
+ * The span test is safe because the ticketing APIs list each night of a
+ * residency as its own single-day event, so an end date later than the start
+ * really does mean one multi-day event rather than a two-night booking.
+ */
+function isMultiDay(start?: string | null, end?: string | null): boolean {
+  return !!start && !!end && end > start;
+}
+
+/**
+ * Does any genre signal on this listing look like EDM or jam? `signals` is
+ * whatever genre-ish text the source gave us (Ticketmaster classifications,
+ * SeatGeek taxonomies and performer genres). No signal at all means no match:
+ * an unclassified listing is far more often generic programming than a rave,
+ * and everything here is auto-discovered rather than vouched for.
+ */
+function matchesGenre(signals: string[]): boolean {
+  const text = signals.filter(Boolean).join(" ");
+  return !!text.trim() && EDM_JAM_GENRES.test(text);
+}
 
 export type IngestEvent = {
   name: string;
@@ -260,9 +317,10 @@ function rollForward(seed: SeedEvent, today: string): SeedEvent | null {
 // plus a "festival" keyword sweep that catches bills classified under arts or
 // miscellaneous. Returns [] (never throws) if the key is missing or a call
 // fails — discovery is best-effort; the curated seeds always run regardless.
-async function fetchTicketmaster(): Promise<IngestEvent[]> {
+async function fetchTicketmaster(): Promise<{ events: IngestEvent[]; offGenre: number }> {
   const key = process.env.TICKETMASTER_API_KEY;
-  if (!key) return [];
+  let offGenre = 0;
+  if (!key) return { events: [], offGenre };
 
   const base = {
     apikey: key,
@@ -303,6 +361,29 @@ async function fetchTicketmaster(): Promise<IngestEvent[]> {
         const venue = (ev as { _embedded?: { venues?: Record<string, never>[] } })?._embedded?.venues?.[0] ?? {};
         const loc = (venue as { location?: { latitude?: string; longitude?: string } })?.location ?? {};
         const dates = (ev as { dates?: { start?: { localDate?: string }; end?: { localDate?: string } } })?.dates;
+        const startDate = dates?.start?.localDate ?? null;
+        const endDate = dates?.end?.localDate ?? dates?.start?.localDate ?? null;
+
+        // Genre gate. Ticketmaster hands back segment/genre/subGenre per
+        // listing ("Music" / "Dance/Electronic", "Music" / "Rock" / "Jam Band"),
+        // which is what we match on. Festivals skip the gate entirely.
+        if (!isMultiDay(startDate, endDate)) {
+          const classes = ((ev as {
+            classifications?: {
+              segment?: { name?: string };
+              genre?: { name?: string };
+              subGenre?: { name?: string };
+            }[];
+          })?.classifications ?? []).flatMap((c) => [
+            c?.genre?.name ?? "",
+            c?.subGenre?.name ?? "",
+          ]);
+          if (!matchesGenre(classes)) {
+            offGenre++;
+            continue;
+          }
+        }
+
         out.push({
           name,
           venue: (venue as { name?: string })?.name ?? null,
@@ -311,8 +392,8 @@ async function fetchTicketmaster(): Promise<IngestEvent[]> {
             (venue as { state?: { stateCode?: string; name?: string } })?.state?.stateCode ??
             (venue as { state?: { name?: string } })?.state?.name ??
             null,
-          start_date: dates?.start?.localDate ?? null,
-          end_date: dates?.end?.localDate ?? dates?.start?.localDate ?? null,
+          start_date: startDate,
+          end_date: endDate,
           lat: loc?.latitude ? Number(loc.latitude) : null,
           lng: loc?.longitude ? Number(loc.longitude) : null,
           description: null,
@@ -326,7 +407,7 @@ async function fetchTicketmaster(): Promise<IngestEvent[]> {
       if (events.length < PAGE_SIZE || page + 1 >= totalPages) break;
     }
   }
-  return out;
+  return { events: out, offGenre };
 }
 
 // ── Discovery source: SeatGeek ──────────────────────────────────────────────
@@ -336,9 +417,10 @@ async function fetchTicketmaster(): Promise<IngestEvent[]> {
 // so results are filtered down to music taxonomies before they're returned.
 const MUSIC_TAXONOMY = /(concert|music|festival)/i;
 
-async function fetchSeatGeek(): Promise<IngestEvent[]> {
+async function fetchSeatGeek(): Promise<{ events: IngestEvent[]; offGenre: number }> {
   const clientId = process.env.SEATGEEK_CLIENT_ID;
-  if (!clientId) return [];
+  let offGenre = 0;
+  if (!clientId) return { events: [], offGenre };
 
   const out: IngestEvent[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -374,6 +456,7 @@ async function fetchSeatGeek(): Promise<IngestEvent[]> {
         datetime_local?: string;
         url?: string;
         taxonomies?: { name?: string }[];
+        performers?: { genres?: { name?: string }[] }[];
         venue?: {
           name?: string;
           city?: string;
@@ -390,6 +473,18 @@ async function fetchSeatGeek(): Promise<IngestEvent[]> {
       if (!MUSIC_TAXONOMY.test(taxonomies)) continue;
 
       const day = (ev.datetime_local ?? "").slice(0, 10) || null;
+
+      // Genre gate for individual shows. SeatGeek carries genres on the
+      // performer rather than the event, so both are offered as signals.
+      if (!isMultiDay(day, day)) {
+        const genres = (ev.performers ?? []).flatMap((p) =>
+          (p?.genres ?? []).map((g) => g?.name ?? "")
+        );
+        if (!matchesGenre([...genres, taxonomies])) {
+          offGenre++;
+          continue;
+        }
+      }
       out.push({
         name,
         venue: ev.venue?.name ?? null,
@@ -407,7 +502,7 @@ async function fetchSeatGeek(): Promise<IngestEvent[]> {
 
     if (events.length < PAGE_SIZE) break;
   }
-  return out;
+  return { events: out, offGenre };
 }
 
 export type SourceReport = {
@@ -424,6 +519,9 @@ export type IngestResult = {
   archived: number;
   rolled: number;
   filtered: number;
+  /** Individual shows dropped by the EDM/jam genre gate. Reported so a gate
+   *  that's too tight shows up as a number rather than as a quiet empty page. */
+  offGenre: number;
   discoverySource: string | null;
   sources: SourceReport[];
 };
@@ -461,11 +559,14 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
 
   // All discovery sources run concurrently — they're independent HTTP calls
   // and the cron has a 60s budget.
-  const [tmEvents, sgEvents, venueEvents] = await Promise.all([
+  const [tm, sg, venueEvents] = await Promise.all([
     fetchTicketmaster(),
     fetchSeatGeek(),
     fetchVenueFeeds(today),
   ]);
+  const tmEvents = tm.events;
+  const sgEvents = sg.events;
+  const offGenre = tm.offGenre + sg.offGenre;
 
   const sources: SourceReport[] = [
     { name: "ticketmaster", configured: !!process.env.TICKETMASTER_API_KEY, found: tmEvents.length },
@@ -513,6 +614,7 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
     archived: 0,
     rolled: 0,
     filtered,
+    offGenre,
     discoverySource: sources.filter((s) => s.found > 0).map((s) => s.name).join(" + ") || null,
     sources,
   };
