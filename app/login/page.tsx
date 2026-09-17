@@ -91,6 +91,12 @@ export default function LoginPage() {
                 >
                   Forgot password?
                 </Link>
+                <Link
+                  href="/signin-help"
+                  className="font-dm-mono text-xs text-neutral-500 transition hover:text-[#3AFFD4]"
+                >
+                  Trouble signing in?
+                </Link>
               </div>
               <div className="relative">
                 <input

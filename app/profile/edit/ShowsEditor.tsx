@@ -25,6 +25,10 @@ export function ShowsEditor({ userId, initialHideShows }: { userId: string; init
   const [form, setForm] = useState({ festival_name: "", location: "", start_date: "", end_date: "" });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  // Explicit, per-session consent before anything a user types becomes a public
+  // listing on someone else's site. Unticked by default on purpose — a
+  // pre-ticked box is not consent.
+  const [consent, setConsent] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,9 +40,19 @@ export function ShowsEditor({ userId, initialHideShows }: { userId: string; init
       .then(({ data }) => setShows((data ?? []) as VendorShow[]));
   }, [supabase, userId]);
 
+  // RLS rejects unverified accounts (see the is_verified() policy). Postgres
+  // says "new row violates row-level security policy", which tells a musician
+  // nothing — say what to actually do about it.
+  function explain(message: string): string {
+    return /row-level security/i.test(message)
+      ? "Please confirm your email first — check your inbox for the link we sent when you signed up. Trouble? Use the 'Trouble signing in?' link on the login page."
+      : message;
+  }
+
   async function addShow() {
     setErr(""); setMsg("");
     if (!form.festival_name.trim()) { setErr("Festival/event name is required."); return; }
+    if (!consent) { setErr("Please tick the consent box so we can list your show publicly."); return; }
     const { data, error } = await supabase.from("vendor_shows").insert({
       user_id: userId,
       festival_name: form.festival_name.trim(),
@@ -46,7 +60,7 @@ export function ShowsEditor({ userId, initialHideShows }: { userId: string; init
       start_date: normDate(form.start_date),
       end_date: normDate(form.end_date),
     }).select().single();
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr(explain(error.message)); return; }
     setShows((s) => [...s, data as VendorShow].sort((a, b) => ((a.start_date || "9") < (b.start_date || "9") ? -1 : 1)));
     setForm({ festival_name: "", location: "", start_date: "", end_date: "" });
   }
@@ -60,6 +74,7 @@ export function ShowsEditor({ userId, initialHideShows }: { userId: string; init
     const file = e.target.files?.[0];
     if (!file) return;
     setErr(""); setMsg("");
+    if (!consent) { setErr("Please tick the consent box before uploading shows."); if (fileRef.current) fileRef.current.value = ""; return; }
     const text = await file.text();
     const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length && /festival|event|name/i.test(lines[0]) && /location|date/i.test(lines[0])) lines.shift();
@@ -80,7 +95,7 @@ export function ShowsEditor({ userId, initialHideShows }: { userId: string; init
     if (fileRef.current) fileRef.current.value = "";
     if (rows.length === 0) { setErr("No valid rows found. Use: Festival, Location, Start date, End date."); return; }
     const { data, error } = await supabase.from("vendor_shows").insert(rows).select();
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr(explain(error.message)); return; }
     setShows((s) => [...s, ...((data ?? []) as VendorShow[])].sort((a, b) => ((a.start_date || "9") < (b.start_date || "9") ? -1 : 1)));
     setMsg(`Added ${data?.length ?? 0} show${(data?.length ?? 0) === 1 ? "" : "s"}${skipped ? `, skipped ${skipped}` : ""}.`);
   }
@@ -143,6 +158,18 @@ export function ShowsEditor({ userId, initialHideShows }: { userId: string; init
       {msg && <p className="mt-2 text-sm" style={{ color: GOLD }}>{msg}</p>}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="mb-1 flex w-full cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-neutral-300">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 shrink-0"
+          />
+          <span>
+            I confirm these are real shows I&apos;m involved with, and I consent to NorthEDM
+            listing them publicly on my profile and in the events feed.
+          </span>
+        </label>
         <button type="button" onClick={addShow}
           className="rounded-xl px-5 py-2 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: GOLD }}>
           + Add show

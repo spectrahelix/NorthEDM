@@ -3,17 +3,26 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyFeedback } from "@/utils/alerts";
 import { validateField } from "@/utils/reportQuality";
+import { requireVerifiedUser } from "@/utils/authGate";
 
 // "Report a problem": stores a user's bug report (screenshot + auto-captured
-// page/browser/error context) and alerts the owner. Anyone can report. If a
-// GitHub issues token is configured, it also opens a ready-to-fix issue.
+// page/browser/error context) and alerts the owner. VERIFIED ACCOUNTS ONLY —
+// this used to accept anyone, and the junk it attracted is why the quality
+// gate below exists at all. If a GitHub issues token is configured, it also
+// opens a ready-to-fix issue.
+//
+// Locked out of your account? That is what /signin-help is for; it is the one
+// submission path deliberately left open to guests.
 //
 // Every required field is validated HERE, not just in the form — the client can be
 // bypassed, and low-effort junk was the main complaint. Rejections come back as a
 // 400 with a specific message so a genuine reporter can fix and resubmit.
 export async function POST(req: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  const gate = await requireVerifiedUser(supabase);
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const user = gate.user;
 
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });

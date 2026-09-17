@@ -150,7 +150,7 @@ export function GlobalSearch({ userId }: { userId: string | null }) {
         {results?.threads === null && q.length >= 2 && (
           <div className="border-t border-white/10 px-5 py-3">
             <p className="font-dm-mono text-[11px] text-neutral-700">
-              <Link href="/login" className="text-[#CC00FF] transition hover:underline" onClick={close}>
+              <Link href="/signup" className="text-[#CC00FF] transition hover:underline" onClick={close}>
                 Sign in
               </Link>{" "}
               to search forum threads

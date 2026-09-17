@@ -64,11 +64,11 @@ export default function MarketplaceApplyPage() {
       <main className="flex min-h-screen items-center justify-center px-6 text-neutral-100">
         <div className="max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
           <div className="text-4xl">🔐</div>
-          <h1 className="mt-3 font-bebas text-3xl tracking-wide">Log in to apply</h1>
+          <h1 className="mt-3 font-bebas text-3xl tracking-wide">Create an account to apply</h1>
           <p className="mt-2 text-sm text-neutral-400">You need a free NorthEDM account to apply for a Marketplace.</p>
           <div className="mt-6 flex justify-center gap-3">
-            <Link href="/login" className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black">Log In</Link>
-            <Link href="/signup" className="rounded-xl border border-white/15 px-5 py-2.5 text-sm text-neutral-200">Sign Up</Link>
+            <Link href="/signup" className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black">Sign Up</Link>
+            <Link href="/login" className="rounded-xl border border-white/15 px-5 py-2.5 text-sm text-neutral-200">Log In</Link>
           </div>
         </div>
       </main>

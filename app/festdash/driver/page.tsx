@@ -165,7 +165,7 @@ export default function DriverPage() {
           <div className="mb-4 text-4xl">🏃</div>
           <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Sign in to Run</h2>
           <p className="mb-6 text-neutral-500">You need a NorthEDM account to deliver with FestDash.</p>
-          <a href={`/login?next=${encodeURIComponent("/festdash/driver")}`} className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
+          <a href={`/signup?next=${encodeURIComponent("/festdash/driver")}`} className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
             Sign In
           </a>
         </div>

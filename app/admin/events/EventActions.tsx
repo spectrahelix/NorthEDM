@@ -80,6 +80,7 @@ export function RefreshButton() {
           `Seeded ${r.seeded}`,
           `updated ${r.updated}`,
           `new ${r.discovered}`,
+          r.published ? `published ${r.published}` : null,
           r.rolled ? `rolled forward ${r.rolled}` : null,
           r.filtered ? `junk filtered ${r.filtered}` : null,
           r.offGenre ? `off-genre ${r.offGenre}` : null,

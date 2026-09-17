@@ -194,7 +194,7 @@ export default async function ProfilePage({
               </Link>
             ) : (
               <Link
-                href="/login"
+                href="/signup"
                 className="rounded-xl bg-[#3AFFD4]/10 px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/20"
               >
                 Send Message

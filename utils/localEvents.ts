@@ -518,6 +518,8 @@ export type IngestResult = {
   skipped: number;
   archived: number;
   rolled: number;
+  /** Venue-watchlist events published straight to /events, no review needed. */
+  published: number;
   filtered: number;
   /** Individual shows dropped by the EDM/jam genre gate. Reported so a gate
    *  that's too tight shows up as a number rather than as a quiet empty page. */
@@ -613,6 +615,7 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
     skipped: 0,
     archived: 0,
     rolled: 0,
+    published: 0,
     filtered,
     offGenre,
     discoverySource: sources.filter((s) => s.found > 0).map((s) => s.name).join(" + ") || null,
@@ -652,9 +655,23 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
       continue;
     }
 
-    // New row. Vouched-for seeds auto-approve; discovery and rolled-forward
-    // date estimates go to the review queue.
-    const autoApprove = e.source === "seed" && !e.estimated;
+    // What goes live without a human, and what waits.
+    //
+    // AUTO-APPROVE the two vouched-for sources: curated seeds, and the curated
+    // venue watchlist. Both are hand-picked — a venue only enters VENUE_FEEDS
+    // after someone probed it and decided this site should carry its calendar,
+    // which is the same act of vouching that putting a festival in SEED_EVENTS
+    // is. Holding their output for a second manual approval bought nothing and
+    // cost everything: /events sat publicly empty with 94 perfectly good venue
+    // events stuck in the queue, which is the exact staleness this pipeline was
+    // built to prevent. A finished show now rotates out and the next one from
+    // the same rooms rotates in, with no one in the loop.
+    //
+    // STILL QUEUED: Ticketmaster/SeatGeek discovery (a whole region's listings,
+    // vouched for by nobody) and rolled-forward seed dates (an estimate, not a
+    // fact). Anything auto-approved is one click to hide in /admin/events.
+    const vouchedFor = e.source === "seed" || e.source === "venue";
+    const autoApprove = vouchedFor && !e.estimated;
     toInsert.push({ ...row, status: autoApprove ? "approved" : "pending" });
   }
 
@@ -664,6 +681,8 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
     if (row.source === "seed") {
       if (row.status === "approved") result.seeded++;
       else result.rolled++;
+    } else if (row.source === "venue") {
+      result.published++;
     } else {
       result.discovered++;
     }
@@ -704,15 +723,34 @@ export async function runLocalEventsIngest(admin: SupabaseClient): Promise<Inges
   // Stale pending rows are garbage too: a discovered event nobody reviewed
   // before it happened is never going to be useful. Sweep them so the review
   // queue stays a to-do list rather than an archaeological dig.
-  const stalePending = await admin
+  //
+  // FINISHED means the END date has passed, not the start. Filtering on
+  // start_date alone retired events that were still running: a concert series
+  // dated 2026-05-03 → 2026-10-24 was archived in September, mid-run. Same
+  // two-pass shape as the approved sweep above, and for the same reason —
+  // end_date is nullable and `end_date < today` never matches NULL.
+  const stalePendingMultiDay = await admin
     .from("local_events")
     .update({ status: "archived" })
     .eq("status", "pending")
+    .lt("end_date", today)
+    .select("id");
+  if (stalePendingMultiDay.error)
+    console.error("local_events pending sweep error:", stalePendingMultiDay.error.message);
+
+  const stalePendingSingleDay = await admin
+    .from("local_events")
+    .update({ status: "archived" })
+    .eq("status", "pending")
+    .is("end_date", null)
     .not("start_date", "is", null)
     .lt("start_date", today)
     .select("id");
-  if (stalePending.error) console.error("local_events pending sweep error:", stalePending.error.message);
-  result.archived += stalePending.data?.length ?? 0;
+  if (stalePendingSingleDay.error)
+    console.error("local_events pending sweep error:", stalePendingSingleDay.error.message);
+
+  result.archived +=
+    (stalePendingMultiDay.data?.length ?? 0) + (stalePendingSingleDay.data?.length ?? 0);
 
   return result;
 }

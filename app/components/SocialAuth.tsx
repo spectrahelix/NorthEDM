@@ -3,6 +3,21 @@ import { createClient } from "@/utils/supabase/client";
 
 type Provider = "google" | "apple" | "discord";
 
+/**
+ * Only providers actually enabled in the Supabase dashboard belong here.
+ *
+ * Apple and Discord were being rendered while disabled server-side, so tapping
+ * either sent the visitor to a raw JSON error page:
+ *   {"code":400,"error_code":"validation_failed",
+ *    "msg":"Unsupported provider: provider is not enabled"}
+ * — on the signup screen, which is the worst possible place for it.
+ *
+ * To add one back: enable it in Supabase → Authentication → Providers, confirm
+ *   curl -sI "$SUPABASE_URL/auth/v1/authorize?provider=<id>&redirect_to=..."
+ * returns a 302 to the provider (not a 400), then list it here.
+ */
+const ENABLED: Provider[] = ["google"];
+
 const PROVIDERS: { id: Provider; label: string; icon: React.ReactNode }[] = [
   {
     id: "google",
@@ -49,7 +64,7 @@ export function SocialAuth({ next = "/feed" }: { next?: string }) {
 
   return (
     <div className="space-y-3">
-      {PROVIDERS.map((p) => (
+      {PROVIDERS.filter((p) => ENABLED.includes(p.id)).map((p) => (
         <button
           key={p.id}
           type="button"

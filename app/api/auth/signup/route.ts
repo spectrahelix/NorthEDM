@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
+import { notifyFeedback } from "@/utils/alerts";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
@@ -53,6 +54,26 @@ export async function POST(req: NextRequest) {
   });
 
   if (signUpError) {
+    // Loudly, every time. Supabase does NOT create the account when the
+    // confirmation email fails to send, so an SMTP problem is a total signup
+    // outage that is invisible from the outside — the site looks fine and the
+    // user just sees an error. That is exactly what happened: the configured
+    // SMTP provider started rejecting Supabase's sending IP
+    // (525 "5.7.1 Unauthorized IP address") and every signup failed silently
+    // for two months. Never again without an alert.
+    console.error("SIGNUP FAILED:", signUpError.message);
+    await notifyFeedback({
+      message:
+        `🚨 SIGNUP FAILED — a real visitor could not create an account.\n\n` +
+        `Supabase said: ${signUpError.message}\n\n` +
+        `If this mentions email or SMTP, no account was created at all. Check ` +
+        `Supabase → Authentication → Emails (SMTP), and the provider's own IP ` +
+        `allow-list. Supabase sends from rotating cloud IPs, so an SMTP provider ` +
+        `set to "block unknown IP addresses" will reject every single signup.`,
+      category: "signup-failure",
+      email: String(email),
+    }).catch((e) => console.error("signup-failure alert failed:", e));
+
     return NextResponse.json({ error: signUpError.message }, { status: 400 });
   }
 
