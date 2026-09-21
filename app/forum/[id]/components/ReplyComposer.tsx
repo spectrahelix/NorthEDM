@@ -64,7 +64,7 @@ export function ReplyComposer({
     const { data: existing } = await supabase
       .from("user_profiles")
       .select("id")
-      .eq("username", val)
+      .ilike("username", val)
       .maybeSingle();
     if (existing) {
       setError("That username is taken.");
@@ -75,7 +75,13 @@ export function ReplyComposer({
       .from("user_profiles")
       .upsert({ id: user!.id, username: val }, { onConflict: "id" });
     setSubmitting(false);
-    if (upsertError) { setError(upsertError.message); return; }
+    if (upsertError) {
+      // 23505 = someone claimed it between the check and the write.
+      setError(upsertError.code === "23505"
+        ? "That username was just taken. Try another."
+        : upsertError.message);
+      return;
+    }
     setSavedUsername(val);
     setShowUsernameForm(false);
   }

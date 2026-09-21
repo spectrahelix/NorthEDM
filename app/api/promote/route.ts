@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { requireVerifiedUser } from "@/utils/authGate";
 import { notifyNewApplication } from "@/utils/alerts";
 
 // Promoter applications. This handler lived at /api/festdash/promoter-signup
@@ -13,6 +14,12 @@ import { notifyNewApplication } from "@/utils/alerts";
 // the two move together.
 export async function POST(req: Request) {
   const supabase = await createClient();
+
+  // Verified accounts only — the matching RLS policy enforces this too.
+  const gate = await requireVerifiedUser(supabase);
+  if (!gate.ok) {
+    return NextResponse.json({ success: false, error: gate.error }, { status: gate.status });
+  }
   const { data: { user } } = await supabase.auth.getUser();
 
   const body = await req.json();

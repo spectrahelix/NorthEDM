@@ -31,10 +31,13 @@ export async function POST(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
+  // ilike, not eq: uniqueness is enforced case-insensitively
+  // (user_profiles_username_uidx on lower(username)), so a case-sensitive check
+  // would pass "CJBlue" against an existing "cjblue" and then fail on insert.
   const { data: existing } = await admin
     .from("user_profiles")
     .select("id")
-    .eq("username", username)
+    .ilike("username", username)
     .maybeSingle();
   if (existing) {
     return NextResponse.json({ error: "That username is taken. Try another." }, { status: 409 });

@@ -28,19 +28,3 @@ export async function getProfile(supabase: SupabaseClient): Promise<Profile | nu
 
   return data as Profile | null;
 }
-
-export async function getUsernames(
-  supabase: SupabaseClient,
-  userIds: string[]
-): Promise<Record<string, string>> {
-  if (userIds.length === 0) return {};
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("id, username")
-    .in("id", userIds);
-  const map: Record<string, string> = {};
-  for (const row of (data ?? []) as { id: string; username: string | null }[]) {
-    if (row.username) map[row.id] = row.username;
-  }
-  return map;
-}

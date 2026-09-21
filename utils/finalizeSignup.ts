@@ -37,22 +37,36 @@ export async function finalizeAuthedUser(supabase: SupabaseClient): Promise<stri
       ?? emailPrefix;
     const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
 
-    await Promise.all([
-      supabase.from("user_profiles").upsert({
-        id: user.id,
-        display_name: displayName,
-        role: "drifter",
-        bio: "",
-        home_city: "",
-        avatar_border: "moss",
-        avatar_url: avatarUrl,
-        signup_alerted: true,
-      }),
-      supabase.from("user_profiles").upsert(
-        { id: user.id, username: emailPrefix },
-        { onConflict: "id", ignoreDuplicates: true }
-      ),
-    ]);
+    await supabase.from("user_profiles").upsert({
+      id: user.id,
+      display_name: displayName,
+      role: "drifter",
+      bio: "",
+      home_city: "",
+      avatar_border: "moss",
+      avatar_url: avatarUrl,
+      signup_alerted: true,
+    });
+
+    // Claim the email prefix as a username, separately and defensively.
+    //
+    // Two things make this its own statement rather than another field on the
+    // upsert above. First, username is UNIQUE (case-insensitively), so a
+    // collision must not take the whole profile seed down with it — an OAuth
+    // user whose prefix is taken should still get an account, just without a
+    // username, and the forum will prompt them for one. Second, `.is(username,
+    // null)` means a returning user's chosen handle is never overwritten by
+    // their email prefix.
+    const { error: usernameError } = await supabase
+      .from("user_profiles")
+      .update({ username: emailPrefix })
+      .eq("id", user.id)
+      .is("username", null);
+    // 23505 = unique violation: the prefix is taken. Not an error worth
+    // surfacing — they pick one in the forum composer instead.
+    if (usernameError && usernameError.code !== "23505") {
+      console.warn("username claim failed:", usernameError.message);
+    }
 
     await notifyNewSignup({ email: user.email ?? "", name: displayName });
     return "/profile/edit?welcome=1";
