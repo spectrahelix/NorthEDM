@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { notifyFeedback } from "@/utils/alerts";
 import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
+import { humaniseAuthError } from "@/utils/authErrors";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true });
       }
       await alertSignupFailure(email, linkError.message);
-      return NextResponse.json({ error: humanise(linkError.message) }, { status: 400 });
+      return NextResponse.json({ error: humaniseAuthError(linkError.message) }, { status: 400 });
     }
 
     const user = link?.user;
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
 
   if (signUpError) {
     await alertSignupFailure(email, signUpError.message);
-    return NextResponse.json({ error: humanise(signUpError.message) }, { status: 400 });
+    return NextResponse.json({ error: humaniseAuthError(signUpError.message) }, { status: 400 });
   }
 
   // An empty identities array means the address is already registered. Don't
@@ -145,24 +146,6 @@ export async function POST(req: NextRequest) {
       }),
     ]);
   }
-}
-
-
-/** Supabase's wording is for developers. Say something a person can act on. */
-function humanise(message: string): string {
-  if (/password/i.test(message) && /short|least|weak/i.test(message)) {
-    return "Please choose a password of at least 6 characters.";
-  }
-  if (/email/i.test(message) && /invalid|valid/i.test(message)) {
-    return "That doesn't look like a valid email address.";
-  }
-  if (/rate|limit|too many/i.test(message)) {
-    return "Too many attempts just now — please wait a minute and try again.";
-  }
-  if (/sending|smtp|mail/i.test(message)) {
-    return "We couldn't send your confirmation email. Use “Trouble signing in?” on the login page and we'll help directly.";
-  }
-  return message;
 }
 
 /**
