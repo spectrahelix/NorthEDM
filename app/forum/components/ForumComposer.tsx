@@ -71,7 +71,7 @@ export function ForumComposer({
     const { data: existing } = await supabase
       .from("user_profiles")
       .select("id")
-      .eq("username", val)
+      .ilike("username", val)
       .maybeSingle();
 
     if (existing) {
