@@ -69,7 +69,7 @@ export function ForumComposer({
     const supabase = createClient();
 
     const { data: existing } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("id")
       .eq("username", val)
       .maybeSingle();
@@ -81,8 +81,8 @@ export function ForumComposer({
     }
 
     const { error: upsertError } = await supabase
-      .from("profiles")
-      .upsert({ id: user!.id, role: "user", username: val });
+      .from("user_profiles")
+      .upsert({ id: user!.id, username: val }, { onConflict: "id" });
 
     setSubmitting(false);
     if (upsertError) {

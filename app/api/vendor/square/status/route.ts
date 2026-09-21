@@ -8,7 +8,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: prof } = await supabase.from("profiles").select("vendor_id").eq("id", user.id).single();
+  const { data: prof } = await supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single();
   const vendorId = prof?.vendor_id as number | undefined;
   if (!vendorId) return NextResponse.json({ connected: false });
 

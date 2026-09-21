@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
-import { WeatherStrip } from "./components/WeatherStrip";
+import { WeatherStrip } from "@/app/components/WeatherStrip";
 
 export const metadata: Metadata = {
   title: "What's Happening",
@@ -247,7 +247,12 @@ export default async function FeedPage() {
                   </span>
                 </div>
 
-                <WeatherStrip lat={event.lat} lng={event.lng} />
+                <WeatherStrip
+                  lat={event.lat}
+                  lng={event.lng}
+                  startDate={event.start_date}
+                  endDate={event.end_date}
+                />
               </div>
             ))}
         </div>

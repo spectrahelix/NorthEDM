@@ -62,7 +62,7 @@ export function ReplyComposer({
     setSubmitting(true);
     const supabase = createClient();
     const { data: existing } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("id")
       .eq("username", val)
       .maybeSingle();
@@ -72,8 +72,8 @@ export function ReplyComposer({
       return;
     }
     const { error: upsertError } = await supabase
-      .from("profiles")
-      .upsert({ id: user!.id, role: "user", username: val });
+      .from("user_profiles")
+      .upsert({ id: user!.id, username: val }, { onConflict: "id" });
     setSubmitting(false);
     if (upsertError) { setError(upsertError.message); return; }
     setSavedUsername(val);

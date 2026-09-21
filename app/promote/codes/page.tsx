@@ -45,7 +45,7 @@ export default function ReferralsPage() {
       if (!user) { setLoading(false); return; }
 
       const [{ data: profile }, { data: promoter }] = await Promise.all([
-        supabase.from("profiles").select("vendor_id").eq("id", user.id).maybeSingle(),
+        supabase.from("user_profiles").select("vendor_id").eq("id", user.id).maybeSingle(),
         supabase.from("festdash_promoters").select("is_active").eq("user_id", user.id).maybeSingle(),
       ]);
       const kind = profile?.vendor_id ? "vendor" : promoter?.is_active ? "promoter" : null;

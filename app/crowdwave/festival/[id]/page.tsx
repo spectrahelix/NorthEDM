@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { WeatherStrip } from "../../components/WeatherStrip";
+import { WeatherStrip } from "@/app/components/WeatherStrip";
 import type { Metadata } from "next";
 
 type FestivalEvent = {
@@ -108,7 +108,12 @@ export default async function FestivalDetailPage({ params }: { params: Promise<{
         {/* Weather */}
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-4">
           <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-600">Forecast at Venue</p>
-          <WeatherStrip lat={event.lat} lng={event.lng} />
+          <WeatherStrip
+            lat={event.lat}
+            lng={event.lng}
+            startDate={event.start_date}
+            endDate={event.end_date}
+          />
         </div>
 
         {/* CTA */}

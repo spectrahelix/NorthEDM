@@ -19,7 +19,7 @@ function admin() {
 
 async function vendorIdFor(userId: string): Promise<number | null> {
   const a = admin();
-  const { data } = await a.from("profiles").select("vendor_id").eq("id", userId).maybeSingle();
+  const { data } = await a.from("user_profiles").select("vendor_id").eq("id", userId).maybeSingle();
   return data?.vendor_id ?? null;
 }
 

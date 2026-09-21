@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { WeatherStrip } from "../../components/WeatherStrip";
+import { WeatherStrip } from "@/app/components/WeatherStrip";
 
 export const metadata: Metadata = {
   title: "Elements Festival 2026",

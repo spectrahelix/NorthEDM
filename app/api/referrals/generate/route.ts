@@ -17,7 +17,7 @@ export async function POST() {
 
   // Determine issuer kind: vendor (has vendor_id) or active promoter.
   const [{ data: profile }, { data: promoter }] = await Promise.all([
-    supabase.from("profiles").select("vendor_id").eq("id", user.id).maybeSingle(),
+    supabase.from("user_profiles").select("vendor_id").eq("id", user.id).maybeSingle(),
     supabase.from("festdash_promoters").select("id, is_active").eq("user_id", user.id).maybeSingle(),
   ]);
 

@@ -71,7 +71,7 @@ export default function VendorDashboard() {
     if (!user) { setNotEnrolled(true); setLoading(false); return; }
 
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("vendor_id")
       .eq("id", user.id)
       .single();
