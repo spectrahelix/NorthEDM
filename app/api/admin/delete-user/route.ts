@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Remove app rows that don't cascade from auth.users, then the auth user.
-  await admin.from("profiles").delete().eq("id", targetUserId);
   await admin.from("user_profiles").delete().eq("id", targetUserId);
 
   const { error } = await admin.auth.admin.deleteUser(targetUserId);

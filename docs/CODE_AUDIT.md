@@ -1,5 +1,11 @@
 # NorthEDM code audit — 2026-09-14
 
+> **Status update 2026-09-21.** Findings 1, 2 and 2b are FIXED — the promoter
+> funnel, the identity split and the vendor-ownership disagreement. `public.profiles`
+> no longer exists; `username` and `vendor_id` live on `user_profiles`, thirteen
+> RLS policies were repointed, and `vendors.user_id` was backfilled so RLS and the
+> API agree. Every user now has exactly one identity row (14 of 14, was 3 of 14).
+
 A full pass over the application code looking for stale, unused and abandoned
 code, and checking that what's there does what it claims. Scope: 31,305 lines
 across `app/` and `utils/` — 78 pages, 81 API routes, 53 tables, 42 migrations.
@@ -95,8 +101,12 @@ edits were silently discarded for 6 of 7 listings. That fix addressed the
 symptom; the split ownership model is still there and will keep producing
 variants of it.
 
-**Not fixed here** — consolidating identity is an architectural decision, not a
-cleanup. Options in [Recommendations](#recommendations).
+**FIXED 2026-09-21.** `username` and `vendor_id` moved onto `user_profiles` and
+were backfilled, all ~20 call sites repointed, and `public.profiles` dropped with
+`RESTRICT` — which caught eight dependent policies an initial scan had missed,
+because they referenced *both* tables. Thirteen policies repointed in total.
+`vendors.user_id` backfilled from the old link, so RLS and the API routes finally
+agree: 0 ownership disagreements, down from 1 of 2.
 
 ---
 

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   let vendorId: number | null = null;
   if (user) {
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("vendor_id")
       .eq("id", user.id)
       .single();

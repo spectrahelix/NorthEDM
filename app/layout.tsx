@@ -99,7 +99,7 @@ export default async function RootLayout({
   if (user) {
     const [{ data: userProfile }, { data: profileData }] = await Promise.all([
       supabase.from("user_profiles").select("role").eq("id", user.id).single(),
-      supabase.from("profiles").select("vendor_id").eq("id", user.id).single(),
+      supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single(),
     ]);
     forumRole = userProfile?.role ?? null;
     hasVendor = !!profileData?.vendor_id;

@@ -48,9 +48,9 @@ export async function finalizeAuthedUser(supabase: SupabaseClient): Promise<stri
         avatar_url: avatarUrl,
         signup_alerted: true,
       }),
-      supabase.from("profiles").upsert(
-        { id: user.id, role: "user", username: emailPrefix },
-        { onConflict: "username", ignoreDuplicates: true }
+      supabase.from("user_profiles").upsert(
+        { id: user.id, username: emailPrefix },
+        { onConflict: "id", ignoreDuplicates: true }
       ),
     ]);
 

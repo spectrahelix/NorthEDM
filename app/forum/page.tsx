@@ -108,8 +108,7 @@ export default async function ForumPage({
   ]);
   const isAdmin =
     myUserProfile?.role === "archon" ||
-    myUserProfile?.role === "warden" ||
-    legacyProfile?.role === "admin";
+    myUserProfile?.role === "warden";
 
   // Fetch thread counts per category
   const { data: allThreads } = await supabase

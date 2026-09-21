@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
-import { getProfile } from "@/utils/supabase/profile";
+import { getProfile, isAdminRole } from "@/utils/supabase/profile";
 import { VendorEditForm } from "./components/VendorEditForm";
 import { BackBar } from "@/app/components/BackBar";
 
@@ -68,7 +68,7 @@ export default async function VendorDetailPage({
   }
 
   const canEdit =
-    profile?.role === "admin" ||
+    isAdminRole(profile?.role) ||
     (user && vendor.user_id === user.id);
 
   const { data: productData } = await supabase

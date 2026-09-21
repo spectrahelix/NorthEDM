@@ -4,7 +4,7 @@ import { canManageInventory } from "@/utils/marketplace";
 
 async function getVendorId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number | null> {
   const { data } = await supabase
-    .from("profiles")
+    .from("user_profiles")
     .select("vendor_id")
     .eq("id", userId)
     .single();

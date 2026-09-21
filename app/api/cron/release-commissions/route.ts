@@ -24,12 +24,22 @@ function admin() {
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
-  if (secret) {
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  } else {
-    console.warn("[release-commissions] CRON_SECRET not set — endpoint is unauthenticated");
+
+  // Fails CLOSED in production. The previous shape allowed the request through
+  // when CRON_SECRET was unset — and it WAS unset, so both cron endpoints sat
+  // publicly callable: anyone could trigger a full ingest (burning the
+  // Ticketmaster quota and hammering venue sites) or poke the payout run.
+  // A warning in a log nobody reads is not a control.
+  //
+  // Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}` automatically once
+  // the variable exists, so the scheduled run is unaffected. Locally, where
+  // there is no secret and no Vercel, it still runs.
+  if (process.env.VERCEL_ENV === "production" && !secret) {
+    console.error("CRON_SECRET missing in production — refusing to run.");
+    return NextResponse.json({ error: "Not configured" }, { status: 503 });
+  }
+  if (secret && auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const db = admin();

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   );
 
   const { data: existing } = await admin
-    .from("profiles")
+    .from("user_profiles")
     .select("id")
     .eq("username", username)
     .maybeSingle();
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
   // one whose generics don't match.
   async function seedProfiles(userId: string) {
     await Promise.all([
-      admin.from("profiles").upsert({ id: userId, role: "user", username }),
+      admin.from("user_profiles").upsert({ id: userId, username }, { onConflict: "id" }),
       admin.from("user_profiles").upsert({
         id: userId,
         display_name: username,

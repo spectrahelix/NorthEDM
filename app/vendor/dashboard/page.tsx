@@ -56,7 +56,7 @@ export default function VendorDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setAccess("no-vendor"); return; }
       const [{ data: prof }, { data: me }] = await Promise.all([
-        supabase.from("profiles").select("vendor_id").eq("id", user.id).single(),
+        supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single(),
         supabase.from("user_profiles").select("is_marketplace, role").eq("id", user.id).single(),
       ]);
       if (!prof?.vendor_id) { setAccess("no-vendor"); return; }

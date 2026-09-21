@@ -76,7 +76,7 @@ export default function VendorDashboard() {
 
       // Check vendor linkage
       const { data: profile } = await supabase
-        .from("profiles")
+        .from("user_profiles")
         .select("vendor_id")
         .eq("id", user.id)
         .single();

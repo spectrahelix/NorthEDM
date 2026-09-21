@@ -38,7 +38,7 @@ export default function CommissionCodesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
       const { data: profile } = await supabase
-        .from("profiles").select("vendor_id").eq("id", user.id).maybeSingle();
+        .from("user_profiles").select("vendor_id").eq("id", user.id).maybeSingle();
       if (profile?.vendor_id) {
         setIsVendor(true);
         await loadCodes();

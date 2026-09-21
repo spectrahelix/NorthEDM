@@ -19,7 +19,7 @@ export default async function FestDashPage() {
   let isFestDashVendor = false;
   if (user) {
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("vendor_id")
       .eq("id", user.id)
       .single();

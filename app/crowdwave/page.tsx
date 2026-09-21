@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
-import { WeatherStrip } from "./components/WeatherStrip";
+import { WeatherStrip } from "@/app/components/WeatherStrip";
 
 type FestivalEvent = {
   id: number;
@@ -250,7 +250,12 @@ export default async function CrowdWaveFeedPage() {
                   </span>
                 </div>
 
-                <WeatherStrip lat={event.lat} lng={event.lng} />
+                <WeatherStrip
+                  lat={event.lat}
+                  lng={event.lng}
+                  startDate={event.start_date}
+                  endDate={event.end_date}
+                />
               </Link>
             ))
           )}

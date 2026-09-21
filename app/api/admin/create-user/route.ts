@@ -73,36 +73,26 @@ export async function POST(req: Request) {
       uid = newUser.user.id;
     }
 
-    // Upsert both profile rows
-    const [{ error: profileError }, { error: upError }] = await Promise.all([
-      adminClient.from("profiles").upsert(
-        {
-          id: uid,
-          role: vendorId ? "vendor" : "user",
-          username,
-          vendor_id: vendorId ?? null,
-        },
-        { onConflict: "id" }
-      ),
-      adminClient.from("user_profiles").upsert(
-        {
-          id: uid,
-          display_name: displayName,
-          role: forumRole ?? "merchant",
-          bio: "",
-          home_city: "",
-          avatar_border: "moss",
-          avatar_url: null,
-        },
-        { onConflict: "id" }
-      ),
-    ]);
+    // One profile row. username and vendor_id used to live in a second table
+    // (public.profiles) that only ever got written on some signup paths, so 11
+    // of 14 users had no row and every vendor_id lookup failed closed for them.
+    const { error: upError } = await adminClient.from("user_profiles").upsert(
+      {
+        id: uid,
+        username,
+        vendor_id: vendorId ?? null,
+        display_name: displayName,
+        role: forumRole ?? "merchant",
+        bio: "",
+        home_city: "",
+        avatar_border: "moss",
+        avatar_url: null,
+      },
+      { onConflict: "id" }
+    );
 
-    if (profileError || upError) {
-      return NextResponse.json(
-        { error: profileError?.message ?? upError?.message },
-        { status: 500 }
-      );
+    if (upError) {
+      return NextResponse.json({ error: upError.message }, { status: 500 });
     }
 
     // If a vendor_id was provided, also link the user to that vendor row
