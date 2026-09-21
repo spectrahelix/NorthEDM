@@ -27,7 +27,7 @@ export default function AvatarBuilderPage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+      if (!user) { router.push("/signup"); return; }
       setUserId(user.id);
 
       const [{ data: profile }, { data: items }, balRes] = await Promise.all([

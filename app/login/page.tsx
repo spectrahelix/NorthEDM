@@ -27,10 +27,17 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
+      // Supabase's wording is for developers. Say what happened and what to do,
+      // and never dead-end someone — every branch points at a next step.
+      const m = authError.message;
       setError(
-        authError.message === "Invalid login credentials"
-          ? "Wrong email or password. Try again or reset your password."
-          : authError.message
+        /invalid login credentials/i.test(m)
+          ? "Wrong email or password. Try again, or reset your password below."
+          : /email not confirmed|not confirmed/i.test(m)
+            ? "Please confirm your email first — check your inbox for the link we sent. No email? Use “Trouble signing in?” below."
+            : /rate|too many/i.test(m)
+              ? "Too many attempts just now. Wait a minute and try again."
+              : `${m} — if this keeps happening, use “Trouble signing in?” below.`
       );
       setLoading(false);
       return;
@@ -90,6 +97,12 @@ export default function LoginPage() {
                   className="font-dm-mono text-xs text-[#3AFFD4]/70 transition hover:text-[#3AFFD4]"
                 >
                   Forgot password?
+                </Link>
+                <Link
+                  href="/signin-help"
+                  className="font-dm-mono text-xs text-neutral-500 transition hover:text-[#3AFFD4]"
+                >
+                  Trouble signing in?
                 </Link>
               </div>
               <div className="relative">

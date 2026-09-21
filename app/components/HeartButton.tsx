@@ -24,7 +24,7 @@ export function HeartButton({
     e.preventDefault();
     e.stopPropagation();
     if (!userId) {
-      router.push("/login");
+      router.push("/signup");
       return;
     }
     if (pending) return;

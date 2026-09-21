@@ -3,13 +3,20 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyFeedback } from "@/utils/alerts";
 import { validateField } from "@/utils/reportQuality";
+import { requireVerifiedUser } from "@/utils/authGate";
 
 // Receives beta-tester feedback from /feedback. Persists it to error_reports so
-// it shows up alongside "Report a problem" submissions in /admin/bug-reports
-// (previously it was only notified/emailed and left no record in the app), then
-// fans out to the owner (email + phone push + in-app). No auth required so
-// testers can submit freely.
+// it shows up alongside "Report a problem" submissions in /admin/bug-reports,
+// then fans out to the owner (email + phone push + in-app).
+//
+// VERIFIED ACCOUNTS ONLY. This was open to anyone, which is how the keyboard-mash
+// submissions got in. Someone who cannot reach an account should use /signin-help,
+// the one guest-open path.
 export async function POST(req: Request) {
+  const supabaseGate = await createClient();
+  const gate = await requireVerifiedUser(supabaseGate);
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
+
   const body = await req.json().catch(() => ({}));
   const message = String(body.message || "").trim();
   const category = String(body.category || "").trim().slice(0, 40);
@@ -23,9 +30,7 @@ export async function POST(req: Request) {
   const problem = validateField(message, "Your message", { min: 12, minWords: 2 });
   if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
-  // Attach the logged-in user if there is one (the form itself is public).
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = gate.user;
 
   // Store it where the owner already looks. The category is prefixed onto the
   // description and echoed into page_url so a Bug/Idea/Praise from the feedback
