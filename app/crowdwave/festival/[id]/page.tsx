@@ -119,7 +119,7 @@ export default async function FestivalDetailPage({ params }: { params: Promise<{
         {/* CTA */}
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/crowdwave/forum"
+            href="/forum"
             className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/5"
           >
             Discuss on Forum →

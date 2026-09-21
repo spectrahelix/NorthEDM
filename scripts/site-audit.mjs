@@ -73,6 +73,13 @@ let topAdvisories = [];
 const tsc = sh("npx tsc --noEmit -p tsconfig.json", { maxBuffer: 32 * 1024 * 1024 });
 const tscErrors = (tsc.out.match(/error TS\d+/g) || []).length;
 
+// ── 3b. Wiring — forms pointing at routes that don't exist, duplicate
+// components, references to retired tables. None of these are type errors, so
+// the build stays green while the feature is dead. See scripts/check-wiring.mjs.
+const wiring = sh("node scripts/check-wiring.mjs 2>&1 || true").out;
+const wiringOk = /wiring looks consistent/.test(wiring);
+const wiringProblems = (wiring.match(/^\s+✗/gm) || []).length;
+
 // ── 4. Config — env-var checklist ───────────────────────────────────────────
 const envRefs = [
   ...new Set(
@@ -123,6 +130,7 @@ const flags = [];
 if (vulns.critical > 0) flags.push(`🔴 ${vulns.critical} critical vulnerabilit${vulns.critical === 1 ? "y" : "ies"}`);
 if (vulns.high > 0) flags.push(`🟠 ${vulns.high} high vulnerabilit${vulns.high === 1 ? "y" : "ies"}`);
 if (tscErrors > 0) flags.push(`🔴 ${tscErrors} TypeScript error${tscErrors === 1 ? "" : "s"} (build likely broken)`);
+if (!wiringOk) flags.push(`🔴 ${wiringProblems} wiring problem${wiringProblems === 1 ? "" : "s"} (dead routes / duplicate components)`);
 if (growth && growth.reports_open > 0) flags.push(`🟡 ${growth.reports_open} open bug/feedback report${growth.reports_open === 1 ? "" : "s"}`);
 if (growth && growth.new_30d === 0) flags.push(`⚪ no new signups in 30 days`);
 if (todoCount > 0) flags.push(`⚪ ${todoCount} TODO/FIXME markers`);
@@ -147,6 +155,7 @@ const summary = `## 🔍 NorthEDM Site Audit — ${stamp}
 | Features (pages) | **${pages.length}** routes (${dynamicPages} dynamic) |
 | API endpoints | **${apis.length}** |
 ${growthRows}| Security (npm audit) | ${vulns.critical} critical · ${vulns.high} high · ${vulns.moderate} moderate · ${vulns.low} low |
+| Wiring | ${wiringOk ? "✅ consistent" : "🔴 " + wiringProblems + " problem(s) — run: npm run check"} |
 | TypeScript | ${tscErrors === 0 ? "✅ clean" : `❌ ${tscErrors} errors`} |
 | Migrations | ${migrations.length} (latest: \`${latestMigration}\`) |
 | Env vars referenced | ${envRefs.length} |

@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyNewOrder } from "@/utils/alerts";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
+import { checkWrite } from "@/utils/dbWrite";
 
 // Stripe webhook: on a completed Checkout, mark the order paid, decrement stock,
 // and alert the owner. Idempotent (skips if already paid). Needs raw body for
@@ -35,13 +36,19 @@ export async function POST(req: Request) {
 
       if (order && order.status !== "paid") {
         const ship = session.customer_details;
-        await admin.from("shop_orders").update({
-          status: "paid",
-          stripe_payment_intent: (session.payment_intent as string) ?? null,
-          email: session.customer_details?.email ?? order.email,
-          ship_name: ship?.name ?? null,
-          ship_address: ship?.address ?? null,
-        }).eq("id", orderId);
+        // Stripe has already taken the money by this point. A silent failure
+        // here means the order never shows as paid and nothing says why.
+        await checkWrite(
+          `shop order ${orderId} -> paid`,
+          await admin.from("shop_orders").update({
+            status: "paid",
+            stripe_payment_intent: (session.payment_intent as string) ?? null,
+            email: session.customer_details?.email ?? order.email,
+            ship_name: ship?.name ?? null,
+            ship_address: ship?.address ?? null,
+          }).eq("id", orderId),
+          { critical: true }
+        );
 
         // Decrement stock for each line (never below zero).
         const items = (order.items ?? []) as { product_id: string; qty: number }[];

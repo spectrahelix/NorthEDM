@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
@@ -93,15 +94,19 @@ export async function POST(req: Request) {
         .maybeSingle();
       // Only promote an order that's still waiting — never clobber a later state.
       if (order && order.status === "awaiting_payment") {
-        await db
-          .from("festdash_orders")
-          .update({
-            status: "pending",
-            paid: true,
-            payment_status: "authorized",
-            stripe_payment_intent: (session.payment_intent as string) ?? null,
-          })
-          .eq("id", orderId);
+        await checkWrite(
+          `festdash order ${orderId} -> authorized`,
+          await db
+            .from("festdash_orders")
+            .update({
+              status: "pending",
+              paid: true,
+              payment_status: "authorized",
+              stripe_payment_intent: (session.payment_intent as string) ?? null,
+            })
+            .eq("id", orderId),
+          { critical: true }
+        );
       }
     }
   } else if (event.type === "checkout.session.completed" && event.data.object &&
@@ -115,14 +120,18 @@ export async function POST(req: Request) {
       // Idempotent: a replayed event must not decrement stock twice.
       if (order && order.status === "pending") {
         const ship = session.customer_details;
-        await db.from("store_orders").update({
-          status: "paid",
-          stripe_payment_intent: (session.payment_intent as string) ?? null,
-          email: ship?.email ?? order.email,
-          ship_name: ship?.name ?? null,
-          ship_address: ship?.address ?? null,
-          updated_at: new Date().toISOString(),
-        }).eq("id", order.id).eq("status", "pending");
+        await checkWrite(
+          `store order ${order.id} -> paid`,
+          await db.from("store_orders").update({
+            status: "paid",
+            stripe_payment_intent: (session.payment_intent as string) ?? null,
+            email: ship?.email ?? order.email,
+            ship_name: ship?.name ?? null,
+            ship_address: ship?.address ?? null,
+            updated_at: new Date().toISOString(),
+          }).eq("id", order.id).eq("status", "pending"),
+          { critical: true }
+        );
 
         const items = (order.items ?? []) as { product_id: number; qty: number }[];
         for (const it of items) {

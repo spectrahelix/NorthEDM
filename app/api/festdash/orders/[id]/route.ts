@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
+import { checkWrite } from "@/utils/dbWrite";
 
 // Allowed status transitions — orders can't skip steps or move backwards.
 const TRANSITIONS: Record<string, string[]> = {
@@ -106,10 +107,18 @@ export async function PATCH(
         const stripe = getStripe();
         if (status === "delivered") {
           await stripe.paymentIntents.capture(full.stripe_payment_intent);
-          await admin
-            .from("festdash_orders")
-            .update({ payment_status: "released", escrow_released_at: new Date().toISOString(), paid: true })
-            .eq("id", id);
+          // The capture above has ALREADY moved the customer's money to the
+          // vendor. If this write is lost the order never shows as released,
+          // and nothing anywhere says so — the worst shape a silent failure
+          // can take.
+          await checkWrite(
+            `escrow released for order ${id}`,
+            await admin
+              .from("festdash_orders")
+              .update({ payment_status: "released", escrow_released_at: new Date().toISOString(), paid: true })
+              .eq("id", id),
+            { critical: true }
+          );
         } else {
           await stripe.paymentIntents.cancel(full.stripe_payment_intent);
           await admin

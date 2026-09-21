@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check": "node scripts/check-wiring.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
