@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/client";
 
 export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
@@ -17,13 +16,18 @@ export default function ForgotPasswordPage() {
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email") || "").trim();
 
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    // Goes through our own route, not supabase.auth.resetPasswordForEmail():
+    // that asks Supabase to send over SMTP, which is the path that was failing
+    // with 500 "Error sending recovery email" for every account.
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, origin: window.location.origin }),
     });
+    const json = await res.json().catch(() => ({}));
 
-    if (resetError) {
-      setError(resetError.message);
+    if (!res.ok) {
+      setError(json.error || "Something went wrong. Please try again.");
       setLoading(false);
       return;
     }

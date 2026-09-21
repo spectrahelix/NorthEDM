@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { notifyFeedback } from "@/utils/alerts";
+import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
 export async function POST(req: NextRequest) {
-  const { email, password, username, origin, referralCode } = await req.json() as {
+  const { email, password, username, origin, referralCode } = (await req.json()) as {
     email: string;
     password: string;
     username: string;
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
   if (!USERNAME_RE.test(username)) {
     return NextResponse.json({ error: "Invalid username." }, { status: 400 });
   }
+  if (String(password).length < 6) {
+    return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
+  }
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +31,6 @@ export async function POST(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Check username availability
   const { data: existing } = await admin
     .from("profiles")
     .select("id")
@@ -37,57 +40,99 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That username is taken. Try another." }, { status: 409 });
   }
 
-  // Create the user via Supabase's native sign-up. Supabase sends the
-  // confirmation email through its own mail service — no third-party sender,
-  // no custom-domain verification needed. The link lands on /auth/callback.
-  const supabase = await createClient();
   const normalizedRef = referralCode ? String(referralCode).trim().toUpperCase() : null;
+  const metadata = normalizedRef ? { username, referral_code: normalizedRef } : { username };
+  const redirectTo = `${origin}/auth/callback`;
+
+  // ── Create the account and deliver the confirmation ourselves ─────────────
+  //
+  // Not supabase.auth.signUp(): that asks Supabase to send the mail over SMTP,
+  // and when SMTP fails Supabase creates NO account and returns an error. That
+  // is precisely what happened here — the provider rejected Supabase's sending
+  // IPs (525 "5.7.1 Unauthorized IP address") and every signup silently wrote
+  // nothing for two months.
+  //
+  // generateLink() mints the same confirmation link and sends NOTHING, so the
+  // account exists either way and delivery is ours to control. We send over
+  // Brevo's HTTP API, which utils/alerts.ts already proves works from this
+  // runtime — it is only the SMTP path that is IP-blocked.
+  if (authEmailConfigured()) {
+    const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+      type: "signup",
+      email,
+      password,
+      options: { data: metadata, redirectTo },
+    });
+
+    if (linkError) {
+      // Existing address: say nothing that confirms an account exists here.
+      if (/already|registered|exists/i.test(linkError.message)) {
+        return NextResponse.json({ success: true });
+      }
+      await alertSignupFailure(email, linkError.message);
+      return NextResponse.json({ error: humanise(linkError.message) }, { status: 400 });
+    }
+
+    const user = link?.user;
+    const actionLink = link?.properties?.action_link;
+    if (!user || !actionLink) {
+      await alertSignupFailure(email, "generateLink returned no action_link");
+      return NextResponse.json(
+        { error: "We couldn't start your signup. Please try again in a moment." },
+        { status: 500 }
+      );
+    }
+
+    await seedProfiles(user.id);
+
+    const sent = await sendAuthEmail(email, "signup", actionLink);
+    if (!sent.ok) {
+      // The account exists but the person has no link. Tell them the truth and
+      // point at the one door that is open to them.
+      await alertSignupFailure(email, `account created but email failed: ${sent.error}`);
+      return NextResponse.json(
+        {
+          error:
+            "Your account was created, but we couldn't send the confirmation email. Use “Trouble signing in?” on the login page and we'll sort it out by hand.",
+        },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
+  // ── Fallback: let Supabase send (works when its SMTP is healthy) ──────────
+  const supabase = await createClient();
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-      // Stash the referral code in user metadata; the reward is granted once
-      // the email is confirmed (see /auth/callback) to deter throwaway accounts.
-      data: normalizedRef ? { username, referral_code: normalizedRef } : { username },
-    },
+    options: { emailRedirectTo: redirectTo, data: metadata },
   });
 
   if (signUpError) {
-    // Loudly, every time. Supabase does NOT create the account when the
-    // confirmation email fails to send, so an SMTP problem is a total signup
-    // outage that is invisible from the outside — the site looks fine and the
-    // user just sees an error. That is exactly what happened: the configured
-    // SMTP provider started rejecting Supabase's sending IP
-    // (525 "5.7.1 Unauthorized IP address") and every signup failed silently
-    // for two months. Never again without an alert.
-    console.error("SIGNUP FAILED:", signUpError.message);
-    await notifyFeedback({
-      message:
-        `🚨 SIGNUP FAILED — a real visitor could not create an account.\n\n` +
-        `Supabase said: ${signUpError.message}\n\n` +
-        `If this mentions email or SMTP, no account was created at all. Check ` +
-        `Supabase → Authentication → Emails (SMTP), and the provider's own IP ` +
-        `allow-list. Supabase sends from rotating cloud IPs, so an SMTP provider ` +
-        `set to "block unknown IP addresses" will reject every single signup.`,
-      category: "signup-failure",
-      email: String(email),
-    }).catch((e) => console.error("signup-failure alert failed:", e));
-
-    return NextResponse.json({ error: signUpError.message }, { status: 400 });
+    await alertSignupFailure(email, signUpError.message);
+    return NextResponse.json({ error: humanise(signUpError.message) }, { status: 400 });
   }
 
-  // An empty identities array means the email is already registered. Don't
-  // leak that — return the same success shape as a fresh signup, and skip
-  // seeding so we never clobber the existing user's profile.
+  // An empty identities array means the address is already registered. Don't
+  // leak that — same success shape, and skip seeding so an existing profile is
+  // never clobbered.
   const user = signUpData.user;
-  const isNewUser = !!user && (user.identities?.length ?? 0) > 0;
+  if (user && (user.identities?.length ?? 0) > 0) {
+    await seedProfiles(user.id);
+  }
 
-  if (user && isNewUser) {
+  return NextResponse.json({ success: true });
+
+  // Closes over `admin` and `username` above — declared here rather than at
+  // module scope so it uses the concrete client type instead of a re-declared
+  // one whose generics don't match.
+  async function seedProfiles(userId: string) {
     await Promise.all([
-      admin.from("profiles").upsert({ id: user.id, role: "user", username }),
+      admin.from("profiles").upsert({ id: userId, role: "user", username }),
       admin.from("user_profiles").upsert({
-        id: user.id,
+        id: userId,
         display_name: username,
         role: "drifter",
         bio: "",
@@ -97,6 +142,41 @@ export async function POST(req: NextRequest) {
       }),
     ]);
   }
+}
 
-  return NextResponse.json({ success: true });
+
+/** Supabase's wording is for developers. Say something a person can act on. */
+function humanise(message: string): string {
+  if (/password/i.test(message) && /short|least|weak/i.test(message)) {
+    return "Please choose a password of at least 6 characters.";
+  }
+  if (/email/i.test(message) && /invalid|valid/i.test(message)) {
+    return "That doesn't look like a valid email address.";
+  }
+  if (/rate|limit|too many/i.test(message)) {
+    return "Too many attempts just now — please wait a minute and try again.";
+  }
+  if (/sending|smtp|mail/i.test(message)) {
+    return "We couldn't send your confirmation email. Use “Trouble signing in?” on the login page and we'll help directly.";
+  }
+  return message;
+}
+
+/**
+ * Signup failures are invisible from the outside — the site looks healthy and
+ * the visitor simply leaves. Two months of that is what prompted this. Every
+ * failure now reaches the owner.
+ */
+async function alertSignupFailure(email: string, detail: string) {
+  console.error("SIGNUP FAILED:", detail);
+  await notifyFeedback({
+    message:
+      `🚨 SIGNUP FAILED — a real visitor could not create an account.\n\n` +
+      `Detail: ${detail}\n\n` +
+      `Auth email is delivered through the Brevo HTTP API (utils/authEmail.ts), ` +
+      `not Supabase SMTP. If this mentions email, check BREVO_API_KEY and that ` +
+      `BREVO_SENDER_EMAIL is a verified sender in Brevo.`,
+    category: "signup-failure",
+    email: String(email),
+  }).catch((e) => console.error("signup-failure alert failed:", e));
 }
