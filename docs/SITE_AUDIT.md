@@ -2,25 +2,24 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-09-14 14:59 UTC
-**Health:** 🔴 1 critical vulnerability · 🟠 2 high vulnerabilities · 🟡 1 open bug/feedback report · ⚪ no new signups in 30 days
+**Last run:** 2026-09-21 15:05 UTC
+**Health:** ⚪ no new signups in 30 days
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **78** routes (10 dynamic) |
-| API endpoints | **84** |
+| API endpoints | **83** |
 | Users | **14** total · 0 new (7d) · 0 new (30d) |
-| Latest signup | 2026-07-13 (62d ago) |
-| Open bug/feedback reports | 1 of 2 total |
-| Security (npm audit) | 1 critical · 2 high · 0 moderate · 0 low |
+| Latest signup | 2026-07-13 (69d ago) |
+| Open bug/feedback reports | 0 of 2 total |
+| Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
 | TypeScript | ✅ clean |
-| Migrations | 41 (latest: `20260901000000_store_orders.sql`) |
-| Env vars referenced | 22 |
+| Migrations | 42 (latest: `20260903000000_local_events_featured_and_archive.sql`) |
+| Env vars referenced | 23 |
 | TODO/FIXME | 0 |
 
-**High/critical advisories:** js-yaml (high), next (critical), sharp (high)
 
-<sub>FYI (not a problem): 20 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
+<sub>FYI (not a problem): 21 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
 ---
 
@@ -105,7 +104,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (84)
+## API endpoints (83)
 
 - `/api/admin/artisan`
 - `/api/admin/bug-reports`
@@ -150,7 +149,6 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/festdash/orders/[id]/location`
 - `/api/festdash/promo-codes`
 - `/api/festdash/promo-codes/validate`
-- `/api/festdash/promoter-signup`
 - `/api/festdash/promoter/hoodies`
 - `/api/festdash/promoter/referral-code`
 - `/api/festdash/promoter/stripe/connect`
@@ -164,7 +162,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/hoodie`
 - `/api/marketplace/apply`
 - `/api/moderate`
-- `/api/products`
+- `/api/promote`
 - `/api/promote/validate-code`
 - `/api/quote/[token]/pay`
 - `/api/referrals/generate`
@@ -192,7 +190,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/auth/confirm`
 - `/h/[code]`
 
-## Environment variables (22 referenced)
+## Environment variables (23 referenced)
 
 | Variable | Scope | CI status |
 | :-- | :-- | :-- |
@@ -213,6 +211,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 | `PAYPAL_CLIENT_ID` | server | ❌ missing |
 | `PAYPAL_ENV` | server | ❌ missing |
 | `PAYPAL_SECRET` | server | ❌ missing |
+| `SEATGEEK_CLIENT_ID` | server | ❌ missing |
 | `SQUARE_VERSION` | server | ❌ missing |
 | `STRIPE_SECRET_KEY` | server | ❌ missing |
 | `STRIPE_WEBHOOK_SECRET` | server | ❌ missing |
