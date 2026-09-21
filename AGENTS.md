@@ -4,6 +4,25 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Before you ship an edit: `npm run check`
+
+Runs [`scripts/check-wiring.mjs`](scripts/check-wiring.mjs). It catches the one
+failure shape that has cost this site the most, and that **nothing else catches**
+— not TypeScript, not the build, not lint:
+
+> an edit lands in code that isn't the live path, and nothing says so.
+
+Real examples it exists for: `/promote` POSTed to `/api/promote`, which did not
+exist (a missing App Router route returns **200 with the HTML shell**, not a 404,
+so the form hung forever and every promoter application was discarded for
+months); two byte-identical copies of `WeatherStrip`; `/crowdwave/forum` as a
+stale copy of `/forum` with no content moderation; `profiles` and `user_profiles`
+both live with ~20 paths reading the empty one.
+
+It checks three things: every `fetch("/api/…")` resolves to a real route,
+no two components share a filename, and nothing references a retired table.
+It reads files only — no network, no database. The weekly audit runs it too.
+
 # Project features
 
 ## FestDash — festival delivery network

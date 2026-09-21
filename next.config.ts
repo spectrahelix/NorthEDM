@@ -46,6 +46,12 @@ const nextConfig: NextConfig = {
       { source: "/festdash/promoter-signup", destination: "/promote", permanent: true },
       { source: "/festdash/referrals", destination: "/promote/codes", permanent: true },
       { source: "/festdash/promoter-dashboard", destination: "/promote/dashboard", permanent: true },
+      // /crowdwave/forum was a stale duplicate of /forum: same `threads` table,
+      // but an older copy of the composer with no content moderation, no
+      // categories and no hearts. Anyone entering the forum through CrowdWave
+      // posted unmoderated. Removed; these keep existing links working.
+      { source: "/crowdwave/forum", destination: "/forum", permanent: true },
+      { source: "/crowdwave/forum/:id", destination: "/forum/:id", permanent: true },
     ];
   },
 };
