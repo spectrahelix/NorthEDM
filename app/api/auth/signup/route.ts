@@ -4,18 +4,44 @@ import { createClient } from "@/utils/supabase/server";
 import { notifyFeedback } from "@/utils/alerts";
 import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
 import { humaniseAuthError } from "@/utils/authErrors";
-import { clientIp, clientContradictsItself, overRateLimit } from "@/utils/botSignals";
+import {
+  clientIp,
+  clientContradictsItself,
+  implausibleGmailDots,
+  overRateLimit,
+} from "@/utils/botSignals";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
 export async function POST(req: NextRequest) {
-  const { email, password, username, origin, referralCode } = (await req.json()) as {
-    email: string;
-    password: string;
-    username: string;
-    origin: string;
-    referralCode?: string;
-  };
+  const { email, password, username, origin, referralCode, website, elapsedMs } =
+    (await req.json()) as {
+      email: string;
+      password: string;
+      username: string;
+      origin: string;
+      referralCode?: string;
+      website?: string;
+      elapsedMs?: number;
+    };
+
+  // Honeypot: a field positioned off-screen, hidden from people but present in
+  // the DOM. Report success so the caller learns nothing and does not retry,
+  // but create nothing.
+  if (String(website || "").trim()) {
+    return NextResponse.json({ success: true });
+  }
+
+  // Time on page. Crawlers were posting here within a second or two of load —
+  // one created an account at 22:55:47 having opened the page the same second.
+  // Nobody reads a signup form, picks a username and types a password twice in
+  // under three seconds. An absent or non-numeric value never rejects.
+  if (typeof elapsedMs === "number" && elapsedMs >= 0 && elapsedMs < 3000) {
+    return NextResponse.json(
+      { error: "That was submitted faster than the form could be filled in. Please try again." },
+      { status: 400 }
+    );
+  }
 
   if (!email || !password || !username || !origin) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -37,6 +63,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Too many signup attempts from this connection. Please try again in a little while." },
       { status: 429 }
+    );
+  }
+
+  // Dot-aliased Gmail. Gmail ignores dots, so i.seul.t.l.anaux@gmail.com and
+  // iseultlanaux@gmail.com are one inbox — the cheapest way to mint unlimited
+  // accounts from a single mailbox, and exactly what created the 22:55 account.
+  // Unlike on sign-in help, this rejects: here the cost of being wrong is one
+  // retry with the dots removed, which reaches the same inbox, and the message
+  // says so.
+  if (implausibleGmailDots(email)) {
+    return NextResponse.json(
+      {
+        error:
+          "Please enter your Gmail address without the extra dots — Gmail ignores them, so it reaches the same inbox either way.",
+      },
+      { status: 400 }
     );
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { SocialAuth } from "@/app/components/SocialAuth";
 
@@ -10,6 +10,16 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [website, setWebsite] = useState(""); // honeypot, hidden from people
+
+  // When this page was opened, for the server's timing check. Crawlers were
+  // creating accounts here by posting within a second or two of load. Stamped
+  // in an effect because reading the clock during render is impure; an absent
+  // value is treated as "no opinion" server-side, never as a rejection.
+  const openedAt = useRef<number | null>(null);
+  useEffect(() => {
+    openedAt.current = Date.now();
+  }, []);
 
   // Pick up a promoter's referral code from ?ref=CODE
   useEffect(() => {
@@ -67,7 +77,15 @@ export default function SignupPage() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: pw, username, origin: window.location.origin, referralCode: referralCode || undefined }),
+      body: JSON.stringify({
+        email,
+        password: pw,
+        username,
+        origin: window.location.origin,
+        referralCode: referralCode || undefined,
+        website,
+        elapsedMs: openedAt.current === null ? undefined : Date.now() - openedAt.current,
+      }),
     });
     const json = await res.json();
 
@@ -261,6 +279,22 @@ export default function SignupPage() {
                 autoComplete="new-password"
                 placeholder="Repeat your password"
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none transition focus:border-[#3AFFD4]/50 focus:ring-1 focus:ring-[#3AFFD4]/20"
+              />
+            </div>
+
+            {/* Honeypot. Hidden from people by position and aria, not by
+                display:none, which some form-fillers detect and skip. Anything
+                that fills it is filling the form programmatically. */}
+            <div aria-hidden="true" className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden">
+              <label htmlFor="website">Website</label>
+              <input
+                id="website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
               />
             </div>
 
