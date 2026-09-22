@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { clientIp, clientContradictsItself, overRateLimit } from "@/utils/botSignals";
 
-// Best-effort in-memory per-IP throttle (resets on cold start; defense-in-depth
-// on top of the honeypot + timing trap below).
+// Per-IP throttle. This was an in-memory Map, which on serverless is close to
+// useless — it dies on every cold start and each instance keeps its own copy,
+// so a caller spread across instances is never counted. It now shares the
+// durable counter in public.request_throttle with the other guest-open routes.
 const RATE_LIMIT = 3; // submissions
 const RATE_WINDOW_MS = 10 * 60 * 1000; // per 10 minutes
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  return recent.length > RATE_LIMIT;
-}
 
 // A successful-looking response we hand to bots so they don't retry or learn.
 const SILENT_OK = NextResponse.json({
@@ -36,12 +30,16 @@ export async function POST(req: Request) {
       return SILENT_OK;
     }
 
-    // 3) Per-IP rate limit.
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      "unknown";
-    if (rateLimited(ip)) {
+    // 3) A client whose user-agent claims Chromium but which sends no
+    //    sec-ch-ua header is lying about what it is. Same silent success as
+    //    the honeypot: it learns nothing and does not retry.
+    if (clientContradictsItself(req.headers)) {
+      return SILENT_OK;
+    }
+
+    // 4) Per-IP rate limit, now durable rather than per-instance.
+    const ip = clientIp(req.headers);
+    if (await overRateLimit("vendor-apply", ip, { max: RATE_LIMIT, windowMs: RATE_WINDOW_MS })) {
       return NextResponse.json(
         { success: false, error: "Too many submissions. Please try again later." },
         { status: 429 }
@@ -55,7 +53,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Basic shape/length validation — reject obviously bogus payloads.
+    // 5) Basic shape/length validation — reject obviously bogus payloads.
     const email = String(data.email).trim().toLowerCase();
     const name = String(data.name).trim();
     const category = String(data.category).trim();

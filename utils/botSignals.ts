@@ -80,3 +80,83 @@ export function clientIp(headers: Headers): string | null {
   const real = headers.get("x-real-ip")?.trim();
   return real ? real.slice(0, 45) : null;
 }
+
+/**
+ * Does the client contradict itself about what it is?
+ *
+ * Every Chromium browser (Chrome, Edge, Brave, Opera) sends `sec-ch-ua` on a
+ * secure origin — it is not optional and not something the page controls. A
+ * script that sets a Chrome user-agent string by hand almost never sends it.
+ * So a UA claiming Chromium with no `sec-ch-ua` header is a client lying about
+ * itself.
+ *
+ * Checked ONLY against Chromium UA strings. Firefox and Safari legitimately
+ * never send `sec-ch-ua`, so testing them would flag every real visitor on
+ * either browser — which is exactly the false positive this file exists to
+ * avoid. All three crawlers here claimed `Chrome/142.0.0.0`.
+ */
+export function clientContradictsItself(headers: Headers): boolean {
+  const ua = headers.get("user-agent") ?? "";
+  if (!ua) return false; // absent UA is odd but not a contradiction — don't judge
+  const claimsChromium = /\bChrome\/\d|\bEdg\/\d|\bOPR\/\d/.test(ua);
+  if (!claimsChromium) return false;
+  return !headers.get("sec-ch-ua");
+}
+
+/**
+ * Per-IP throttle backed by public.request_throttle.
+ *
+ * Returns true when this caller is OVER the limit. Records the attempt first,
+ * so the current request counts toward its own bucket.
+ *
+ * Fails OPEN on any database trouble and on a missing IP: a throttle that
+ * starts rejecting because a count query failed would take down the very forms
+ * it protects, and a null IP would pool every visitor into one bucket and
+ * rate-limit the whole site as a single caller.
+ */
+export async function overRateLimit(
+  bucket: string,
+  ip: string | null,
+  opts: { max: number; windowMs: number }
+): Promise<boolean> {
+  if (!ip) return false;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+
+  // Its own client so callers need pass nothing but the bucket and IP — the
+  // concrete client type differs between call sites and threading it through
+  // bought nothing but generic mismatches.
+  const { createClient } = await import("@supabase/supabase-js");
+  const db = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  try {
+    await db.from("request_throttle").insert({ bucket, ip });
+
+    const since = new Date(Date.now() - opts.windowMs).toISOString();
+    const { count, error } = await db
+      .from("request_throttle")
+      .select("id", { count: "exact", head: true })
+      .eq("bucket", bucket)
+      .eq("ip", ip)
+      .gte("created_at", since);
+
+    if (error) return false;
+
+    // Prune this key's old rows so the table stays bounded without needing a
+    // scheduled job. Index-scoped, so the cost is negligible.
+    await db
+      .from("request_throttle")
+      .delete()
+      .eq("bucket", bucket)
+      .eq("ip", ip)
+      .lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+    return (count ?? 0) > opts.max;
+  } catch {
+    return false;
+  }
+}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyFeedback } from "@/utils/alerts";
 import { screenEmail, looksLikeGarbageText } from "@/utils/botEmail";
-import { checkSubmission, clientIp } from "@/utils/botSignals";
+import { checkSubmission, clientIp, clientContradictsItself, overRateLimit } from "@/utils/botSignals";
 
 // Sign-in help — the ONE submission path deliberately open to guests.
 //
@@ -55,22 +55,20 @@ export async function POST(req: Request) {
   );
 
   // Per-IP ceiling. A locked-out person submits once, maybe twice if they think
-  // the first didn't send. Anything past the fourth in an hour from one address
-  // is a script, so it is stored but never alerts — the record stays for
-  // review, the owner's inbox stays usable. Skipped when the proxy header is
-  // absent, because a null IP would otherwise pool every visitor together and
-  // rate-limit the whole site as one caller.
+  // the first didn't send. Past the fourth in an hour from one address it is a
+  // script, so the row is still stored but never alerts — the record stays for
+  // review, the owner's inbox stays usable.
+  //
+  // Nothing here REJECTS. This is the only door left to someone locked out, so
+  // a wrong guess costs them their last route in. Suspicion downgrades the
+  // alert; it never refuses the request.
   const ip = clientIp(req.headers);
-  let quiet = false;
-  if (ip) {
-    const { count } = await admin
-      .from("error_reports")
-      .select("id", { count: "exact", head: true })
-      .eq("source", "signin-help")
-      .eq("client_ip", ip)
-      .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-    if ((count ?? 0) >= 4) quiet = true;
-  }
+  let quiet = await overRateLimit("signin-help", ip, { max: 4, windowMs: 60 * 60 * 1000 });
+
+  // A user-agent claiming Chromium that sends no sec-ch-ua header is lying
+  // about itself — all three crawlers claimed Chrome/142. Stored quietly
+  // rather than blocked: the cost of being wrong is too high on this form.
+  if (!quiet && clientContradictsItself(req.headers)) quiet = true;
 
   // Stored in error_reports so it lands in /admin/bug-reports alongside
   // everything else, tagged source='signin-help' so it is filterable.
