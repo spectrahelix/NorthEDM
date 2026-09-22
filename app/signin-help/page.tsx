@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 // The one page a locked-out guest can use. No account required — that's the
@@ -14,6 +14,20 @@ export default function SigninHelpPage() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
 
+  // When this page was opened. The server rejects a submission that arrives
+  // faster than anyone could have read the form — the cheapest signal against
+  // the crawlers that walk this site's forms, and one that costs a real person
+  // nothing. A ref, not state, so it is set once and never triggers a render.
+  //
+  // Stamped in an effect rather than as useRef(Date.now()): reading the clock
+  // during render is impure, and React's own lint rule rejects it. If the
+  // effect somehow hasn't run we send no timing at all, and the server treats
+  // an absent value as "no opinion" rather than as a rejection.
+  const openedAt = useRef<number | null>(null);
+  useEffect(() => {
+    openedAt.current = Date.now();
+  }, []);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -26,6 +40,7 @@ export default function SigninHelpPage() {
         email,
         description,
         website,
+        elapsedMs: openedAt.current === null ? undefined : Date.now() - openedAt.current,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
       }),
     });
