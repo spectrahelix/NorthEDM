@@ -1,7 +1,7 @@
 "use client";
 import { createClient } from "@/utils/supabase/client";
 
-type Provider = "google" | "apple" | "discord";
+type Provider = "google" | "apple" | "discord" | "facebook";
 
 /**
  * Only providers actually enabled in the Supabase dashboard belong here.
@@ -12,9 +12,12 @@ type Provider = "google" | "apple" | "discord";
  *    "msg":"Unsupported provider: provider is not enabled"}
  * — on the signup screen, which is the worst possible place for it.
  *
- * To add one back: enable it in Supabase → Authentication → Providers, confirm
- *   curl -sI "$SUPABASE_URL/auth/v1/authorize?provider=<id>&redirect_to=..."
- * returns a 302 to the provider (not a 400), then list it here.
+ * A button listed here that Supabase does not have turned on is therefore a
+ * broken signup screen, not a cosmetic bug. `npm run check:auth` asks the live
+ * project which providers actually answer and fails if this list disagrees —
+ * run it after changing this line, and after enabling anything in the
+ * dashboard. Adding credentials in Supabase is what turns a provider on; this
+ * list only decides whether we draw the button for it.
  */
 const ENABLED: Provider[] = ["google"];
 
@@ -28,6 +31,15 @@ const PROVIDERS: { id: Provider; label: string; icon: React.ReactNode }[] = [
         <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
         <path d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
         <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+    ),
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2"/>
       </svg>
     ),
   },

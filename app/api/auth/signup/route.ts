@@ -3,6 +3,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { notifyFeedback } from "@/utils/alerts";
 import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
+import { humaniseAuthError } from "@/utils/authErrors";
+import { clientIp, clientContradictsItself, overRateLimit } from "@/utils/botSignals";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
@@ -23,6 +25,29 @@ export async function POST(req: NextRequest) {
   }
   if (String(password).length < 6) {
     return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
+  }
+
+  // Signup had no throttle at all, which is how two crawler accounts were
+  // created on 2026-09-21. Three an hour from one address is generous for a
+  // person (a typo, a retry, a partner on the same wifi) and useless to a
+  // script working through a list. Fails open if the counter is unreachable —
+  // signup breaking is far worse than a bot getting through.
+  const ip = clientIp(req.headers);
+  if (await overRateLimit("signup", ip, { max: 3, windowMs: 60 * 60 * 1000 })) {
+    return NextResponse.json(
+      { error: "Too many signup attempts from this connection. Please try again in a little while." },
+      { status: 429 }
+    );
+  }
+
+  // A user-agent claiming Chromium with no sec-ch-ua header is a client lying
+  // about what it is. Real Chrome cannot omit that header on a secure origin.
+  if (clientContradictsItself(req.headers)) {
+    await alertSignupFailure(email, "blocked: user-agent claims Chromium but sent no sec-ch-ua");
+    return NextResponse.json(
+      { error: "We couldn't verify your browser. Please try a different browser, or use “Trouble signing in?” on the login page." },
+      { status: 400 }
+    );
   }
 
   const admin = createAdminClient(
@@ -73,7 +98,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true });
       }
       await alertSignupFailure(email, linkError.message);
-      return NextResponse.json({ error: humanise(linkError.message) }, { status: 400 });
+      return NextResponse.json({ error: humaniseAuthError(linkError.message) }, { status: 400 });
     }
 
     const user = link?.user;
@@ -115,7 +140,7 @@ export async function POST(req: NextRequest) {
 
   if (signUpError) {
     await alertSignupFailure(email, signUpError.message);
-    return NextResponse.json({ error: humanise(signUpError.message) }, { status: 400 });
+    return NextResponse.json({ error: humaniseAuthError(signUpError.message) }, { status: 400 });
   }
 
   // An empty identities array means the address is already registered. Don't
@@ -145,24 +170,6 @@ export async function POST(req: NextRequest) {
       }),
     ]);
   }
-}
-
-
-/** Supabase's wording is for developers. Say something a person can act on. */
-function humanise(message: string): string {
-  if (/password/i.test(message) && /short|least|weak/i.test(message)) {
-    return "Please choose a password of at least 6 characters.";
-  }
-  if (/email/i.test(message) && /invalid|valid/i.test(message)) {
-    return "That doesn't look like a valid email address.";
-  }
-  if (/rate|limit|too many/i.test(message)) {
-    return "Too many attempts just now — please wait a minute and try again.";
-  }
-  if (/sending|smtp|mail/i.test(message)) {
-    return "We couldn't send your confirmation email. Use “Trouble signing in?” on the login page and we'll help directly.";
-  }
-  return message;
 }
 
 /**

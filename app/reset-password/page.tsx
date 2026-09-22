@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { humaniseAuthError } from "@/utils/authErrors";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -55,7 +56,7 @@ export default function ResetPasswordPage() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
 
     if (updateError) {
-      setError(updateError.message);
+      setError(humaniseAuthError(updateError.message));
       setLoading(false);
       return;
     }

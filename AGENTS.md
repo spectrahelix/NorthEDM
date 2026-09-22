@@ -23,6 +23,25 @@ It checks three things: every `fetch("/api/…")` resolves to a real route,
 no two components share a filename, and nothing references a retired table.
 It reads files only — no network, no database. The weekly audit runs it too.
 
+## Social sign-in: `npm run check:auth`
+
+A provider is turned on by adding its credentials in **Supabase → Authentication
+→ Sign In / Providers**. `ENABLED` in [`app/components/SocialAuth.tsx`](app/components/SocialAuth.tsx)
+only decides whether we *draw* the button. Draw one for a provider that is off
+and tapping it dumps the visitor on a raw JSON error page — which shipped once,
+on the signup screen.
+
+`npm run check:auth` asks the live project which providers actually answer and
+fails when the two disagree. Run it after editing that list **and** after
+enabling anything in the dashboard. Unlike `npm run check` it does make one
+network call per provider, so it is a separate command; it skips quietly when
+`NEXT_PUBLIC_SUPABASE_URL` isn't set.
+
+⚠️ **Apple is not free** — Sign in with Apple needs the Apple Developer Program
+($99/year), and on the web flow Apple forces you to regenerate the client secret
+**every 6 months** or the button starts failing. Don't enable it without a
+calendar reminder.
+
 # Project features
 
 ## FestDash — festival delivery network
