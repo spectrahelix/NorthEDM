@@ -160,3 +160,31 @@ export async function overRateLimit(
     return false;
   }
 }
+
+/**
+ * A Gmail address carrying more dots than a person would ever type.
+ *
+ * Gmail ignores dots in the local part: b.ri.d.get.c.o.wan07@gmail.com and
+ * bridgetcowan07@gmail.com are the same inbox. That makes dot insertion the
+ * cheapest way to mint unlimited distinct-looking addresses that all deliver
+ * to one mailbox, and three of the four crawler submissions used it:
+ *
+ *   f.i.derada.xi.02@gmail.com      4 dots
+ *   ja.lb.rec.h.t8.2.1@gmail.com    6 dots
+ *   b.ri.d.get.c.o.wan07@gmail.com  6 dots
+ *
+ * Real addresses are first.last (1) or first.m.last (2). Four is well clear of
+ * anything a person types about their own address, and because Gmail ignores
+ * the dots, even a genuine holder of such an address can write it with fewer.
+ *
+ * Gmail and googlemail only. Dots are meaningful local-part characters
+ * everywhere else, so applying this to other hosts would flag real people.
+ */
+export function implausibleGmailDots(email: string): boolean {
+  const [local, domain] = email.trim().toLowerCase().split("@");
+  if (!local || !domain) return false;
+  if (domain !== "gmail.com" && domain !== "googlemail.com") return false;
+  // Ignore a +tag, which is a normal thing to have and not part of the name.
+  const base = local.split("+")[0] ?? local;
+  return (base.match(/\./g) ?? []).length >= 4;
+}
