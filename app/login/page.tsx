@@ -88,22 +88,29 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <div className="mb-1.5 flex items-center justify-between">
+              {/* Three items in one justify-between row overlapped on a phone —
+                  "Forgot password?" and "Trouble signing in?" ran straight
+                  through the PASSWORD label. The links are now one group that
+                  wraps to its own line when there isn't room, instead of
+                  colliding with the label. */}
+              <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <label className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
                   Password
                 </label>
-                <Link
-                  href="/forgot-password"
-                  className="font-dm-mono text-xs text-[#3AFFD4]/70 transition hover:text-[#3AFFD4]"
-                >
-                  Forgot password?
-                </Link>
-                <Link
-                  href="/signin-help"
-                  className="font-dm-mono text-xs text-neutral-500 transition hover:text-[#3AFFD4]"
-                >
-                  Trouble signing in?
-                </Link>
+                <span className="flex items-baseline gap-4">
+                  <Link
+                    href="/forgot-password"
+                    className="font-dm-mono text-xs whitespace-nowrap text-[#3AFFD4]/70 transition hover:text-[#3AFFD4]"
+                  >
+                    Forgot password?
+                  </Link>
+                  <Link
+                    href="/signin-help"
+                    className="font-dm-mono text-xs whitespace-nowrap text-neutral-500 transition hover:text-[#3AFFD4]"
+                  >
+                    Trouble signing in?
+                  </Link>
+                </span>
               </div>
               <div className="relative">
                 <input

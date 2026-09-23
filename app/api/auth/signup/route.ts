@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { notifyFeedback } from "@/utils/alerts";
-import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
+import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 import { humaniseAuthError } from "@/utils/authErrors";
 import {
   clientIp,
@@ -144,9 +144,9 @@ export async function POST(req: NextRequest) {
     }
 
     const user = link?.user;
-    const actionLink = link?.properties?.action_link;
-    if (!user || !actionLink) {
-      await alertSignupFailure(email, "generateLink returned no action_link");
+    const tokenHash = link?.properties?.hashed_token;
+    if (!user || !tokenHash) {
+      await alertSignupFailure(email, "generateLink returned no hashed_token");
       return NextResponse.json(
         { error: "We couldn't start your signup. Please try again in a moment." },
         { status: 500 }
@@ -155,7 +155,19 @@ export async function POST(req: NextRequest) {
 
     await seedProfiles(user.id);
 
-    const sent = await sendAuthEmail(email, "signup", actionLink);
+    // Our own /auth/confirm URL, not properties.action_link — see authConfirmUrl.
+    // action_link hands back the tokens in the URL fragment, which no server
+    // route can read, so confirming would have dumped the new member on /login.
+    const sent = await sendAuthEmail(
+      email,
+      "signup",
+      authConfirmUrl({
+        origin: String(origin).replace(/\/$/, ""),
+        tokenHash,
+        type: "signup",
+        next: "/profile/edit",
+      })
+    );
     if (!sent.ok) {
       // The account exists but the person has no link. Tell them the truth and
       // point at the one door that is open to them.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
-import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
+import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 
 // Resend the signup confirmation. Same reasoning as signup and password reset:
 // supabase.auth.resend() hands the send to Supabase's SMTP, which is the path
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     options: { redirectTo },
   });
 
-  if (error || !link?.properties?.action_link) {
+  if (error || !link?.properties?.hashed_token) {
     // Already confirmed is a success from the user's point of view: there is
     // nothing left for them to do, and saying so beats a scary error.
     if (error && /already|confirmed/i.test(error.message)) {
@@ -63,7 +63,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const sent = await sendAuthEmail(address, "signup", link.properties.action_link);
+  // Our own /auth/confirm URL, not properties.action_link — see authConfirmUrl.
+  const sent = await sendAuthEmail(
+    address,
+    "signup",
+    authConfirmUrl({
+      origin: String(origin).replace(/\/$/, ""),
+      tokenHash: link.properties.hashed_token,
+      type: "magiclink",
+      next: "/feed",
+    })
+  );
   if (!sent.ok) {
     return NextResponse.json(
       { error: "We couldn't send that email. Use “Trouble signing in?” and we'll help directly." },
