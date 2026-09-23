@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
-import { sendAuthEmail, authEmailConfigured } from "@/utils/authEmail";
+import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 
 // Password reset. Server-side on purpose: supabase.auth.resetPasswordForEmail()
 // from the browser asks Supabase to send over SMTP, which is the broken path —
@@ -49,14 +49,26 @@ export async function POST(req: Request) {
   });
 
   // No such user is the common case for a typo'd address — stay silent about it.
-  if (error || !link?.properties?.action_link) {
+  if (error || !link?.properties?.hashed_token) {
     if (error && !/not found|no user|does not exist/i.test(error.message)) {
       console.error("recovery link error:", error.message);
     }
     return genericOk;
   }
 
-  const sent = await sendAuthEmail(address, "recovery", link.properties.action_link);
+  // Our own /auth/confirm URL, not properties.action_link — see authConfirmUrl.
+  // action_link returns the tokens in the URL fragment, which no server route
+  // can read, so the reset link landed on /login instead of the reset form.
+  const sent = await sendAuthEmail(
+    address,
+    "recovery",
+    authConfirmUrl({
+      origin: String(origin).replace(/\/$/, ""),
+      tokenHash: link.properties.hashed_token,
+      type: "recovery",
+      next: "/reset-password",
+    })
+  );
   if (!sent.ok) console.error("recovery email failed:", sent.error);
 
   return genericOk;

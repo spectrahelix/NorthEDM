@@ -125,3 +125,37 @@ export async function sendAuthEmail(
     return { ok: false, error: e instanceof Error ? e.message : "Email send failed." };
   }
 }
+
+/**
+ * Build the link that actually goes in the email.
+ *
+ * NOT `properties.action_link`. That points at Supabase's /auth/v1/verify,
+ * which verifies and then redirects to redirect_to with the tokens in the URL
+ * FRAGMENT (#access_token=...). A fragment is never sent to the server, so our
+ * /auth/callback route saw no code and no token_hash, treated it as
+ * missing_token and bounced the visitor to /login.
+ *
+ * That is exactly what a password-reset link did on 2026-09-22: the callback
+ * answered 307 straight to /login, and the person never reached the reset form.
+ * All three auth emails — signup, resend, recovery — used action_link, so every
+ * one of them was broken the same way.
+ *
+ * generateLink also returns `hashed_token`, which /auth/confirm can verify
+ * server-side with verifyOtp. That sets the session in cookies, where the rest
+ * of the app expects it, and lands the visitor on `next` with no fragment
+ * anywhere in the flow.
+ */
+export function authConfirmUrl(args: {
+  origin: string;
+  tokenHash: string;
+  type: "signup" | "recovery" | "magiclink" | "email_change" | "invite";
+  next: string;
+}): string {
+  const origin = args.origin.replace(/\/$/, "");
+  const params = new URLSearchParams({
+    token_hash: args.tokenHash,
+    type: args.type,
+    next: args.next,
+  });
+  return `${origin}/auth/confirm?${params.toString()}`;
+}
