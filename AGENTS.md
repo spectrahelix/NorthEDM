@@ -4,6 +4,72 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+# Don't guess. Verify, or say you haven't.
+
+The expensive failures here did not come from hard bugs. They came from
+confident claims nobody had checked.
+
+## The rule
+
+**A claim about the live site is only as good as the check behind it, and the
+check must be able to fail.**
+
+Before saying something works, ask: *what would I have seen if it were broken?*
+If the answer is "the same thing", the check proved nothing — don't report it.
+
+Checks that proved nothing on this site:
+
+- Waiting for `/events` to return 200 after a deploy. It returned 200 on the
+  old build too.
+- Reporting a cron endpoint as `200` from an earlier run when it was `401`.
+- Reading a file to confirm a fix while checked out on a stale local `main`,
+  where every file still held its pre-fix contents.
+
+A check that *can* fail: an empty POST to `/api/vendors` with a spoofed Chrome
+user-agent returns `400 Missing required fields` on the old code and a silent
+success on the new. Different answers, so the result means something.
+
+## Pushed, merged, deployed, verified are four different things
+
+Only the last is "done" or "fixed". Bot defenses once sat unmerged on a branch,
+reported as shipped, while **seven more crawler submissions arrived**. Pushing
+is not deploying.
+
+If you have not watched production behave differently from before the change,
+say so plainly rather than implying you have.
+
+## Look for it before you write it
+
+`/api/vendors` already had a honeypot, a timing trap and a rate limit when a
+second copy of all three was written into `utils/botSignals.ts`. Two copies of
+`WeatherStrip`, and `/crowdwave/forum` shadowing `/forum`, cost real money the
+same way.
+
+Grep for the *behaviour*, not just the filename, before adding a helper — and
+when a second copy is the right call, delete the first in the same change.
+
+## One sample is not a pattern
+
+A crawler was reported as "a real person locked out" on the strength of one
+submission with a plausible-looking journey. Three more, plus the page-view
+traversal, said the opposite. Check the population before naming a cause.
+
+Likewise, don't name a root cause you haven't tested end to end. Missing
+SPF/DKIM was blamed for signups failing; a single real email sent through the
+live route proved delivery was fine and the real fault was elsewhere.
+
+## Know which commit you're reading
+
+`git checkout main` can land on a stale local branch. Confirm
+`git log --oneline -1` matches `origin/main` before treating what you read as
+current.
+
+## When you don't know, say so
+
+"I don't know yet — here is the check that would tell us." That costs one
+message. A wrong guess costs a deploy cycle, plus the credibility of the next
+report.
+
 ## Before you ship an edit: `npm run check`
 
 Runs [`scripts/check-wiring.mjs`](scripts/check-wiring.mjs). It catches the one
