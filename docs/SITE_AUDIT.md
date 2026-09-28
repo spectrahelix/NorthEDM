@@ -2,19 +2,20 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-09-21 15:05 UTC
-**Health:** ⚪ no new signups in 30 days
+**Last run:** 2026-09-28 16:44 UTC
+**Health:** 🟢 All clear
 
 | Area | Result |
 | :-- | :-- |
-| Features (pages) | **78** routes (10 dynamic) |
-| API endpoints | **83** |
-| Users | **14** total · 0 new (7d) · 0 new (30d) |
-| Latest signup | 2026-07-13 (69d ago) |
-| Open bug/feedback reports | 0 of 2 total |
+| Features (pages) | **77** routes (9 dynamic) |
+| API endpoints | **85** |
+| Users | **24** total · 10 new (7d) · 10 new (30d) |
+| Latest signup | 2026-09-22 (5d ago) |
+| Open bug/feedback reports | 0 of 13 total |
 | Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
+| Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
-| Migrations | 42 (latest: `20260903000000_local_events_featured_and_archive.sql`) |
+| Migrations | 48 (latest: `20260922010000_request_throttle.sql`) |
 | Env vars referenced | 23 |
 | TODO/FIXME | 0 |
 
@@ -23,7 +24,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 
 ---
 
-## Feature inventory (78 pages)
+## Feature inventory (77 pages)
 
 - `/[store]`
 - `/[store]/manage`
@@ -55,8 +56,6 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/crowdwave`
 - `/crowdwave/festival/[id]`
 - `/crowdwave/festival/elements-2026`
-- `/crowdwave/forum`
-- `/crowdwave/forum/[id]`
 - `/crowdwave/groups`
 - `/events`
 - `/feed`
@@ -94,6 +93,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/shop/[slug]`
 - `/shop/cart`
 - `/shop/success`
+- `/signin-help`
 - `/signup`
 - `/social`
 - `/terms`
@@ -104,7 +104,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (83)
+## API endpoints (85)
 
 - `/api/admin/artisan`
 - `/api/admin/bug-reports`
@@ -128,6 +128,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/admin/stores`
 - `/api/admin/update-report`
 - `/api/admin/user-tags`
+- `/api/auth/forgot-password`
 - `/api/auth/resend-confirmation`
 - `/api/auth/signup`
 - `/api/avatar/purchase`
@@ -171,6 +172,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/search`
 - `/api/shop/checkout`
 - `/api/shop/webhook`
+- `/api/signin-help`
 - `/api/social/broadcast`
 - `/api/store-credit`
 - `/api/store/[slug]`
@@ -200,7 +202,6 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 | `GITHUB_ISSUES_REPO` | server | ❌ missing |
 | `GITHUB_ISSUES_TOKEN` | server | ❌ missing |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | public | ❌ missing |
-| `NEXT_PUBLIC_OPENWEATHER_API_KEY` | public | ❌ missing |
 | `NEXT_PUBLIC_SITE_URL` | public | ❌ missing |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | ❌ missing |
 | `NEXT_PUBLIC_SUPABASE_URL` | public | ✅ set |
@@ -217,6 +218,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 | `STRIPE_WEBHOOK_SECRET` | server | ❌ missing |
 | `SUPABASE_SERVICE_ROLE_KEY` | server | ✅ set |
 | `TICKETMASTER_API_KEY` | server | ❌ missing |
+| `VERCEL_ENV` | server | ❌ missing |
 
 _CI status is blank when run locally. Missing server secrets in CI is normal — what matters is they're set in **Vercel** (Production) and, for the audit's own growth stats, as **GitHub Actions secrets**._
 
