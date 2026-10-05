@@ -2,23 +2,24 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-09-28 16:44 UTC
-**Health:** 🟢 All clear
+**Last run:** 2026-10-05 17:07 UTC
+**Health:** 🔴 1 critical vulnerability · 🟠 6 high vulnerabilities
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **77** routes (9 dynamic) |
 | API endpoints | **85** |
-| Users | **24** total · 10 new (7d) · 10 new (30d) |
-| Latest signup | 2026-09-22 (5d ago) |
+| Users | **24** total · 0 new (7d) · 10 new (30d) |
+| Latest signup | 2026-09-22 (12d ago) |
 | Open bug/feedback reports | 0 of 13 total |
-| Security (npm audit) | 0 critical · 0 high · 0 moderate · 0 low |
+| Security (npm audit) | 1 critical · 6 high · 0 moderate · 0 low |
 | Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
 | Migrations | 48 (latest: `20260922010000_request_throttle.sql`) |
 | Env vars referenced | 23 |
 | TODO/FIXME | 0 |
 
+**High/critical advisories:** @next/eslint-plugin-next (high), brace-expansion (high), braces (high), eslint-config-next (high), fast-glob (high), micromatch (high), next (critical)
 
 <sub>FYI (not a problem): 21 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
