@@ -14,6 +14,17 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/feed";
 
+  // A failed auth link redirects here with ?error=... and nothing read it, so
+  // someone whose confirmation or reset link didn't work landed on a clean
+  // login page with no explanation and no idea what to do. Say what happened
+  // and point at the way out.
+  const linkError = searchParams.get("error");
+  const linkMessage = !linkError
+    ? ""
+    : /expired|invalid|not found|already|missing_token/i.test(linkError)
+      ? "That link has already been used or has expired — they only work once. Request a fresh one below and open it straight from your email."
+      : `We couldn't complete that link: ${linkError}. Request a fresh one below, or use “Trouble signing in?”.`;
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -63,6 +74,15 @@ export default function LoginPage() {
           <p className="mb-7 text-sm text-neutral-400">
             Sign in to post, reply, and connect with the community.
           </p>
+
+          {linkMessage && (
+            <div className="mb-6 rounded-xl border border-[#FFC93C]/25 bg-[#FFC93C]/[0.07] px-4 py-3 text-sm text-[#FFC93C]">
+              {linkMessage}{" "}
+              <Link href="/forgot-password" className="underline underline-offset-2 hover:opacity-80">
+                Send a new link
+              </Link>
+            </div>
+          )}
 
           <SocialAuth next={next} />
 
