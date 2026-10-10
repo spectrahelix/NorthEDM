@@ -10,6 +10,7 @@ import {
   clientContradictsItself,
   implausibleGmailDots,
   overRateLimit,
+  recordAttempt,
 } from "@/utils/botSignals";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
@@ -159,6 +160,9 @@ export async function POST(req: NextRequest) {
     }
 
     await seedProfiles(user.id);
+    // An account exists now, so this one counts. A rejected signup (weak
+    // password, taken username) must not spend the caller's allowance.
+    await recordAttempt("signup", ip);
 
     // Our own /auth/confirm URL, not properties.action_link — see authConfirmUrl.
     // action_link hands back the tokens in the URL fragment, which no server
@@ -208,6 +212,7 @@ export async function POST(req: NextRequest) {
   const user = signUpData.user;
   if (user && (user.identities?.length ?? 0) > 0) {
     await seedProfiles(user.id);
+    await recordAttempt("signup", ip);
   }
 
   return NextResponse.json({ success: true });

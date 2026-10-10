@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { clientIp, clientContradictsItself, overRateLimit } from "@/utils/botSignals";
+import { clientIp, clientContradictsItself, overRateLimit, recordAttempt } from "@/utils/botSignals";
 
 // Per-IP throttle. This was an in-memory Map, which on serverless is close to
 // useless — it dies on every cold start and each instance keeps its own copy,
 // so a caller spread across instances is never counted. It now shares the
 // durable counter in public.request_throttle with the other guest-open routes.
-const RATE_LIMIT = 3; // submissions
+const RATE_LIMIT = 5; // successful submissions
 const RATE_WINDOW_MS = 10 * 60 * 1000; // per 10 minutes
 
 // A successful-looking response we hand to bots so they don't retry or learn.
@@ -37,7 +37,9 @@ export async function POST(req: Request) {
       return SILENT_OK;
     }
 
-    // 4) Per-IP rate limit, now durable rather than per-instance.
+    // 4) Per-IP rate limit, counted on SUCCESS only (see overRateLimit). An
+    //    applicant who keeps being refused — by a bug of ours, as happened —
+    //    must not be locked out for retrying.
     const ip = clientIp(req.headers);
     if (await overRateLimit("vendor-apply", ip, { max: RATE_LIMIT, windowMs: RATE_WINDOW_MS })) {
       return NextResponse.json(
@@ -102,6 +104,9 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    // Only a stored application counts against the limit.
+    await recordAttempt("vendor-apply", ip);
 
     return NextResponse.json({
       success: true,
