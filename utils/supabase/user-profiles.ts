@@ -25,6 +25,7 @@ export type UserProfile = {
   socials?: Social[] | null;
   // Approval tags (denormalized flags)
   is_vendor?: boolean;
+  vendor_id?: number | null;
   is_marketplace?: boolean;
   is_festdash_vendor?: boolean;
   is_promoter?: boolean;
