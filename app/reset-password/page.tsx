@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { humaniseAuthError } from "@/utils/authErrors";
+import { passwordRequirements, passwordIsValid, firstPasswordProblem } from "@/utils/passwordRules";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -12,7 +13,14 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
   const router = useRouter();
+
+  // Same live checklist as signup. Without it, someone resetting a password
+  // hits exactly the wall that sent a real person hunting on 2026-10-10: a
+  // perfectly long password refused for a missing character class, with no
+  // sign anywhere of what was actually required.
+  const requirements = passwordRequirements(password);
 
   useEffect(() => {
     const supabase = createClient();
@@ -38,11 +46,10 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     const fd = new FormData(e.currentTarget);
-    const password = String(fd.get("password") || "");
     const confirm = String(fd.get("confirm") || "");
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (!passwordIsValid(password)) {
+      setError(firstPasswordProblem(password) ?? "Please choose a stronger password.");
       setLoading(false);
       return;
     }
@@ -125,6 +132,8 @@ export default function ResetPasswordPage() {
                   required
                   autoComplete="new-password"
                   placeholder="New password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 pr-16 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none transition focus:border-[#3AFFD4]/50 focus:ring-1 focus:ring-[#3AFFD4]/20"
                 />
                 <button
@@ -135,6 +144,19 @@ export default function ResetPasswordPage() {
                   {showPassword ? "HIDE" : "SHOW"}
                 </button>
               </div>
+              <ul className="mt-2.5 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                {requirements.map((r) => (
+                  <li
+                    key={r.id}
+                    className={`flex items-center gap-1.5 text-xs transition-colors ${
+                      r.met ? "text-[#39FF14]" : "text-neutral-500"
+                    }`}
+                  >
+                    <span aria-hidden="true">{r.met ? "\u2713" : "\u25cb"}</span>
+                    {r.label}
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <div>
