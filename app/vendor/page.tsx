@@ -3,7 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
-import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { ACCEPT_WEB_IMAGES, toWebImage, isUndisplayableImage } from "@/utils/webImage";
+import { setProductPhoto, uploadProductPhoto } from "@/utils/productPhoto";
+import { QuickPhotoButton } from "@/app/components/vendor/QuickPhotoButton";
+import { PhotoLibrary } from "@/app/components/vendor/PhotoLibrary";
 import { useUnsavedDraft } from "@/utils/useUnsavedDraft";
 
 type Product = {
@@ -69,6 +72,10 @@ export default function VendorDashboard() {
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  // The save that runs as the photo picker opens; resolves to the item's id.
+  const saveFirst = useRef<Promise<number | null> | null>(null);
+  const [notice, setNotice] = useState("");
+  const [photoVersion, setPhotoVersion] = useState(0);
 
   // Survive a reload mid-form (photo picker, new deploy) — see the hook.
   useUnsavedDraft(
@@ -114,10 +121,12 @@ export default function VendorDashboard() {
     if (res.status === 401 || res.status === 403) { router.push("/"); return; }
     const json = await res.json();
     setProducts(json.products ?? []);
+    setPhotoVersion((v) => v + 1);
     setLoading(false);
   }
 
   function openAdd() {
+    setNotice("");
     setEditId(null);
     setForm(EMPTY_FORM);
     setFormError("");
@@ -125,6 +134,7 @@ export default function VendorDashboard() {
   }
 
   function openEdit(p: Product) {
+    setNotice("");
     setEditId(p.id);
     setForm({
       name: p.name,
@@ -140,39 +150,68 @@ export default function VendorDashboard() {
     setShowForm(true);
   }
 
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!userId || !e.target.files?.[0]) return;
-    const file = await toWebImage(e.target.files[0]);
-    if (file.size > 5 * 1024 * 1024) {
-      setFormError("Image must be under 5MB.");
+  // Same as /vendor/dashboard: whatever has been typed is saved to the server
+  // in the same tap that opens the photo picker, because that is when phones
+  // throw the page away. The picker must open synchronously, so the save runs
+  // alongside it (keepalive) and the upload waits for it.
+  function openPhotoPicker() {
+    setFormError("");
+    const typed = [form.name, form.description, form.price, form.inventoryCount].some((v) => v.trim());
+    if (typed && !form.name.trim()) {
+      setFormError("Type the item's name first — then everything you've typed is saved before your photos open.");
       return;
     }
+    saveFirst.current = typed ? saveTextNow() : Promise.resolve(editId);
+    fileRef.current?.click();
+  }
+
+  async function saveTextNow(): Promise<number | null> {
+    const text = {
+      name: form.name, category: form.category, description: form.description,
+      price: form.price, inventoryCount: form.inventoryCount,
+    };
+    try {
+      if (editId) {
+        await fetch(`/api/vendor/products/${editId}`, {
+          method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(text),
+        });
+        return editId;
+      }
+      const res = await fetch("/api/vendor/products", {
+        method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...text, imageUrl: form.imageUrl || null, isPublic: false, status: "draft" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.product?.id) return null;
+      setEditId(j.product.id as number);
+      setProducts((prev) => [j.product, ...prev]);
+      setNotice("Saved as a hidden draft so nothing gets lost. Press “Save Changes” when it's ready.");
+      return j.product.id as number;
+    } catch {
+      return editId;
+    }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
     setUploading(true);
     setFormError("");
-    const supabase = createClient();
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${userId}/${Date.now()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("products")
-      .upload(path, file, { upsert: true });
-    if (uploadError) {
-      setFormError(`Upload failed: ${uploadError.message}`);
+    try {
+      const url = await uploadProductPhoto(await toWebImage(picked));
+      setForm((f) => ({ ...f, imageUrl: url }));
+      const id = (await saveFirst.current) ?? editId;
+      saveFirst.current = null;
+      if (id) {
+        const product = await setProductPhoto(id, url);
+        setProducts((prev) => prev.map((p) => (p.id === id ? (product as unknown as Product) : p)));
+      }
+    } catch (x) {
+      setFormError(x instanceof Error ? x.message : "Upload failed.");
+    } finally {
       setUploading(false);
-      return;
+      if (fileRef.current) fileRef.current.value = "";
     }
-    const { data } = supabase.storage.from("products").getPublicUrl(path);
-    const imageUrl = `${data.publicUrl}?t=${Date.now()}`;
-    setForm((f) => ({ ...f, imageUrl }));
-    // Editing an existing item: save the photo to it now, on its own, so a
-    // phone reloading the page after its photo picker can't lose it.
-    if (editId) {
-      const r = await fetch(`/api/vendor/products/${editId}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && j.product) setProducts((prev) => prev.map((p) => (p.id === editId ? j.product : p)));
-    }
-    setUploading(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -207,9 +246,11 @@ export default function VendorDashboard() {
     }
     setShowForm(false);
     setEditId(null);
+    setNotice("");
   }
 
   async function handleDelete(id: number) {
+    if (!window.confirm("Delete this item?")) return;
     setDeletingId(id);
     await fetch(`/api/vendor/products/${id}`, { method: "DELETE" });
     setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -393,7 +434,7 @@ export default function VendorDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => fileRef.current?.click()}
+                    onClick={openPhotoPicker}
                     disabled={uploading}
                     className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-neutral-300 transition hover:bg-white/5 disabled:opacity-50"
                   >
@@ -406,8 +447,9 @@ export default function VendorDashboard() {
                   )}
                 </div>
                 <p className="mt-1 font-dm-mono text-xs text-neutral-600">
-                  JPG, PNG, WEBP · max 5MB
+                  Any phone photo · what you&apos;ve typed is saved first
                 </p>
+                {notice && <p className="mt-2 text-sm text-[#3AFFD4]">{notice}</p>}
                 <input
                   ref={fileRef}
                   type="file"
@@ -534,10 +576,16 @@ export default function VendorDashboard() {
                       <span>${p.price}</span>
                       <span>stock: {p.inventory_count}</span>
                     </div>
+                    {!p.image_url ? (
+                      <p className="mt-1 font-dm-mono text-[11px] text-[#FFC93C]">No photo yet</p>
+                    ) : isUndisplayableImage(p.image_url.split("?")[0], "") ? (
+                      <p className="mt-1 font-dm-mono text-[11px] text-orange-300">Photo is iPhone format — most phones can&apos;t show it. Change photo.</p>
+                    ) : null}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 flex-wrap items-start gap-3">
+                    <QuickPhotoButton productId={p.id} onSaved={loadProducts} label={p.image_url ? "Change photo" : "Add photo"} />
                     <button
                       onClick={() => togglePublic(p)}
                       className={`rounded-lg border px-3 py-1.5 font-dm-mono text-xs transition ${
@@ -567,6 +615,8 @@ export default function VendorDashboard() {
             ))}
           </div>
         )}
+
+        <PhotoLibrary products={products} onChanged={loadProducts} version={photoVersion} />
       </div>
     </main>
   );
