@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { useUnsavedDraft } from "@/utils/useUnsavedDraft";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
@@ -40,6 +42,14 @@ export default function VendorDashboard() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const formDirty = JSON.stringify(form) !== JSON.stringify(EMPTY);
+  useUnsavedDraft(
+    vendorId ? `product-draft:${vendorId}` : null,
+    { form, editingId },
+    formDirty,
+    (d) => { setForm({ ...EMPTY, ...d.form }); setEditingId(d.editingId ?? null); },
+  );
 
   // Square sync
   const [square, setSquare] = useState<SquareStatus | null>(null);
@@ -116,9 +126,10 @@ export default function VendorDashboard() {
   }
 
   async function uploadImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    if (!picked) return;
     setUploading(true); setError("");
+    const file = await toWebImage(picked);
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/vendor/products/upload", { method: "POST", body: fd });
@@ -271,7 +282,7 @@ export default function VendorDashboard() {
           <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Description"
             className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadImage} />
+            <input ref={fileRef} type="file" accept={ACCEPT_WEB_IMAGES} className="hidden" onChange={uploadImage} />
             <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
               className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 disabled:opacity-50">
               {uploading ? "Uploading…" : form.imageUrl ? "Change image" : "Upload image"}
