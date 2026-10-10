@@ -17,6 +17,9 @@ export type Vendor = {
   suspended_at: string | null;
   suspended_reason: string | null;
   created_at: string | null;
+  user_id: string | null;
+  business_email: string | null;
+  linked_email: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
@@ -78,6 +81,24 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
       // no dashboard and nobody notices.
       if (json.note) setNote(json.note);
       router.refresh();
+    } catch (error) {
+      setNote((error as Error).message);
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  async function linkAccount(id: number, email: string) {
+    setLoadingId(id);
+    try {
+      const res = await fetch("/api/vendors/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "link", email }),
+      });
+      const json = await res.json().catch(() => ({}));
+      setNote(json.note || json.error || (res.ok ? "Linked." : "Couldn't link that account."));
+      if (res.ok && json.linked) router.refresh();
     } catch (error) {
       setNote((error as Error).message);
     } finally {
@@ -218,7 +239,23 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                 {/* Expanded detail + full actions */}
                 {isOpen && (
                   <div className="border-t border-white/10 px-4 py-4">
-                    <p className="text-sm text-neutral-400">{v.email || "No email"}</p>
+                    <div className="space-y-0.5 text-sm text-neutral-400">
+                      <p>
+                        <span className="text-neutral-600">Personal: </span>
+                        {v.email || "—"}
+                      </p>
+                      {v.business_email && (
+                        <p>
+                          <span className="text-neutral-600">Business: </span>
+                          {v.business_email}
+                        </p>
+                      )}
+                    </div>
+                    <LinkAccount
+                      vendor={v}
+                      busy={busy}
+                      onLink={(email) => linkAccount(v.id, email)}
+                    />
                     <p className="mt-2 text-sm text-neutral-300">
                       {v.description || "No description"}
                     </p>
@@ -322,6 +359,64 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
           })
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Who runs this vendor, and a box to change it.
+ *
+ * Exists because the first real vendor applied with a business email while
+ * signing in with a personal one, so approval had no account to connect to
+ * and there was no way, short of SQL, to point it at the right person.
+ */
+function LinkAccount({
+  vendor,
+  busy,
+  onLink,
+}: {
+  vendor: Vendor;
+  busy: boolean;
+  onLink: (email: string) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const linked = !!vendor.user_id;
+
+  return (
+    <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+      {linked ? (
+        <p className="text-sm text-[#39FF14]">
+          ✓ Managed by{" "}
+          <span className="font-medium">{vendor.linked_email ?? "an account"}</span>
+          <span className="text-neutral-500"> — they have the vendor dashboard.</span>
+        </p>
+      ) : (
+        <p className="text-sm text-[#FFC93C]">
+          Not linked to any account — nobody can manage this vendor yet.
+        </p>
+      )}
+      <form
+        className="mt-2 flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (email.trim()) onLink(email.trim());
+        }}
+      >
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={linked ? "Move to a different account's email" : "Email they sign in with"}
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={busy || !email.trim()}
+          className="rounded-lg bg-[#3AFFD4]/20 px-3 py-2 text-sm text-[#3AFFD4] disabled:opacity-40"
+        >
+          {linked ? "Move" : "Link to account"}
+        </button>
+      </form>
     </div>
   );
 }

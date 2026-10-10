@@ -1,12 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 
 export default function VendorApplyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   // Captured at mount — used as a timing trap against instant bot submits.
   const [loadedAt] = useState(() => Date.now());
+  // Pre-fill the personal email from the signed-in account. That address is
+  // what links an approved vendor to the person who runs it, so the closer it
+  // starts to their real login the fewer approvals end up with nobody to
+  // connect to.
+  const [personalEmail, setPersonalEmail] = useState("");
+  const [signedInAs, setSignedInAs] = useState<string | null>(null);
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        const e = data.user?.email ?? null;
+        setSignedInAs(e);
+        if (e) setPersonalEmail((cur) => cur || e);
+      });
+  }, []);
 
   return (
     <main className="min-h-screen px-6 py-16 text-neutral-100">
@@ -35,7 +51,8 @@ export default function VendorApplyPage() {
 
             const data = {
               name: formData.get("name"),
-              email: formData.get("email"),
+              personalEmail: formData.get("personalEmail"),
+              businessEmail: formData.get("businessEmail"),
               category: formData.get("category"),
               description: formData.get("description"),
               website: formData.get("website"),
@@ -84,17 +101,40 @@ export default function VendorApplyPage() {
 
           <input
             name="name"
-            placeholder="Name"
+            placeholder="Business or brand name"
             required
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
           />
 
-          <input
-            name="email"
-            placeholder="Email"
-            required
-            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-          />
+          <div>
+            <input
+              name="personalEmail"
+              type="email"
+              placeholder="Your personal email"
+              required
+              autoComplete="email"
+              value={personalEmail}
+              onChange={(e) => setPersonalEmail(e.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+            />
+            <p className="mt-1.5 px-1 text-xs text-neutral-500">
+              {signedInAs
+                ? "This is the email you're signed in with — approval gives this account your vendor dashboard."
+                : "Use the email you sign in to NorthEDM with. When you're approved, that account gets your vendor dashboard."}
+            </p>
+          </div>
+
+          <div>
+            <input
+              name="businessEmail"
+              type="email"
+              placeholder="Business email (optional)"
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+            />
+            <p className="mt-1.5 px-1 text-xs text-neutral-500">
+              Where customers can reach your business, if it&apos;s different.
+            </p>
+          </div>
 
           <input
             name="category"

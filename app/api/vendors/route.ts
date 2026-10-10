@@ -48,7 +48,11 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!data.name || !data.email || !data.category || !data.description) {
+    // The form sends personalEmail (required) and businessEmail (optional).
+    // Fall back to the old single "email" field so a page cached from before
+    // this change can still submit.
+    const personalRaw = data.personalEmail ?? data.email;
+    if (!data.name || !personalRaw || !data.category || !data.description) {
       return NextResponse.json(
         { success: false, error: "Missing required fields." },
         { status: 400 }
@@ -56,13 +60,23 @@ export async function POST(req: Request) {
     }
 
     // 5) Basic shape/length validation — reject obviously bogus payloads.
-    const email = String(data.email).trim().toLowerCase();
+    const email = String(personalRaw).trim().toLowerCase();
+    const businessEmail = data.businessEmail
+      ? String(data.businessEmail).trim().toLowerCase().slice(0, 160)
+      : null;
     const name = String(data.name).trim();
     const category = String(data.category).trim();
     const description = String(data.description).trim();
     // Optional website — stored as entered (the UI normalizes to https:// on display).
     const website = data.website ? String(data.website).trim().slice(0, 200) : null;
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailOk = EMAIL_SHAPE.test(email);
+    if (businessEmail && !EMAIL_SHAPE.test(businessEmail)) {
+      return NextResponse.json(
+        { success: false, error: "That business email doesn't look right — check it, or leave it blank." },
+        { status: 400 }
+      );
+    }
     if (
       !emailOk ||
       name.length > 120 ||
@@ -76,10 +90,18 @@ export async function POST(req: Request) {
       );
     }
 
+    // Signed in while applying? Then we know exactly whose vendor this is and
+    // approval needs no email matching at all. Taken from the verified session,
+    // never from the request body — and the insert policy refuses any user_id
+    // that isn't the caller's own.
+    const { data: { user: applicant } } = await supabase.auth.getUser();
+
     const { error } = await supabase.from("vendors").insert([
       {
         name,
         email,
+        business_email: businessEmail,
+        user_id: applicant?.id ?? null,
         category,
         description,
         website,

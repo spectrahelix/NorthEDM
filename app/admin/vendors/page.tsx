@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import VendorDashboard from "./VendorDashboard";
 
 const ADMIN_EMAIL = "cjblue27@gmail.com";
@@ -17,6 +18,9 @@ type Vendor = {
   suspended_at: string | null;
   suspended_reason: string | null;
   created_at: string | null;
+  user_id: string | null;
+  business_email: string | null;
+  linked_email: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
@@ -49,7 +53,30 @@ export default async function AdminVendorsPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const vendors = (data ?? []) as Vendor[];
+  // Who each vendor is actually linked to. Account emails live in auth.users,
+  // which only the service role can read — and showing "linked" without saying
+  // to WHOM is how a vendor ends up run by the wrong person unnoticed.
+  const raw = (data ?? []) as Vendor[];
+  const linkedIds = [...new Set(raw.map((v) => v.user_id).filter(Boolean))] as string[];
+  const emailById = new Map<string, string | null>();
+  if (linkedIds.length) {
+    const svc = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const found = await Promise.all(
+      linkedIds.map(async (id) => {
+        const { data: u } = await svc.auth.admin.getUserById(id);
+        return [id, u.user?.email ?? null] as const;
+      })
+    );
+    for (const [id, email] of found) emailById.set(id, email);
+  }
+  const vendors = raw.map((v) => ({
+    ...v,
+    linked_email: v.user_id ? emailById.get(v.user_id) ?? null : null,
+  }));
 
   if (error) {
     console.error(error);
