@@ -161,7 +161,17 @@ export default function VendorDashboard() {
       return;
     }
     const { data } = supabase.storage.from("products").getPublicUrl(path);
-    setForm((f) => ({ ...f, imageUrl: `${data.publicUrl}?t=${Date.now()}` }));
+    const imageUrl = `${data.publicUrl}?t=${Date.now()}`;
+    setForm((f) => ({ ...f, imageUrl }));
+    // Editing an existing item: save the photo to it now, on its own, so a
+    // phone reloading the page after its photo picker can't lose it.
+    if (editId) {
+      const r = await fetch(`/api/vendor/products/${editId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.product) setProducts((prev) => prev.map((p) => (p.id === editId ? j.product : p)));
+    }
     setUploading(false);
   }
 

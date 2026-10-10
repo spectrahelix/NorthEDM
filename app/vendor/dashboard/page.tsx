@@ -44,7 +44,7 @@ export default function VendorDashboard() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const formDirty = JSON.stringify(form) !== JSON.stringify(EMPTY);
-  useUnsavedDraft(
+  const draftRestored = useUnsavedDraft(
     vendorId ? `product-draft:${vendorId}` : null,
     { form, editingId },
     formDirty,
@@ -138,6 +138,15 @@ export default function VendorDashboard() {
     if (!res.ok) { setError(j.error || "Upload failed."); return; }
     setForm((f) => ({ ...f, imageUrl: j.url }));
     if (fileRef.current) fileRef.current.value = "";
+    // Editing an existing product: save the photo to it right now, on its own.
+    // Phones can reload the page after the photo picker closes; the photo is
+    // then already on the product instead of depending on this form surviving.
+    if (editingId) {
+      const r = await fetch(`/api/vendor/products/${editingId}`, {
+        method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl: j.url }),
+      });
+      if (r.ok) loadProducts();
+    }
   }
 
   async function save(e: React.FormEvent) {
@@ -264,6 +273,11 @@ export default function VendorDashboard() {
           {sqMsg && <p className="mt-3 text-sm text-neutral-300">{sqMsg}</p>}
         </div>
 
+        {draftRestored && formDirty && (
+          <p className="mt-6 rounded-xl border border-[#39FF14]/30 bg-[#39FF14]/[0.06] px-4 py-3 text-sm text-neutral-200">
+            We brought back the product you were working on before the page reloaded. Check it over and save.
+          </p>
+        )}
         {/* Add / edit form */}
         <form onSubmit={save} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
