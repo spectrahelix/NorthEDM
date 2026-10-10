@@ -302,7 +302,9 @@ export default async function AdminPage() {
                 className="rounded-2xl border border-white/10 p-6 transition hover:bg-white/5"
               >
                 <h2 className="font-bebas text-xl tracking-wide">Vendors</h2>
-                <p className="mt-1 text-sm text-neutral-400">Manage vendors</p>
+                <p className="mt-1 text-sm text-neutral-400">
+                  Approve (gives them their dashboard), suspend or restore public view
+                </p>
               </Link>
             </div>
           </>
