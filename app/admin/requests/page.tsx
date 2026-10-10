@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { RequestCard, type Reply, type ServiceRequest } from "./RequestCard";
 
 const ADMIN_EMAIL = "cjblue27@gmail.com";
 
@@ -26,25 +28,40 @@ export default async function AdminRequestsPage() {
 
   if (!isAdmin) redirect("/");
 
-  const { data: requests, error } = await supabase
+  const { data, error } = await supabase
     .from("requests")
     .select("*")
     .order("created_at", { ascending: false });
+  const requests = (data ?? []) as ServiceRequest[];
+
+  // Reply history is admin-only (service role), so it is read here after the
+  // admin check above rather than from the browser.
+  const svc = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  const { data: replyRows } = await svc
+    .from("request_replies")
+    .select("id, request_id, body, sent_to, delivered, created_at")
+    .order("created_at", { ascending: true });
+  const repliesFor = new Map<number, Reply[]>();
+  for (const r of (replyRows ?? []) as Reply[]) {
+    repliesFor.set(r.request_id, [...(repliesFor.get(r.request_id) ?? []), r]);
+  }
+
+  // What needs a decision first; everything else after.
+  const open = requests.filter((r) => (r.status ?? "pending") === "pending");
+  const rest = requests.filter((r) => (r.status ?? "pending") !== "pending");
 
   return (
     <main className="min-h-screen px-6 py-16 text-neutral-100">
-      <div className="mx-auto max-w-6xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-green-300">
-          Admin
-        </p>
+      <div className="mx-auto max-w-4xl">
+        <p className="text-sm uppercase tracking-[0.3em] text-green-300">Admin</p>
         <h1 className="mt-3 text-5xl font-semibold">Service Requests</h1>
         <p className="mt-4 max-w-2xl text-neutral-300">
-          Review incoming work and service requests submitted through NorthEDM.
+          Review, reply to, and track service requests submitted through NorthEDM.
         </p>
-
-        <div className="mt-6 text-sm text-neutral-400">
-          Signed in as: {user.email}
-        </div>
 
         {error ? (
           <div className="mt-8 rounded-3xl border border-red-500/20 bg-red-500/10 p-6 text-red-300">
@@ -52,50 +69,33 @@ export default async function AdminRequestsPage() {
           </div>
         ) : null}
 
-        <div className="mt-10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-white/10 bg-white/[0.03] text-neutral-300">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Service Type</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Urgency</th>
-                <th className="px-4 py-3">Budget</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Submitted</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests && requests.length > 0 ? (
-                requests.map((request) => (
-                  <tr key={request.id} className="border-b border-white/5 align-top">
-                    <td className="px-4 py-4">{request.name}</td>
-                    <td className="px-4 py-4">{request.email}</td>
-                    <td className="px-4 py-4">{request.service_type}</td>
-                    <td className="px-4 py-4">{request.description}</td>
-                    <td className="px-4 py-4">{request.urgency || "—"}</td>
-                    <td className="px-4 py-4">{request.budget || "—"}</td>
-                    <td className="px-4 py-4">
-                      <span className="rounded-full bg-yellow-500/20 px-2 py-1 text-xs text-yellow-300">
-                        {request.status || "pending"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      {new Date(request.created_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="px-4 py-6 text-neutral-400" colSpan={8}>
-                    No requests yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <h2 className="mb-3 mt-10 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+          Needs a decision ({open.length})
+        </h2>
+        {open.length === 0 ? (
+          <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-sm text-neutral-500">
+            Nothing waiting on you.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {open.map((r) => (
+              <RequestCard key={r.id} request={r} replies={repliesFor.get(r.id) ?? []} />
+            ))}
+          </div>
+        )}
+
+        {rest.length > 0 && (
+          <>
+            <h2 className="mb-3 mt-10 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+              Everything else ({rest.length})
+            </h2>
+            <div className="space-y-3">
+              {rest.map((r) => (
+                <RequestCard key={r.id} request={r} replies={repliesFor.get(r.id) ?? []} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
