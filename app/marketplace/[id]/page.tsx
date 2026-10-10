@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getProfile, isAdminRole } from "@/utils/supabase/profile";
 import { VendorEditForm } from "./components/VendorEditForm";
 import { BackBar } from "@/app/components/BackBar";
+import { accentOr } from "@/utils/accent";
 
 function normalizeUrl(url: string) {
   return /^https?:\/\//.test(url) ? url : `https://${url}`;
@@ -25,6 +26,7 @@ type Vendor = {
   website: string | null;
   phone: string | null;
   show_phone: boolean | null;
+  accent_color: string | null;
 };
 
 type Product = {
@@ -80,6 +82,7 @@ export default async function VendorDetailPage({
     .order("created_at", { ascending: false });
 
   const products = (productData ?? []) as Product[];
+  const accent = accentOr(vendor.accent_color);
 
   return (
     <main className="min-h-screen px-6 py-16 text-white">
@@ -130,7 +133,7 @@ export default async function VendorDetailPage({
             ) : null}
           </div>
 
-          <p className="mt-4 text-sm uppercase tracking-[0.25em] text-neutral-400">
+          <p className="mt-4 text-sm uppercase tracking-[0.25em]" style={{ color: accent }}>
             {vendor.category || "uncategorized"}
           </p>
 
@@ -181,7 +184,7 @@ export default async function VendorDetailPage({
 
         <section className="mt-10">
           <div className="mb-6">
-            <p className="text-sm uppercase tracking-[0.3em] text-green-300">
+            <p className="text-sm uppercase tracking-[0.3em]" style={{ color: accent }}>
               Inventory
             </p>
             <h2 className="mt-2 text-3xl font-semibold">Available Products</h2>
@@ -207,7 +210,7 @@ export default async function VendorDetailPage({
                   </p>
 
                   <div className="mt-5 flex flex-wrap gap-2 text-sm">
-                    <span className="rounded-full bg-white/10 px-3 py-1">
+                    <span className="rounded-full bg-white/10 px-3 py-1 font-semibold" style={{ color: accent }}>
                       ${product.price ?? 0}
                     </span>
                     <span className="rounded-full bg-white/10 px-3 py-1">

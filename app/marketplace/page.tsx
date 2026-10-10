@@ -23,6 +23,7 @@ type Vendor = {
   vendor_type: string | null;
   is_founder: boolean | null;
   website: string | null;
+  accent_color: string | null;
 };
 
 function normalizeUrl(url: string) {
@@ -67,7 +68,7 @@ export default async function MarketplacePage() {
 
   const { data } = await supabase
     .from("vendors")
-    .select("id, name, category, description, vendor_type, is_founder, website")
+    .select("id, name, category, description, vendor_type, is_founder, website, accent_color")
     .eq("status", "approved")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
@@ -325,7 +326,9 @@ export default async function MarketplacePage() {
                   ) : null}
                 </div>
 
-                <p className="relative z-10 mt-3 text-sm text-neutral-400">
+                {/* A vendor who picked an accent gets their tags in it; others stay grey. */}
+                <p className="relative z-10 mt-3 text-sm text-neutral-400"
+                  style={vendor.accent_color ? { color: vendor.accent_color } : undefined}>
                   {vendor.category || "uncategorized"}
                 </p>
 
