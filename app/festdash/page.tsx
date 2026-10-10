@@ -55,7 +55,7 @@ export default async function FestDashPage() {
   const vIds = (fdVendors ?? []).map((v) => v.vendor_id).filter(Boolean);
   const uIds = (fdVendors ?? []).map((v) => v.user_id).filter(Boolean);
   const [vRows, showRows, profRows] = await Promise.all([
-    vIds.length ? admin.from("vendors").select("id, name").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null }[] }),
+    vIds.length ? admin.from("vendors").select("id, name, suspended_at").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null; suspended_at: string | null }[] }),
     uIds.length ? admin.from("vendor_shows").select("*").in("user_id", uIds) : Promise.resolve({ data: [] as VendorShow[] }),
     uIds.length ? admin.from("user_profiles").select("id, hide_shows").in("id", uIds) : Promise.resolve({ data: [] as { id: string; hide_shows: boolean }[] }),
   ]);
@@ -66,7 +66,14 @@ export default async function FestDashPage() {
     if (!showsByUser.has(s.user_id)) showsByUser.set(s.user_id, []);
     showsByUser.get(s.user_id)!.push(s);
   }
-  const activeVendors = (fdVendors ?? []).map((v) => {
+  // This list is read with the service role, which skips every visibility
+  // rule, so suspension has to be applied by hand. Without it a suspended
+  // vendor — hidden from the marketplace, their store and the FestDash menu —
+  // was still named here on the public FestDash page.
+  const suspended = new Set(
+    (vRows.data ?? []).filter((v) => v.suspended_at).map((v) => v.id)
+  );
+  const activeVendors = (fdVendors ?? []).filter((v) => !suspended.has(v.vendor_id)).map((v) => {
     const shows = hideById.get(v.user_id) ? [] : (showsByUser.get(v.user_id) ?? []);
     return { vendorId: v.vendor_id as number, name: (nameById.get(v.vendor_id) as string) || "Vendor", cur: currentShow(shows) };
   });
