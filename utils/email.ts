@@ -7,6 +7,9 @@ export async function sendEmail(opts: {
   html?: string;
   text?: string;
   toName?: string;
+  /** Where the recipient's reply goes. Without it, replies land at the
+   *  sending address, which nobody reads. */
+  replyTo?: string;
 }): Promise<boolean> {
   const key = process.env.BREVO_API_KEY;
   if (!key) {
@@ -22,6 +25,7 @@ export async function sendEmail(opts: {
         sender: { name: "NorthEDM", email: senderEmail },
         to: [{ email: opts.to, ...(opts.toName ? { name: opts.toName } : {}) }],
         subject: opts.subject,
+        ...(opts.replyTo ? { replyTo: { email: opts.replyTo } } : {}),
         ...(opts.html ? { htmlContent: opts.html } : {}),
         ...(opts.text ? { textContent: opts.text } : {}),
       }),
