@@ -106,36 +106,48 @@ export function clientContradictsItself(headers: Headers): boolean {
 /**
  * Per-IP throttle backed by public.request_throttle.
  *
- * Returns true when this caller is OVER the limit. Records the attempt first,
- * so the current request counts toward its own bucket.
+ * Deliberately split into a read and a write, because the single combined
+ * version counted EVERY request, including the ones the server itself
+ * refused. On 2026-10-10 a real vendor applicant hit a bug in our own code,
+ * retried six times as anyone would, and was locked out with "Too many
+ * submissions" — punished for our fault, on his first contact with the site.
  *
- * Fails OPEN on any database trouble and on a missing IP: a throttle that
- * starts rejecting because a count query failed would take down the very forms
- * it protects, and a null IP would pool every visitor into one bucket and
+ * So: check before doing the work, record only once the work succeeded. A
+ * person who is being refused can keep trying; a caller who successfully
+ * submits six applications is the one being throttled, which is the only case
+ * this was ever meant to stop. Junk payloads still cost an attacker nothing to
+ * send, but they also create nothing, and the honeypot, timing and
+ * client-hints checks are what actually turn those away.
+ *
+ * Both fail OPEN on database trouble or a missing IP: a throttle that starts
+ * rejecting because a count query failed would take down the very forms it
+ * protects, and a null IP would pool every visitor into one bucket and
  * rate-limit the whole site as a single caller.
  */
+async function throttleDb() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  // Its own client so callers need pass nothing but the bucket and IP — the
+  // concrete client type differs between call sites and threading it through
+  // bought nothing but generic mismatches.
+  const { createClient } = await import("@supabase/supabase-js");
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+/** True when this caller has already had `max` SUCCESSES inside the window. */
 export async function overRateLimit(
   bucket: string,
   ip: string | null,
   opts: { max: number; windowMs: number }
 ): Promise<boolean> {
   if (!ip) return false;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return false;
-
-  // Its own client so callers need pass nothing but the bucket and IP — the
-  // concrete client type differs between call sites and threading it through
-  // bought nothing but generic mismatches.
-  const { createClient } = await import("@supabase/supabase-js");
-  const db = createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const db = await throttleDb();
+  if (!db) return false;
 
   try {
-    await db.from("request_throttle").insert({ bucket, ip });
-
     const since = new Date(Date.now() - opts.windowMs).toISOString();
     const { count, error } = await db
       .from("request_throttle")
@@ -145,7 +157,23 @@ export async function overRateLimit(
       .gte("created_at", since);
 
     if (error) return false;
+    return (count ?? 0) >= opts.max;
+  } catch {
+    return false;
+  }
+}
 
+/**
+ * Count one completed submission. Call this only after the work actually
+ * succeeded — never on a validation error, and never on a failure of ours.
+ */
+export async function recordAttempt(bucket: string, ip: string | null): Promise<void> {
+  if (!ip) return;
+  const db = await throttleDb();
+  if (!db) return;
+
+  try {
+    await db.from("request_throttle").insert({ bucket, ip });
     // Prune this key's old rows so the table stays bounded without needing a
     // scheduled job. Index-scoped, so the cost is negligible.
     await db
@@ -154,10 +182,9 @@ export async function overRateLimit(
       .eq("bucket", bucket)
       .eq("ip", ip)
       .lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-    return (count ?? 0) > opts.max;
   } catch {
-    return false;
+    // A throttle that cannot record is a throttle that counts low. That is the
+    // safe direction to fail here.
   }
 }
 

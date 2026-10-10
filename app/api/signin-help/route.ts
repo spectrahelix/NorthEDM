@@ -8,6 +8,7 @@ import {
   clientContradictsItself,
   implausibleGmailDots,
   overRateLimit,
+  recordAttempt,
 } from "@/utils/botSignals";
 
 // Sign-in help — the ONE submission path deliberately open to guests.
@@ -95,6 +96,8 @@ export async function POST(req: Request) {
     user_agent: String(body.userAgent || "").slice(0, 400),
     client_ip: ip,
   });
+
+  if (!error) await recordAttempt("signin-help", ip);
 
   if (error) {
     console.error("signin-help insert error:", error.message);
