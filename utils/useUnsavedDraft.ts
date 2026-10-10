@@ -1,34 +1,39 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * Keep a half-filled form alive across a page reload.
+ * Keep a half-filled form alive across a page reload — including the phone
+ * throwing the whole page away.
  *
- * Two things reload a page under someone mid-form, and both hit the vendor
- * inventory form on 2026-10-10 the moment a vendor opened the photo picker:
+ * On 2026-10-10 a vendor lost a product form twice on opening the photo
+ * picker. The first time the service worker reloaded for a new deploy (now
+ * blocked site-wide while anything is typed). The second time no deploy
+ * happened: page_views show the page starting fresh 17s after his photo
+ * finished uploading, i.e. the phone itself reloaded it. A draft kept in
+ * sessionStorage did not survive that (it does survive an ordinary reload —
+ * tested), so this now uses localStorage, which outlives a tab or app restart.
  *
- *   1. ServiceWorkerRegister reloads when a new deploy takes over, and it
- *      checks for one whenever the tab becomes visible again — which is
- *      exactly what returning from the phone's photo picker does.
- *   2. Mobile browsers (iOS especially) may discard a backgrounded tab to free
- *      memory while the camera or photo library is open, and reload it after.
+ * Drafts expire after MAX_AGE and are removed the moment the form is clean
+ * (saved or cancelled), so one never resurfaces on someone else's visit long
+ * after the fact. Keys include the vendor id, so accounts don't share drafts.
  *
- * (1) is prevented: while `dirty`, this marks <body data-unsaved="1"> and the
- * service worker skips its reload. (2) can't be prevented from a web page, so
- * the draft is mirrored to sessionStorage and put back on the next load.
+ * Also marks <body data-unsaved="1"> while dirty; the service worker will not
+ * reload a page carrying it.
  *
- * sessionStorage is per-tab and gone when the tab closes, so a draft never
- * outlives the visit or leaks to another person on the same device.
+ * Returns true once a saved draft has been put back, so the page can say so.
  */
+const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 export function useUnsavedDraft<T>(
   key: string | null,
   value: T,
   dirty: boolean,
   restore: (saved: T) => void,
-) {
+): boolean {
   const restored = useRef(false);
   const restoreRef = useRef(restore);
+  const [didRestore, setDidRestore] = useState(false);
   useEffect(() => { restoreRef.current = restore; });
 
   // Put a saved draft back once, after mount. Deferred a tick so the restore's
@@ -38,8 +43,15 @@ export function useUnsavedDraft<T>(
     const t = setTimeout(() => {
       restored.current = true;
       try {
-        const raw = sessionStorage.getItem(key);
-        if (raw) restoreRef.current(JSON.parse(raw) as T);
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const saved = JSON.parse(raw) as { at?: number; value?: T };
+        if (!saved.at || Date.now() - saved.at > MAX_AGE_MS || saved.value === undefined) {
+          localStorage.removeItem(key);
+          return;
+        }
+        restoreRef.current(saved.value);
+        setDidRestore(true);
       } catch { /* storage blocked or corrupt — start empty */ }
     }, 0);
     return () => clearTimeout(t);
@@ -49,8 +61,8 @@ export function useUnsavedDraft<T>(
   useEffect(() => {
     if (!key || !restored.current) return;
     try {
-      if (dirty) sessionStorage.setItem(key, JSON.stringify(value));
-      else sessionStorage.removeItem(key);
+      if (dirty) localStorage.setItem(key, JSON.stringify({ at: Date.now(), value }));
+      else localStorage.removeItem(key);
     } catch { /* storage full or blocked — the in-memory form still works */ }
   }, [key, value, dirty]);
 
@@ -60,4 +72,6 @@ export function useUnsavedDraft<T>(
     else delete document.body.dataset.unsaved;
     return () => { delete document.body.dataset.unsaved; };
   }, [dirty]);
+
+  return didRestore;
 }
