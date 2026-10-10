@@ -1,3 +1,4 @@
+import { AppliedAt } from "@/app/components/AppliedAt";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ApplyActions } from "./ApplyRow";
@@ -69,6 +70,7 @@ function Card({ a, decided }: { a: App; decided?: boolean }) {
           <p className="font-dm-mono text-xs text-neutral-500">
             {a.category || "—"}{a.contact ? ` · ${a.contact}` : ""}{a.website ? ` · ${a.website}` : ""}
           </p>
+          <AppliedAt at={a.created_at} waiting={!decided} />
         </div>
         {decided ? (
           <span className="font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">{a.status}</span>

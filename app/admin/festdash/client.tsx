@@ -1,4 +1,5 @@
 "use client";
+import { AppliedAt } from "@/app/components/AppliedAt";
 import { useState } from "react";
 
 type Application = {
@@ -176,6 +177,7 @@ export default function FestDashAdminClient({
                     <p className="font-semibold text-white">{app.business_name}</p>
                     <p className="text-sm text-neutral-400">{app.contact_name} · {app.email}</p>
                     {app.phone && <p className="text-sm text-neutral-500">{app.phone}</p>}
+                    <AppliedAt at={app.created_at} waiting={app.status === "pending"} />
                   </div>
                   <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[app.status]}`}>
                     {app.status}
@@ -304,6 +306,7 @@ export default function FestDashAdminClient({
                   <div>
                     <p className="text-sm text-neutral-300">{app.business_name}</p>
                     <p className="text-xs text-neutral-600">{app.email}</p>
+                    <AppliedAt at={app.created_at} waiting={false} />
                   </div>
                   <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[app.status]}`}>
                     {app.status}
