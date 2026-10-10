@@ -12,6 +12,7 @@ export type Vendor = {
   capacity: string | null;
   vendor_type: string | null;
   is_public: boolean | null;
+  wants_public: boolean | null;
   is_founder: boolean | null;
   status: string | null;
 };
@@ -184,6 +185,15 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                       <span className="rounded-full bg-white/10 px-3 py-1">
                         public: {v.is_public ? "yes" : "no"}
                       </span>
+                      {/* What they ASKED for. An applicant cannot set is_public
+                          — the RLS policy forbids it — so without this the
+                          request was invisible and every applicant looked like
+                          they wanted to stay private. */}
+                      {v.wants_public && !v.is_public && (
+                        <span className="rounded-full bg-[#3AFFD4]/15 px-3 py-1 text-[#3AFFD4]">
+                          asked to be listed publicly
+                        </span>
+                      )}
                       {v.is_founder && (
                         <span className="rounded-full bg-purple-500/20 px-3 py-1 text-purple-300">
                           founder
