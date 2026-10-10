@@ -1,4 +1,5 @@
 "use client";
+import { AppliedAt } from "@/app/components/AppliedAt";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -123,6 +124,7 @@ function ApplicationCard({
         <div>
           <p className="font-semibold text-white">{app.display_name}</p>
           <p className="text-sm text-neutral-400">{app.email}{app.phone ? ` · ${app.phone}` : ""}</p>
+          <AppliedAt at={app.created_at} waiting={app.status === "pending"} />
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[app.status] ?? ""}`}>
           {app.status}

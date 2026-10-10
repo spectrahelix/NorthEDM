@@ -1,4 +1,5 @@
 "use client";
+import { AppliedAt } from "@/app/components/AppliedAt";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,6 +16,7 @@ export type Vendor = {
   wants_public: boolean | null;
   suspended_at: string | null;
   suspended_reason: string | null;
+  created_at: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
@@ -208,6 +210,9 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                       </button>
                     </div>
                   )}
+                </div>
+                <div className="-mt-1 pb-3 pl-11 pr-4">
+                  <AppliedAt at={v.created_at} waiting={status === "pending"} />
                 </div>
 
                 {/* Expanded detail + full actions */}

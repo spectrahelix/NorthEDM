@@ -1,3 +1,4 @@
+import { AppliedAt } from "@/app/components/AppliedAt";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ArtisanActions } from "./ArtisanRow";
@@ -17,6 +18,13 @@ function Card({ p, verified }: { p: UserProfile; verified: boolean }) {
             {p.display_name}
             {p.artisan_craft ? ` · ${p.artisan_craft}` : ""}
           </p>
+          {/* artisan_applied_at, not created_at: created_at is when the
+              ACCOUNT was made, which would show a June signup who applied
+              today as having waited four months. */}
+          <AppliedAt
+            at={(p as UserProfile & { artisan_applied_at?: string | null }).artisan_applied_at}
+            waiting={!verified}
+          />
         </div>
         <ArtisanActions userId={p.id} verified={verified} />
       </div>
@@ -49,7 +57,9 @@ export default async function AdminArtisansPage() {
       .select("*")
       .eq("artisan_status", "pending")
       .eq("is_artisan", false)
-      .order("created_at", { ascending: true }),
+      // Longest-waiting first, by when they APPLIED rather than when they
+      // joined.
+      .order("artisan_applied_at", { ascending: true, nullsFirst: false }),
     supabase
       .from("user_profiles")
       .select("*")
