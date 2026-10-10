@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { AccentPicker } from "@/app/components/AccentPicker";
+import { DEFAULT_ACCENT } from "@/utils/accent";
 
 /**
  * A vendor's own business details, editable by them.
@@ -27,6 +29,7 @@ type VendorRow = {
   capacity: string | null;
   description: string | null;
   wants_public: boolean | null;
+  accent_color: string | null;
   status: string | null;
   is_public: boolean | null;
   vendor_type: string | null;
@@ -36,6 +39,7 @@ type VendorRow = {
 const EDITABLE = [
   "name", "first_name", "last_name", "email", "business_email", "phone",
   "show_phone", "website", "category", "capacity", "description", "wants_public",
+  "accent_color",
 ] as const;
 
 const input =
@@ -170,9 +174,10 @@ export function VendorEditor({ vendorId }: { vendorId: number }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={label}>Category</label>
+            <label className={label}>What you sell — your tags</label>
             <input className={input} value={v.category ?? ""} maxLength={80}
-              onChange={(e) => set("category", e.target.value)} />
+              onChange={(e) => set("category", e.target.value)} placeholder="Reiki · Clothing · Jewelry" />
+            <p className="mt-1 text-[11px] text-neutral-500">Shown under your name everywhere. Separate with · or commas.</p>
           </div>
           <div>
             <label className={label}>Capacity</label>
@@ -185,6 +190,12 @@ export function VendorEditor({ vendorId }: { vendorId: number }) {
           <label className={label}>Purpose — what you offer</label>
           <textarea className={input} rows={4} value={v.description ?? ""} maxLength={4000}
             onChange={(e) => set("description", e.target.value)} />
+        </div>
+
+        <div>
+          <label className={label}>Your accent colour</label>
+          <AccentPicker value={v.accent_color ?? DEFAULT_ACCENT} onChange={(hex) => set("accent_color", hex)} />
+          <p className="mt-1 text-[11px] text-neutral-500">Used for your prices and highlights on your marketplace page.</p>
         </div>
 
         <label className="flex items-center gap-2 text-sm text-neutral-300">

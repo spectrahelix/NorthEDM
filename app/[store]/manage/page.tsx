@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { AccentPicker } from "@/app/components/AccentPicker";
 
 type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number };
 type Member = { vendor_id: number; status: string; name: string; category: string | null };
@@ -66,9 +67,9 @@ export default function StoreManagePage() {
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
             <input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Tagline"
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
-            <div className="flex items-center gap-3">
-              <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-10 w-14 rounded-lg border border-white/10 bg-transparent" />
-              <span className="font-dm-mono text-xs text-neutral-500">Accent color</span>
+            <div>
+              <p className="mb-2 font-dm-mono text-xs text-neutral-500">Accent colour</p>
+              <AccentPicker value={accent} onChange={setAccent} />
             </div>
           </div>
           <button onClick={() => post({ action: "branding", name, tagline, accentColor: accent }, "Saved.")}

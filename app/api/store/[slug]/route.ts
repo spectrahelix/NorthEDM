@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardStoreOperator } from "@/utils/store";
+import { isAccentChoice } from "@/utils/accent";
 
 // Operator (or NorthEDM admin) manages a store: branding + member vendors.
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -38,7 +39,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const patch: Record<string, unknown> = {};
     if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim().slice(0, 80);
     if (typeof body.tagline === "string") patch.tagline = body.tagline.trim().slice(0, 200) || null;
-    if (/^#[0-9a-fA-F]{6}$/.test(String(body.accentColor))) patch.accent_color = body.accentColor;
+    // Only the readable palette (utils/accent.ts) — a free hex let an operator
+    // pick a colour that made their own prices unreadable.
+    if (body.accentColor !== undefined) {
+      if (!isAccentChoice(body.accentColor)) return NextResponse.json({ error: "Pick one of the accent colours shown." }, { status: 400 });
+      patch.accent_color = String(body.accentColor).toUpperCase();
+    }
     if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
     const { error } = await g.admin.from("stores").update(patch).eq("id", g.store.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
