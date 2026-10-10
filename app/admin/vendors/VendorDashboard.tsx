@@ -13,6 +13,8 @@ export type Vendor = {
   vendor_type: string | null;
   is_public: boolean | null;
   wants_public: boolean | null;
+  suspended_at: string | null;
+  suspended_reason: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
@@ -47,6 +49,8 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
     rejected: vendors.filter((v) => statusOf(v) === "rejected").length,
   };
 
+  const [note, setNote] = useState("");
+
   const shown = vendors.filter((v) => filter === "all" || statusOf(v) === filter);
 
   async function updateVendor(
@@ -62,11 +66,43 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status, vendorType, isPublic }),
       });
-      if (!res.ok) throw new Error("Failed to update vendor");
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        throw new Error(json.error || "Failed to update vendor");
+      }
+      // Approving can succeed at the status and still fail to grant access —
+      // usually because they applied before making an account. Say which
+      // happened; approving into silence is how a vendor sits "approved" with
+      // no dashboard and nobody notices.
+      if (json.note) setNote(json.note);
       router.refresh();
     } catch (error) {
-      console.error(error);
-      alert("Could not update vendor.");
+      setNote((error as Error).message);
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  async function setSuspended(id: number, suspend: boolean) {
+    const reason = suspend
+      ? window.prompt("Why? (shown only to you)", "Unpaid invoice")
+      : null;
+    if (suspend && reason === null) return; // cancelled
+    setLoadingId(id);
+    try {
+      const res = await fetch("/api/vendors/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: suspend ? "suspend" : "unsuspend", reason }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        throw new Error(json.error || "Could not change that.");
+      }
+      if (json.note) setNote(json.note);
+      router.refresh();
+    } catch (error) {
+      setNote((error as Error).message);
     } finally {
       setLoadingId(null);
     }
@@ -74,6 +110,15 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
 
   return (
     <div>
+      {note && (
+        <div className="mb-5 flex items-start justify-between gap-4 rounded-xl border border-[#3AFFD4]/25 bg-[#3AFFD4]/[0.07] px-4 py-3 text-sm text-[#3AFFD4]">
+          <span>{note}</span>
+          <button onClick={() => setNote("")} className="shrink-0 opacity-70 hover:opacity-100">
+            dismiss
+          </button>
+        </div>
+      )}
+
       {/* Status filter chips */}
       <div className="mb-6 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -189,6 +234,12 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                           — the RLS policy forbids it — so without this the
                           request was invisible and every applicant looked like
                           they wanted to stay private. */}
+                      {v.suspended_at && (
+                        <span className="rounded-full bg-orange-500/20 px-3 py-1 text-orange-300">
+                          suspended — hidden from public
+                          {v.suspended_reason ? `: ${v.suspended_reason}` : ""}
+                        </span>
+                      )}
                       {v.wants_public && !v.is_public && (
                         <span className="rounded-full bg-[#3AFFD4]/15 px-3 py-1 text-[#3AFFD4]">
                           asked to be listed publicly
@@ -241,6 +292,23 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                       >
                         Make Private
                       </button>
+                      {v.suspended_at ? (
+                        <button
+                          onClick={() => setSuspended(v.id, false)}
+                          disabled={busy}
+                          className="rounded-xl bg-[#39FF14]/20 px-3 py-2 text-sm text-[#39FF14] disabled:opacity-50"
+                        >
+                          Restore public view
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSuspended(v.id, true)}
+                          disabled={busy}
+                          className="rounded-xl bg-orange-500/20 px-3 py-2 text-sm text-orange-300 disabled:opacity-50"
+                        >
+                          Suspend (unpaid)
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
