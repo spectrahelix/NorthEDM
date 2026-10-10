@@ -13,14 +13,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type GrantResult = { linked: boolean; note: string };
 
 /**
- * Connect a vendor record to the account that applied for it.
+ * Connect a vendor record to the account that runs it.
  *
- * The application form is open to people who are not signed in, so all we have
- * is the email they typed. Match it to an account, then set both halves of the
- * link: vendors.user_id (who owns this record) and user_profiles.vendor_id
- * (which record this person manages). The dashboards read the second one.
+ * Sets both halves of the link: vendors.user_id (who owns this record) and
+ * user_profiles.vendor_id (which record this person manages). The dashboards
+ * read the second one.
+ *
+ * Which account, in order:
+ *   1. `toEmail` — the admin typed an address into "Link to account". This is
+ *      for when the application email isn't the login email, which is exactly
+ *      what happened with the first real vendor: he applied with a business
+ *      address and signs in with a personal one.
+ *   2. vendors.user_id — they applied while signed in, so we already know.
+ *   3. vendors.email — the personal email on the application.
  */
-async function grantVendorAccess(admin: SupabaseClient, vendorId: number): Promise<GrantResult> {
+async function grantVendorAccess(
+  admin: SupabaseClient,
+  vendorId: number,
+  toEmail?: string
+): Promise<GrantResult> {
   const { data: vendor } = await admin
     .from("vendors")
     .select("id, email, user_id")
@@ -29,25 +40,47 @@ async function grantVendorAccess(admin: SupabaseClient, vendorId: number): Promi
 
   if (!vendor) return { linked: false, note: "Vendor record not found." };
 
-  let userId: string | null = (vendor.user_id as string | null) ?? null;
+  const previousOwner = (vendor.user_id as string | null) ?? null;
+  const lookupEmail = toEmail?.trim() || null;
+  let userId: string | null = lookupEmail ? null : previousOwner;
 
   if (!userId) {
-    if (!vendor.email) {
-      return { linked: false, note: "No email on this application, so there is nobody to link it to." };
+    const email = lookupEmail ?? (vendor.email as string | null);
+    if (!email) {
+      return { linked: false, note: "No email on this application, so there is nobody to link it to. Use “Link to account” and type theirs." };
     }
-    const { data: found, error } = await admin.rpc("user_id_for_email", { p_email: vendor.email });
+    const { data: found, error } = await admin.rpc("user_id_for_email", { p_email: email });
     if (error) return { linked: false, note: `Couldn't look up that email: ${error.message}` };
     userId = (found as string | null) ?? null;
+    if (!userId) {
+      // Recoverable, and the admin is the one who can recover it — say how.
+      return {
+        linked: false,
+        note: lookupEmail
+          ? `No NorthEDM account uses ${email}. Check the spelling, or ask them which email they sign in with.`
+          : `No account found for ${email}. If they sign in with a different email, open this vendor and use “Link to account” with that one. Otherwise ask them to sign up with ${email} and press Approve again.`,
+      };
+    }
   }
 
-  if (!userId) {
-    // The common, recoverable case: they applied before making an account.
-    // Say so plainly rather than approving into a dead end.
-    return {
-      linked: false,
-      note: `No account found for ${vendor.email}. Ask them to sign up with that exact address, then press Approve again to give them their dashboard.`,
-    };
+  // Relinking to someone else: release the previous account first, or both
+  // people would keep this vendor's dashboard. Only clear it if it still
+  // points here — never touch a link the old owner has to another vendor.
+  if (previousOwner && previousOwner !== userId) {
+    await admin
+      .from("user_profiles")
+      .update({ vendor_id: null, is_vendor: false })
+      .eq("id", previousOwner)
+      .eq("vendor_id", vendorId);
   }
+
+  // One account manages one vendor (user_profiles.vendor_id holds a single
+  // id). If this person already ran a different one, say so rather than
+  // silently moving them.
+  const { data: prof } = await admin
+    .from("user_profiles").select("vendor_id").eq("id", userId).maybeSingle();
+  const movedFrom =
+    prof?.vendor_id && prof.vendor_id !== vendorId ? (prof.vendor_id as number) : null;
 
   const [{ error: vErr }, { error: pErr }] = await Promise.all([
     admin.from("vendors").update({ user_id: userId }).eq("id", vendorId),
@@ -57,7 +90,14 @@ async function grantVendorAccess(admin: SupabaseClient, vendorId: number): Promi
   if (vErr || pErr) {
     return { linked: false, note: `Couldn't grant access: ${(vErr ?? pErr)?.message}` };
   }
-  return { linked: true, note: "They can now sign in and manage their inventory." };
+
+  const who = lookupEmail ?? (vendor.email as string | null) ?? "that account";
+  return {
+    linked: true,
+    note:
+      `Linked to ${who}. They can now sign in and manage this vendor's inventory.` +
+      (movedFrom ? ` (That account previously managed vendor #${movedFrom}; it now manages this one instead.)` : ""),
+  };
 }
 
 export async function POST(req: Request) {
@@ -69,12 +109,23 @@ export async function POST(req: Request) {
     status?: string;
     vendorType?: string;
     isPublic?: boolean;
-    action?: "suspend" | "unsuspend";
+    action?: "suspend" | "unsuspend" | "link";
     reason?: string;
+    email?: string;
   };
 
   if (!data.id) {
     return NextResponse.json({ success: false, error: "Missing vendor id" }, { status: 400 });
+  }
+
+  // ── Link to a specific account ───────────────────────────────────────────
+  // For when the email on the application isn't the one they sign in with.
+  if (data.action === "link") {
+    if (!data.email?.trim()) {
+      return NextResponse.json({ success: false, error: "Type the email they sign in with." }, { status: 400 });
+    }
+    const grant = await grantVendorAccess(g.admin, data.id, data.email);
+    return NextResponse.json({ success: grant.linked, linked: grant.linked, note: grant.note, error: grant.linked ? undefined : grant.note });
   }
 
   // ── Suspend / restore ────────────────────────────────────────────────────
