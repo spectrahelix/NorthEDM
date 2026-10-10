@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 
 // Rolling buffer of real JS errors on the page (attached once), so a report can
 // include the actual crash even if it happened before the user opened the form.
@@ -52,7 +53,8 @@ export function BugReporter() {
 
   function set(k: keyof typeof form, v: string) { setForm((f) => ({ ...f, [k]: v })); }
 
-  function attach(f: File | null) {
+  async function attach(picked: File | null) {
+    const f = picked ? await toWebImage(picked) : null;
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
   }
@@ -184,7 +186,7 @@ export function BugReporter() {
 
                   {/* Screenshot */}
                   <div className="flex flex-wrap items-center gap-3">
-                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => attach(e.target.files?.[0] ?? null)} />
+                    <input ref={fileRef} type="file" accept={ACCEPT_WEB_IMAGES} className="hidden" onChange={(e) => attach(e.target.files?.[0] ?? null)} />
                     <button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">
                       {file ? "Change screenshot" : "Attach screenshot"}
                     </button>

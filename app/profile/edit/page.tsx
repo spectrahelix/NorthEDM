@@ -14,6 +14,7 @@ import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
 import { VendorEditor } from "./VendorEditor";
 import { ArtisanEditor } from "./ArtisanEditor";
 import { ShowsEditor } from "./ShowsEditor";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -88,7 +89,7 @@ export default function EditProfilePage() {
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!userId || !e.target.files?.[0]) return;
-    const file = e.target.files[0];
+    const file = await toWebImage(e.target.files[0]);
     if (file.size > 5 * 1024 * 1024) {
       setError("Avatar must be under 5MB.");
       return;
@@ -229,7 +230,7 @@ export default function EditProfilePage() {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept={ACCEPT_WEB_IMAGES}
             className="hidden"
             onChange={handleAvatarUpload}
           />

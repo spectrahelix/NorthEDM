@@ -108,6 +108,21 @@ network call per provider, so it is a separate command; it skips quietly when
 **every 6 months** or the button starts failing. Don't enable it without a
 calendar reminder.
 
+## Forms, photos and colours — use the shared pieces
+
+Built for the first real vendor and now the standard for anything new:
+
+- **Photo uploads:** `accept={ACCEPT_WEB_IMAGES}` and `await toWebImage(file)`
+  from `utils/webImage.ts` before uploading. iPhones send HEIC, which only Safari
+  can display. `npm run check` fails on a raw `accept="image/*"`.
+- **Long forms** (anything a person fills in for more than a minute, especially
+  with a photo picker): `useUnsavedDraft` from `utils/useUnsavedDraft.ts` restores
+  the draft if a phone reloads the tab. The service worker already refuses to
+  reload any page where someone has typed — don't add another reload path.
+- **Owner-picked colours:** only from `ACCENT_CHOICES` in `utils/accent.ts`, shown
+  with `AccentPicker`. Each was measured readable as text *and* behind black
+  button text; a free colour input let owners make their own prices unreadable.
+
 # Project features
 
 ## FestDash — festival delivery network

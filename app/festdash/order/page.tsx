@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 
 type Vendor = { id: number; name: string; category: string; description: string };
 type MenuItem = { id: number; name: string; description: string; price: number; image_url: string | null; category: string };
@@ -174,6 +175,7 @@ export default function OrderPage() {
     setBusy: (b: boolean) => void
   ) {
     setBusy(true);
+    file = await toWebImage(file);
     const { data: { user } } = await supabase.auth.getUser();
     const path = `${user?.id ?? "anon"}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage
@@ -564,7 +566,7 @@ export default function OrderPage() {
                     {uploadingPhoto ? "Uploading…" : "Snap a photo of your campsite or car"}
                   </span>
                   <span className="mt-1 text-xs text-neutral-600">Helps the runner find you fast</span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onCampsitePhoto} disabled={uploadingPhoto} />
+                  <input type="file" accept={ACCEPT_WEB_IMAGES} capture="environment" className="hidden" onChange={onCampsitePhoto} disabled={uploadingPhoto} />
                 </label>
               )}
             </div>
@@ -624,7 +626,7 @@ export default function OrderPage() {
                   <span className="text-sm text-neutral-400">
                     {uploadingCar ? "Uploading…" : "Snap a photo of your car + plate"}
                   </span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onCarPhoto} disabled={uploadingCar} />
+                  <input type="file" accept={ACCEPT_WEB_IMAGES} capture="environment" className="hidden" onChange={onCarPhoto} disabled={uploadingCar} />
                 </label>
               )}
             </div>
