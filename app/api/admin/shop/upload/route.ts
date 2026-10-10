@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/utils/admin";
+import { isUndisplayableImage } from "@/utils/webImage";
 
 // Uploads a product image to the public shop-products bucket (server-side).
 export async function POST(req: Request) {
@@ -9,6 +10,9 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file." }, { status: 400 });
+  if (isUndisplayableImage(file.name, file.type)) {
+    return NextResponse.json({ error: "That photo is in iPhone HEIC format, which most browsers can't show. Please choose a JPEG or PNG." }, { status: 400 });
+  }
   if (file.size > 8 * 1024 * 1024) return NextResponse.json({ error: "Max 8MB." }, { status: 400 });
 
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");

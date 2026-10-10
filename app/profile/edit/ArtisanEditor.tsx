@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import type { UserProfile, ArtisanWork, Social } from "@/utils/supabase/user-profiles";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 
 const CRAFTS = [
   "Visual Art",
@@ -88,8 +89,9 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
   }
 
   async function addImageWork(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    if (!picked) return;
+    const file = await toWebImage(picked);
     if (file.size > 8 * 1024 * 1024) {
       setErr("Image must be under 8MB.");
       return;
@@ -331,7 +333,7 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
 
           {newKind === "image" ? (
             <>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={addImageWork} />
+              <input ref={fileRef} type="file" accept={ACCEPT_WEB_IMAGES} className="hidden" onChange={addImageWork} />
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}

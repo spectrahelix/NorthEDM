@@ -129,6 +129,29 @@ for (const f of code) {
 }
 if (!retiredHits) console.log("   none");
 
+// ── 4. Photo uploads that skip the web-image conversion ────────────────────
+// iPhones save HEIC, which only Safari can show. An <input type="file">
+// with accept="image/*" hands it over untouched, and it uploads as a broken
+// image for every Chrome/Android customer — a vendor's first product on
+// 2026-10-10. Every image picker uses ACCEPT_WEB_IMAGES and passes the file
+// through toWebImage() from utils/webImage.ts before uploading.
+console.log("\n4. image uploads → utils/webImage.ts");
+let rawImageInputs = 0;
+for (const f of code) {
+  const txt = read(f);
+  if (!/accept=["'{]?["'`]?image\/\*/.test(txt)) continue;
+  rawImageInputs++;
+  note(`   ✗ ${rel(f)} has accept="image/*" — use ACCEPT_WEB_IMAGES + toWebImage() from utils/webImage.ts`);
+}
+for (const f of code) {
+  const txt = read(f);
+  if (txt.includes("ACCEPT_WEB_IMAGES") && !txt.includes("toWebImage(") && !f.endsWith("webImage.ts")) {
+    rawImageInputs++;
+    note(`   ✗ ${rel(f)} uses ACCEPT_WEB_IMAGES but never calls toWebImage() before uploading`);
+  }
+}
+if (!rawImageInputs) console.log("   all image pickers convert before upload");
+
 console.log(
   problems === 0
     ? "\n✅ wiring looks consistent"

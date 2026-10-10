@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 
 type Product = {
   id: string; name: string; slug: string; description: string;
@@ -55,7 +56,8 @@ export default function AdminShopPage() {
 
   async function uploadImages(files: FileList) {
     setUploading(true); setError("");
-    for (const file of Array.from(files)) {
+    for (const picked of Array.from(files)) {
+      const file = await toWebImage(picked);
       const fd = new FormData(); fd.append("file", file);
       const res = await fetch("/api/admin/shop/upload", { method: "POST", body: fd });
       const j = await res.json().catch(() => ({}));
@@ -156,7 +158,7 @@ export default function AdminShopPage() {
                 ))}
                 <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border border-dashed border-white/20 text-xs text-neutral-500 hover:bg-white/5">
                   {uploading ? "…" : "+ add"}
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => e.target.files && uploadImages(e.target.files)} />
+                  <input type="file" accept={ACCEPT_WEB_IMAGES} multiple className="hidden" onChange={(e) => e.target.files && uploadImages(e.target.files)} />
                 </label>
               </div>
             </div>

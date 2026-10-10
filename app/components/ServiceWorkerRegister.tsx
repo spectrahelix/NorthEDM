@@ -23,13 +23,40 @@ export function ServiceWorkerRegister() {
     // install there's no prior controller, so we must not reload.
     const hadController = !!navigator.serviceWorker.controller;
     let reloading = false;
+
+    // Has the visitor typed into anything on this page? Any form, site-wide —
+    // so no page has to opt in. A reload under half-typed work wiped a
+    // vendor's new product on 2026-10-10: this fires on returning to the tab,
+    // which is exactly what coming back from a phone's photo picker does.
+    // (utils/useUnsavedDraft.ts can also set data-unsaved explicitly.)
+    let typed = false;
+    const onInput = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) typed = true;
+    };
+    document.addEventListener("input", onInput, true);
+    const hasUnsavedWork = () => typed || document.body.dataset.unsaved === "1";
+
+    // With work on screen, the update waits for the visitor's next link click
+    // and is applied as a full page load then. The running page's JS is
+    // already loaded, so it keeps working until that click.
+    const onLinkClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin) return;
+      e.preventDefault();
+      e.stopPropagation();
+      reloading = true;
+      location.assign(url.href);
+    };
+
     const onControllerChange = () => {
       if (!hadController || reloading) return;
-      // Never reload under a half-filled form (utils/useUnsavedDraft.ts). This
-      // fires on returning to the tab — e.g. back from a phone's photo picker —
-      // and wiped a vendor's new product on 2026-10-10. The running page's JS
-      // is already loaded, so skipping is safe; the next navigation updates.
-      if (document.body.dataset.unsaved === "1") return;
+      if (hasUnsavedWork()) {
+        document.addEventListener("click", onLinkClick, true);
+        return;
+      }
       reloading = true;
       window.location.reload();
     };
@@ -53,6 +80,8 @@ export function ServiceWorkerRegister() {
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      document.removeEventListener("input", onInput, true);
+      document.removeEventListener("click", onLinkClick, true);
     };
   }, []);
   return null;
