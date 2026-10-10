@@ -196,6 +196,19 @@ export default async function AdminPage() {
               </Link>
 
               <Link
+                href="/admin/blocks"
+                className="group rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition hover:border-[#FFC93C]/40 hover:bg-white/[0.04]"
+              >
+                <div className="mb-3 text-2xl">🚧</div>
+                <h2 className="font-bebas text-2xl tracking-wide group-hover:text-[#FFC93C]">
+                  Blocked People
+                </h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Someone stuck behind the anti-bot limits? Let them back in
+                </p>
+              </Link>
+
+              <Link
                 href="/admin/bug-reports"
                 className="group rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition hover:border-[#FF5C3A]/30 hover:bg-white/[0.04]"
               >
