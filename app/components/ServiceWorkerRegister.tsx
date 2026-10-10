@@ -25,6 +25,11 @@ export function ServiceWorkerRegister() {
     let reloading = false;
     const onControllerChange = () => {
       if (!hadController || reloading) return;
+      // Never reload under a half-filled form (utils/useUnsavedDraft.ts). This
+      // fires on returning to the tab — e.g. back from a phone's photo picker —
+      // and wiped a vendor's new product on 2026-10-10. The running page's JS
+      // is already loaded, so skipping is safe; the next navigation updates.
+      if (document.body.dataset.unsaved === "1") return;
       reloading = true;
       window.location.reload();
     };

@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
+import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { useUnsavedDraft } from "@/utils/useUnsavedDraft";
 
 type Product = {
   id: number;
@@ -68,6 +70,14 @@ export default function VendorDashboard() {
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Survive a reload mid-form (photo picker, new deploy) — see the hook.
+  useUnsavedDraft(
+    userId ? `festdash-product-draft:${userId}` : null,
+    { form, editId },
+    showForm && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM),
+    (d) => { setForm({ ...EMPTY_FORM, ...d.form }); setEditId(d.editId ?? null); setShowForm(true); },
+  );
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -132,7 +142,7 @@ export default function VendorDashboard() {
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!userId || !e.target.files?.[0]) return;
-    const file = e.target.files[0];
+    const file = await toWebImage(e.target.files[0]);
     if (file.size > 5 * 1024 * 1024) {
       setFormError("Image must be under 5MB.");
       return;
@@ -391,7 +401,7 @@ export default function VendorDashboard() {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept={ACCEPT_WEB_IMAGES}
                   className="hidden"
                   onChange={handleImageUpload}
                 />

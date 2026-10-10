@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { canManageInventory } from "@/utils/marketplace";
+import { isUndisplayableImage } from "@/utils/webImage";
 
 // Product image upload for Marketplace vendors (paid, guarded). Stores in the
 // public shop-products bucket via the service role and returns the public URL.
@@ -16,6 +17,11 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "No file." }, { status: 400 });
+  // The page converts these to JPEG before upload; this catches a browser that
+  // couldn't. Stored as-is, a HEIC shows as a broken image to most customers.
+  if (isUndisplayableImage(file.name, file.type)) {
+    return NextResponse.json({ error: "That photo is in iPhone HEIC format, which most browsers can't show. Please pick it again, or choose a JPEG or PNG." }, { status: 400 });
+  }
   if (file.size > 8 * 1024 * 1024) {
     return NextResponse.json({ error: "Image must be under 8MB." }, { status: 400 });
   }
