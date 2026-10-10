@@ -14,6 +14,8 @@ type Vendor = {
   vendor_type: string | null;
   is_public: boolean | null;
   wants_public: boolean | null;
+  suspended_at: string | null;
+  suspended_reason: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
