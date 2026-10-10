@@ -124,12 +124,16 @@ export default function VendorApplyPage() {
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
           />
 
+          <p className="-mb-1 px-1 text-xs text-neutral-500">
+            How would you like to be listed? We&apos;ll confirm this when your
+            application is reviewed.
+          </p>
           <select
             name="public"
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
           >
-            <option value="false">Private Supplier</option>
-            <option value="true">Public Vendor</option>
+            <option value="false">Private Supplier — not listed publicly</option>
+            <option value="true">Public Vendor — list me in the directory</option>
           </select>
 
           <button

@@ -13,6 +13,7 @@ type Vendor = {
   capacity: string | null;
   vendor_type: string | null;
   is_public: boolean | null;
+  wants_public: boolean | null;
   is_founder: boolean | null;
   status: string | null;
 };

@@ -82,7 +82,13 @@ export async function POST(req: Request) {
         description,
         website,
         capacity: data.capacity ? String(data.capacity).trim().slice(0, 60) : null,
-        is_public: data.public === "true" || data.public === true,
+        // is_public is the live listing flag and an applicant may never set it:
+        // the "public apply as vendor" RLS policy requires false, and sending
+        // true refused the whole application with "new row violates row-level
+        // security policy for table vendors". What they picked is a request,
+        // recorded separately for the admin to act on at approval.
+        is_public: false,
+        wants_public: data.public === "true" || data.public === true,
         status: "pending",
         vendor_type: "listed",
         is_founder: false,
