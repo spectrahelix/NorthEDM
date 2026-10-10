@@ -61,6 +61,10 @@ export async function POST(req: Request) {
 
     // 5) Basic shape/length validation — reject obviously bogus payloads.
     const email = String(personalRaw).trim().toLowerCase();
+    // Optional at the API so a page cached from before these fields existed
+    // can still submit; the form itself requires them.
+    const firstName = data.firstName ? String(data.firstName).trim().slice(0, 60) : null;
+    const lastName = data.lastName ? String(data.lastName).trim().slice(0, 60) : null;
     const businessEmail = data.businessEmail
       ? String(data.businessEmail).trim().toLowerCase().slice(0, 160)
       : null;
@@ -101,6 +105,8 @@ export async function POST(req: Request) {
         name,
         email,
         business_email: businessEmail,
+        first_name: firstName,
+        last_name: lastName,
         user_id: applicant?.id ?? null,
         category,
         description,

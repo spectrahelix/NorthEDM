@@ -20,6 +20,10 @@ export type Vendor = {
   user_id: string | null;
   business_email: string | null;
   linked_email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  website: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
@@ -190,10 +194,16 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                     >
                       ▸
                     </span>
-                    <span className="truncate font-medium text-white">
-                      {v.name || "Unnamed Vendor"}
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-white">
+                        {v.name || "Unnamed business"}
+                      </span>
+                      <span className="block truncate text-xs text-neutral-500">
+                        {applicantName(v) ?? "Applicant name not given"}
+                        {v.email ? ` · ${v.email}` : ""}
+                      </span>
                     </span>
-                    <span className="hidden truncate text-xs text-neutral-500 sm:inline">
+                    <span className="hidden shrink-0 truncate text-xs text-neutral-500 sm:inline">
                       {v.category || "uncategorized"}
                     </span>
                   </button>
@@ -239,26 +249,12 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                 {/* Expanded detail + full actions */}
                 {isOpen && (
                   <div className="border-t border-white/10 px-4 py-4">
-                    <div className="space-y-0.5 text-sm text-neutral-400">
-                      <p>
-                        <span className="text-neutral-600">Personal: </span>
-                        {v.email || "—"}
-                      </p>
-                      {v.business_email && (
-                        <p>
-                          <span className="text-neutral-600">Business: </span>
-                          {v.business_email}
-                        </p>
-                      )}
-                    </div>
+                    <ApplicationDetails vendor={v} />
                     <LinkAccount
                       vendor={v}
                       busy={busy}
                       onLink={(email) => linkAccount(v.id, email)}
                     />
-                    <p className="mt-2 text-sm text-neutral-300">
-                      {v.description || "No description"}
-                    </p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
                       <span className="rounded-full bg-white/10 px-3 py-1">
                         {v.category || "uncategorized"}
@@ -417,6 +413,44 @@ function LinkAccount({
           {linked ? "Move" : "Link to account"}
         </button>
       </form>
+    </div>
+  );
+}
+
+function applicantName(v: Vendor): string | null {
+  const n = [v.first_name, v.last_name].filter(Boolean).join(" ").trim();
+  return n || null;
+}
+
+/**
+ * Everything they submitted, labelled. Applications from before first/last
+ * name existed say so rather than showing blanks that look like a bug.
+ */
+function ApplicationDetails({ vendor: v }: { vendor: Vendor }) {
+  const rows: [string, React.ReactNode][] = [
+    ["Business", v.name || "—"],
+    ["Applicant", applicantName(v) ?? <span className="text-neutral-600">not collected on older applications</span>],
+    ["Personal email", v.email ? <a href={`mailto:${v.email}`} className="hover:text-white">{v.email}</a> : "—"],
+    ["Business email", v.business_email ? <a href={`mailto:${v.business_email}`} className="hover:text-white">{v.business_email}</a> : "—"],
+    ["Phone", v.phone || "—"],
+    ["Website", v.website ? <a href={v.website} target="_blank" rel="noreferrer" className="break-all hover:text-white">{v.website}</a> : "—"],
+    ["Category", v.category || "—"],
+    ["Capacity", v.capacity || "—"],
+  ];
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+      <dl className="grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[9rem_1fr]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className="text-neutral-600">{label}</dt>
+            <dd className="min-w-0 text-neutral-300">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-xs uppercase tracking-widest text-neutral-600">Purpose</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-300">
+        {v.description || "—"}
+      </p>
     </div>
   );
 }

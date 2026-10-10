@@ -11,6 +11,7 @@ import {
 import { RankBadge } from "@/app/components/RankBadge";
 import { profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
 import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
+import { VendorEditor } from "./VendorEditor";
 import { ArtisanEditor } from "./ArtisanEditor";
 import { ShowsEditor } from "./ShowsEditor";
 
@@ -22,6 +23,10 @@ export default function EditProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
+  // The address they sign in with. Shown because approval of a vendor
+  // application links whichever account has this email — and people often
+  // don't remember which address they used.
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +55,7 @@ export default function EditProfilePage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push("/signup"); return; }
       setUserId(user.id);
+      setAccountEmail(user.email ?? null);
       supabase
         .from("user_profiles")
         .select("*")
@@ -173,7 +179,10 @@ export default function EditProfilePage() {
         <p className="mb-2 font-dm-mono text-sm uppercase tracking-[0.3em] text-[#3AFFD4]">
           Profile
         </p>
-        <h1 className="mb-8 font-bebas text-5xl tracking-wide">Edit Profile</h1>
+        <h1 className="mb-2 font-bebas text-5xl tracking-wide">Edit Profile</h1>
+        <p className="mb-8 text-sm text-neutral-500">
+          Signed in as <span className="text-neutral-300">{accountEmail ?? "…"}</span>
+        </p>
 
         {/* Avatar */}
         <div className="mb-8 flex items-center gap-6">
@@ -435,6 +444,15 @@ export default function EditProfilePage() {
             </button>
           </div>
         </div>
+
+        {/* Their vendor business, once an approval has linked one to this
+            account. Placed before shows and artisan settings because for a
+            vendor it is the thing they came here to manage. */}
+        {profile?.vendor_id && (
+          <div className="mt-10">
+            <VendorEditor vendorId={profile.vendor_id} />
+          </div>
+        )}
 
         {userId && profile && profile.is_vendor && (
           <div className="mt-10">

@@ -51,6 +51,8 @@ export default function VendorApplyPage() {
 
             const data = {
               name: formData.get("name"),
+              firstName: formData.get("firstName"),
+              lastName: formData.get("lastName"),
               personalEmail: formData.get("personalEmail"),
               businessEmail: formData.get("businessEmail"),
               category: formData.get("category"),
@@ -99,12 +101,35 @@ export default function VendorApplyPage() {
             className="absolute left-[-9999px] h-0 w-0 opacity-0"
           />
 
-          <input
-            name="name"
-            placeholder="Business or brand name"
-            required
-            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input
+              name="firstName"
+              placeholder="Your first name"
+              required
+              autoComplete="given-name"
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+            />
+            <input
+              name="lastName"
+              placeholder="Your last name"
+              required
+              autoComplete="family-name"
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+            />
+          </div>
+
+          <div>
+            <input
+              name="name"
+              placeholder="Business or brand name"
+              required
+              autoComplete="organization"
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+            />
+            <p className="mt-1.5 px-1 text-xs text-neutral-500">
+              This is the name customers see on your listing.
+            </p>
+          </div>
 
           <div>
             <input
@@ -145,7 +170,7 @@ export default function VendorApplyPage() {
 
           <textarea
             name="description"
-            placeholder="What do you offer?"
+            placeholder="Purpose — what you offer and what you'd like to do with NorthEDM"
             required
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
           />

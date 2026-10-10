@@ -21,6 +21,10 @@ type Vendor = {
   user_id: string | null;
   business_email: string | null;
   linked_email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  website: string | null;
   is_founder: boolean | null;
   status: string | null;
 };
