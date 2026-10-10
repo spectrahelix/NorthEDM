@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { SocialAuth } from "@/app/components/SocialAuth";
+import { passwordRequirements, passwordIsValid, firstPasswordProblem } from "@/utils/passwordRules";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
@@ -33,19 +34,12 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
 
-  const strength =
-    password.length === 0
-      ? 0
-      : password.length < 6
-      ? 1
-      : password.length < 10
-      ? 2
-      : /[A-Z]/.test(password) && /[0-9]/.test(password)
-      ? 4
-      : 3;
-
-  const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][strength];
-  const strengthColor = ["", "bg-[#FF5C3A]", "bg-orange-400", "bg-[#39FF14]", "bg-[#3AFFD4]"][strength];
+  // The real rules, checked live. The old meter here scored a password out of
+  // four on length plus a capital and a digit, which said "Strong" to
+  // passwords the server then refused — it measured something nobody was
+  // grading. These are the requirements Supabase actually enforces.
+  const requirements = passwordRequirements(password);
+  const metCount = requirements.filter((r) => r.met).length;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -63,8 +57,8 @@ export default function SignupPage() {
       setLoading(false);
       return;
     }
-    if (pw.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (!passwordIsValid(pw)) {
+      setError(firstPasswordProblem(pw) ?? "Please choose a stronger password.");
       setLoading(false);
       return;
     }
@@ -251,21 +245,34 @@ export default function SignupPage() {
                   {showPassword ? "HIDE" : "SHOW"}
                 </button>
               </div>
-              {password.length > 0 && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex flex-1 gap-1">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-all ${
-                          i <= strength ? strengthColor : "bg-white/10"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="font-dm-mono text-xs text-neutral-500">{strengthLabel}</span>
+              <div className="mt-2.5">
+                <div className="mb-2 flex gap-1" aria-hidden="true">
+                  {requirements.map((r) => (
+                    <div
+                      key={r.id}
+                      className={`h-1 flex-1 rounded-full transition-all ${
+                        r.met ? "bg-[#39FF14]" : "bg-white/10"
+                      }`}
+                    />
+                  ))}
                 </div>
-              )}
+                <ul className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                  {requirements.map((r) => (
+                    <li
+                      key={r.id}
+                      className={`flex items-center gap-1.5 text-xs transition-colors ${
+                        r.met ? "text-[#39FF14]" : "text-neutral-500"
+                      }`}
+                    >
+                      <span aria-hidden="true">{r.met ? "✓" : "○"}</span>
+                      {r.label}
+                    </li>
+                  ))}
+                </ul>
+                <p className="sr-only" aria-live="polite">
+                  {metCount} of {requirements.length} password requirements met.
+                </p>
+              </div>
             </div>
 
             <div>

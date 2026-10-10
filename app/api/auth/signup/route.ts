@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { notifyFeedback } from "@/utils/alerts";
 import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 import { humaniseAuthError } from "@/utils/authErrors";
+import { firstPasswordProblem } from "@/utils/passwordRules";
 import {
   clientIp,
   clientContradictsItself,
@@ -49,8 +50,12 @@ export async function POST(req: NextRequest) {
   if (!USERNAME_RE.test(username)) {
     return NextResponse.json({ error: "Invalid username." }, { status: 400 });
   }
-  if (String(password).length < 6) {
-    return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
+  // Mirror of the rules the signup form shows live, so a request that skips the
+  // form gets the same answer. Supabase is still the authority — anything this
+  // misses comes back from it and is passed through by humaniseAuthError.
+  const passwordProblem = firstPasswordProblem(String(password));
+  if (passwordProblem) {
+    return NextResponse.json({ error: passwordProblem }, { status: 400 });
   }
 
   // Signup had no throttle at all, which is how two crawler accounts were
