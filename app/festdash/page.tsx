@@ -10,50 +10,43 @@ export const metadata = {
 };
 
 export default async function FestDashPage() {
+  // Every read here is independent of the others except the shows/profiles
+  // lookup, which needs the vendor list. They used to run one after another —
+  // six round trips for a visitor, eight signed in — which made this the
+  // slowest page on the site. Now: two rounds.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Check if this user is already a FestDash vendor
-  let isFestDashVendor = false;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("vendor_id")
-      .eq("id", user.id)
-      .single();
-    if (profile?.vendor_id) {
-      const { data: fd } = await supabase
-        .from("festdash_vendors")
-        .select("id")
-        .eq("vendor_id", profile.vendor_id)
-        .single();
-      isFestDashVendor = !!fd;
-    }
-  }
-
   // Live network stats — service role so counts span all rows (past RLS)
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-  const [vendorsRes, runnersRes, deliveriesRes] = await Promise.all([
-    admin.from("festdash_vendors").select("*", { count: "exact", head: true }),
+
+  const viewer = (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { user: null, vendorId: null as number | null };
+    const { data: profile } = await supabase
+      .from("user_profiles").select("vendor_id").eq("id", user.id).maybeSingle();
+    return { user, vendorId: (profile?.vendor_id as number | null) ?? null };
+  })();
+
+  const [{ user, vendorId: myVendorId }, allFd, runnersRes, deliveriesRes] = await Promise.all([
+    viewer,
+    // One read of festdash_vendors serves the count, the "am I a FestDash
+    // vendor" check and the who's-on-FestDash list.
+    admin.from("festdash_vendors").select("vendor_id, user_id, is_active"),
     admin.from("festdash_drivers").select("*", { count: "exact", head: true }).eq("is_active", true),
     admin.from("festdash_orders").select("*", { count: "exact", head: true }).eq("status", "delivered"),
   ]);
-  const vendorCount = vendorsRes.count ?? 0;
+  const fdRows = (allFd.data ?? []) as { vendor_id: number; user_id: string; is_active: boolean }[];
+  const vendorCount = fdRows.length;
   const runnerCount = runnersRes.count ?? 0;
   const deliveredCount = deliveriesRes.count ?? 0;
+  const isFestDashVendor = !!myVendorId && fdRows.some((r) => r.vendor_id === myVendorId);
 
   // Active FestDash vendors + their current/next show (for the "who's on FestDash" list).
-  const { data: fdVendors } = await admin
-    .from("festdash_vendors")
-    .select("vendor_id, user_id")
-    .eq("is_active", true);
-  const vIds = (fdVendors ?? []).map((v) => v.vendor_id).filter(Boolean);
-  const uIds = (fdVendors ?? []).map((v) => v.user_id).filter(Boolean);
+  const fdVendors = fdRows.filter((r) => r.is_active);
+  const vIds = fdVendors.map((v) => v.vendor_id).filter(Boolean);
+  const uIds = fdVendors.map((v) => v.user_id).filter(Boolean);
   const [vRows, showRows, profRows] = await Promise.all([
     vIds.length ? admin.from("vendors").select("id, name, suspended_at").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null; suspended_at: string | null }[] }),
     uIds.length ? admin.from("vendor_shows").select("*").in("user_id", uIds) : Promise.resolve({ data: [] as VendorShow[] }),
