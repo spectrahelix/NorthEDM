@@ -42,10 +42,20 @@ async function productsByImage(admin: SupabaseClient, vendorId: number | null) {
   const map = new Map<string, { id: number; name: string }[]>();
   if (!vendorId) return map;
   const { data } = await admin.from("products").select("id, name, image_url").eq("vendor_id", vendorId);
-  for (const p of data ?? []) {
-    if (!p.image_url) continue;
-    const k = bare(p.image_url as string);
-    map.set(k, [...(map.get(k) ?? []), { id: p.id as number, name: (p.name as string) || "Untitled item" }]);
+  const products = data ?? [];
+  const nameById = new Map(products.map((p) => [p.id as number, (p.name as string) || "Untitled item"]));
+  const add = (url: string, id: number) => {
+    const k = bare(url);
+    const list = map.get(k) ?? [];
+    if (!list.some((x) => x.id === id)) list.push({ id, name: nameById.get(id) ?? "Untitled item" });
+    map.set(k, list);
+  };
+  // A photo is "in use" if it is any item's main photo OR in any item's gallery.
+  for (const p of products) if (p.image_url) add(p.image_url as string, p.id as number);
+  const ids = products.map((p) => p.id as number);
+  if (ids.length) {
+    const { data: gallery } = await admin.from("product_images").select("product_id, url").in("product_id", ids);
+    for (const g of gallery ?? []) add(g.url as string, g.product_id as number);
   }
   return map;
 }

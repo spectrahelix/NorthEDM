@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { setProductPhoto } from "@/utils/productPhoto";
+import { addProductImage } from "@/utils/productPhoto";
 
 type Photo = {
   bucket: string; path: string; url: string; uploadedAt: string | null; bytes: number | null;
@@ -38,8 +38,8 @@ export function PhotoLibrary({ products, onChanged, version = 0 }: {
   async function attachTo(p: Photo, productId: number) {
     setBusy(p.path); setMsg("");
     try {
-      await setProductPhoto(productId, p.url);
-      setMsg("Photo saved to that item.");
+      await addProductImage(productId, p.url);
+      setMsg("Added to that item's photos.");
       onChanged();
       await load();
     } catch (x) {
@@ -99,7 +99,7 @@ export function PhotoLibrary({ products, onChanged, version = 0 }: {
                     <select value="" disabled={busy === p.path}
                       onChange={(e) => e.target.value && attachTo(p, Number(e.target.value))}
                       className="max-w-[11rem] rounded-lg border border-white/10 bg-neutral-900 px-2 py-1 text-xs text-neutral-200">
-                      <option value="">Use on an item…</option>
+                      <option value="">Add to an item…</option>
                       {editable.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                     </select>
                   )}

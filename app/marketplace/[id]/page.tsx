@@ -5,6 +5,7 @@ import { getProfile, isAdminRole } from "@/utils/supabase/profile";
 import { VendorEditForm } from "./components/VendorEditForm";
 import { BackBar } from "@/app/components/BackBar";
 import { accentOr } from "@/utils/accent";
+import { ProductThumb } from "@/app/components/ProductThumb";
 
 function normalizeUrl(url: string) {
   return /^https?:\/\//.test(url) ? url : `https://${url}`;
@@ -190,40 +191,24 @@ export default async function VendorDetailPage({
             <h2 className="mt-2 text-3xl font-semibold">Available Products</h2>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.length > 0 ? (
               products.map((product) => (
-                <div
+                <Link
                   key={product.id}
-                  className="rounded-3xl border border-white/10 bg-white/[0.03] p-6"
+                  href={`/marketplace/${vendor.id}/item/${product.id}`}
+                  className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:bg-white/[0.06]"
                 >
-                  <h3 className="text-2xl font-semibold">
-                    {product.name || "Unnamed Product"}
-                  </h3>
-
-                  <p className="mt-3 text-sm text-neutral-400">
-                    {product.category || "uncategorized"}
-                  </p>
-
-                  <p className="mt-4 text-neutral-300">
-                    {product.description || "No description available."}
-                  </p>
-
-                  <div className="mt-5 flex flex-wrap gap-2 text-sm">
-                    <span className="rounded-full bg-white/10 px-3 py-1 font-semibold" style={{ color: accent }}>
-                      ${product.price ?? 0}
-                    </span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">
-                      stock: {product.inventory_count ?? 0}
-                    </span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">
-                      {product.status || "draft"}
-                    </span>
+                  <ProductThumb src={product.image_url} alt={product.name || ""} />
+                  <div className="flex flex-1 flex-col p-3">
+                    <h3 className="line-clamp-2 text-sm font-semibold text-white">{product.name || "Unnamed Product"}</h3>
+                    {product.category && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{product.category}</p>}
+                    <p className="mt-auto pt-2 font-bebas text-xl" style={{ color: accent }}>${Number(product.price ?? 0).toFixed(2)}</p>
                   </div>
-                </div>
+                </Link>
               ))
             ) : (
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-neutral-400">
+              <div className="col-span-full rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-neutral-400">
                 No public products yet.
               </div>
             )}
