@@ -123,6 +123,45 @@ Built for the first real vendor and now the standard for anything new:
   with `AccentPicker`. Each was measured readable as text *and* behind black
   button text; a free colour input let owners make their own prices unreadable.
 
+## "Lights out" / "Lights on" — the owner's public-view switch
+
+The owner's words for hiding a vendor who hasn't paid, and restoring them once
+they do. When the owner says **"lights out <vendor>"** or **"lights on
+<vendor>"**, this is what they mean. Nothing is ever deleted either way.
+
+**Lights out** (hide from the public, keep everything):
+1. `vendors.suspended_at = now()`, `suspended_reason = 'Pre-launch: hidden until
+   invoice is paid'` (or the reason given). Same as **Vendors → Suspend** in
+   /admin. Leave `is_public`, `vendor_type` and everything else untouched —
+   that is what makes "lights on" restore them exactly.
+2. Their store (`stores`, found via `store_vendors`): `active = false`
+   (draft). Make sure `owner_user_id` is the vendor's own account so they can
+   still set it up at `/<slug>/manage`.
+3. Keep `user_profiles.vendor_id` + `is_marketplace` on their account so they
+   can keep building inventory at `/vendor/dashboard`.
+
+**Lights on** (back exactly as before):
+1. Clear `suspended_at` and `suspended_reason` — **Vendors → Restore public
+   view** in /admin.
+2. Their store: `active = true`, `billing_status = 'active'` — **Embedded
+   Stores → Publish** in /admin.
+
+**Verify, don't assume.** Logged out, after lights out: `/marketplace/<id>`,
+`/marketplace/<id>/item/<itemId>` and `/<store slug>` return 404, the vendor is
+absent from `/marketplace`, `/festdash` and `/api/festdash/vendors`, and
+`/api/festdash/menu/<id>` is empty. After lights on, the same checks show them.
+Compare against a vendor that is still public, so a broken page can't pass.
+
+Suspension is enforced in RLS (`vendor_is_suspended()`), but anything read
+with the service role skips RLS and must filter `suspended_at` itself — the
+`/festdash` vendor list once leaked a hidden vendor this way.
+
+Currently lights out (update this list when it changes):
+- **The Obsidian Cloak** — vendor 22, store `theobsidiancloak`, Travis
+  (tzaminski@gmail.com). Since 2026-10-10.
+- **Find It @ Franks General Store** — vendor 5, store `franks`, Frank
+  (shieldskody7@gmail.com). Was Featured; restores as Featured. Since 2026-10-18.
+
 # Project features
 
 ## FestDash — festival delivery network
