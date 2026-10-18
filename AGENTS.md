@@ -159,8 +159,15 @@ with the service role skips RLS and must filter `suspended_at` itself — the
 Currently lights out (update this list when it changes):
 - **The Obsidian Cloak** — vendor 22, store `theobsidiancloak`, Travis
   (tzaminski@gmail.com). Since 2026-10-10.
-- **Find It @ Franks General Store** — vendor 5, store `franks`, Frank
-  (shieldskody7@gmail.com). Was Featured; restores as Featured. Since 2026-10-18.
+- **Find It @ Franks General Store** — vendor 5, store `franks`. Was Featured;
+  restores as Featured. Since 2026-10-18. Run by **Kody**
+  (shieldskody7@gmail.com, the linked account and store operator) and
+  **Frank**, who has no account yet. Owner's decision: **both are operators**.
+  When Frank signs up, ADD him — set his `user_profiles.vendor_id = 5` and
+  `is_marketplace = true` — and do NOT use the admin "Link to account" button,
+  which moves the vendor to one account and removes Kody. Stores support one
+  `owner_user_id` today, so making Frank a store operator too needs co-operator
+  support added first; ask the owner before building it.
 
 # Project features
 
