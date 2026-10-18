@@ -123,45 +123,45 @@ Built for the first real vendor and now the standard for anything new:
   with `AccentPicker`. Each was measured readable as text *and* behind black
   button text; a free colour input let owners make their own prices unreadable.
 
-## "Draft view" / "Public view" — the owner's switch words
+## "Lights out" / "Lights on" — the owner's switch words
 
 The owner's words for hiding a vendor who hasn't paid, and restoring them once
-they do. Nothing is ever deleted either way. (These replaced "lights out /
-lights on" on 2026-10-18 — treat those old words the same way if they come up.)
+they do. Nothing is ever deleted either way. ("Draft view" / "public view" mean
+the same thing — the owner tried those on 2026-10-18 and chose lights out/on.)
 
-- **"Draft view <name>"** — hide the vendor AND their store from the public.
-- **"Public view <name>"** — restore both, exactly as before.
-- Add **"store only"** (e.g. "draft view Frank, store only") to change just
+- **"Lights out <name>"** — hide the vendor AND their store from the public.
+- **"Lights on <name>"** — restore both, exactly as before.
+- Add **"store only"** (e.g. "lights out Frank, store only") to change just
   the store page and leave the marketplace listing as it is.
 
-**Draft view** (hide from the public, keep everything):
+**Lights out** (hide from the public, keep everything):
 1. `vendors.suspended_at = now()`, `suspended_reason = 'Pre-launch: hidden until
    invoice is paid'` (or the reason given). Same as **Vendors → Suspend** in
    /admin. Leave `is_public`, `vendor_type` and everything else untouched —
-   that is what makes "public view" restore them exactly. Skip for "store only".
+   that is what makes "lights on" restore them exactly. Skip for "store only".
 2. Their store (`stores`, found via `store_vendors`): `active = false`
    (draft). Make sure `owner_user_id` is the vendor's own account so they can
    still set it up at `/<slug>/manage`.
 3. Keep `user_profiles.vendor_id` + `is_marketplace` on their account so they
    can keep building inventory at `/vendor/dashboard`.
 
-**Public view** (back exactly as before):
+**Lights on** (back exactly as before):
 1. Clear `suspended_at` and `suspended_reason` — **Vendors → Restore public
    view** in /admin. Skip for "store only".
 2. Their store: `active = true`, `billing_status = 'active'` — **Embedded
    Stores → Publish** in /admin.
 
-**Verify, don't assume.** Logged out, after draft view: `/marketplace/<id>`,
+**Verify, don't assume.** Logged out, after lights out: `/marketplace/<id>`,
 `/marketplace/<id>/item/<itemId>` and `/<store slug>` return 404, the vendor is
 absent from `/marketplace`, `/festdash` and `/api/festdash/vendors`, and
-`/api/festdash/menu/<id>` is empty. After public view, the same checks show them.
+`/api/festdash/menu/<id>` is empty. After lights on, the same checks show them.
 Compare against a vendor that is still public, so a broken page can't pass.
 
 Suspension is enforced in RLS (`vendor_is_suspended()`), but anything read
 with the service role skips RLS and must filter `suspended_at` itself — the
 `/festdash` vendor list once leaked a hidden vendor this way.
 
-Currently in draft view (update this list when it changes):
+Currently lights out (update this list when it changes):
 - **The Obsidian Cloak** — vendor 22, store `theobsidiancloak`, Travis
   (tzaminski@gmail.com). Since 2026-10-10.
 - **Find It @ Franks General Store** — vendor 5, store `franks`. Was Featured;
