@@ -14,11 +14,14 @@ const money = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFrac
 // Cart for an embedded store. Quantities live only in this component — the server
 // re-reads every price and stock count at checkout, so nothing here is trusted.
 export function StoreCart({
-  slug, products, accent, canOrder, closedReason,
+  slug, products, accent, canOrder, closedReason, displayFont = null, cardBg,
 }: {
   slug: string;
   products: StoreProduct[];
   accent: string;
+  /** The shop's display font for names and prices, or null for standard. */
+  displayFont?: string | null;
+  cardBg?: string;
   canOrder: boolean;
   closedReason?: string;
 }) {
@@ -66,15 +69,15 @@ export function StoreCart({
           const n = qty[p.id] ?? 0;
           const priced = p.price_cents > 0;
           return (
-            <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+            <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" style={cardBg ? { background: cardBg } : undefined}>
               <Link href={p.href} className="block transition hover:opacity-90">
                 <ProductThumb src={p.image_url} alt={p.name} />
               </Link>
               <div className="flex flex-1 flex-col p-3">
-                <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline">{p.name}</Link>
+                <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{p.name}</Link>
                 {p.vendor_name && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{p.vendor_name}</p>}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                  <p className="font-bebas text-xl" style={{ color: accent }}>{priced ? money(p.price_cents) : "—"}</p>
+                  <p className={`text-xl ${displayFont ? "" : "font-bebas"}`} style={{ color: accent, ...(displayFont ? { fontFamily: displayFont } : {}) }}>{priced ? money(p.price_cents) : "—"}</p>
                   {n === 0 ? (
                     <button
                       onClick={() => bump(p.id, 1)}

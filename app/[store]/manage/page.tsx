@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AccentPicker } from "@/app/components/AccentPicker";
+import { storeTheme } from "@/utils/storeThemes";
+import { SHOP_FONT_CHOICES } from "@/utils/storeFonts";
 
-type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number };
+type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number; theme: string; font: string | null; allow_custom_font: boolean };
 type Member = { vendor_id: number; status: string; name: string; category: string | null };
 type Available = { id: number; name: string | null; category: string | null };
 
@@ -74,6 +76,26 @@ export default function StoreManagePage() {
           </div>
           <button onClick={() => post({ action: "branding", name, tagline, accentColor: accent }, "Saved.")}
             className="mt-4 rounded-xl bg-[#00D4FF] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90">Save branding</button>
+        </div>
+
+        {/* Look — theme and font are set with NorthEDM at setup; the font switch is the operator's. */}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+          <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Your shop&apos;s look</p>
+          <p className="text-sm text-neutral-300">
+            Theme: <span className="text-white">{storeTheme(store?.theme).label}</span>
+            {" · "}Font: <span className="text-white">{SHOP_FONT_CHOICES.find((f) => f.key === store?.font)?.label ?? "Standard NorthEDM"}</span>
+          </p>
+          <p className="mt-1 text-xs text-neutral-500">Want a different theme or font? Ask NorthEDM — we set these up with you.</p>
+          {store?.font && (
+            <label className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+              <span>
+                <span className="block text-sm text-neutral-200">Show my custom font</span>
+                <span className="block text-xs text-neutral-500">Off: your shop uses the standard NorthEDM font everywhere.</span>
+              </span>
+              <input type="checkbox" role="switch" className="h-5 w-5" checked={store.allow_custom_font}
+                onChange={(e) => post({ action: "branding", allowCustomFont: e.target.checked }, e.target.checked ? "Custom font on." : "Custom font off.")} />
+            </label>
+          )}
         </div>
 
         {/* Vendors */}

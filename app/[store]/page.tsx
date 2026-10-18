@@ -5,6 +5,8 @@ import { createClient } from "@/utils/supabase/server";
 import { storeAdminClient, viewerCanPreviewStore } from "@/utils/store";
 import { BackBar } from "@/app/components/BackBar";
 import { StoreCart, type StoreProduct } from "./StoreCart";
+import { brandFor, viewerWantsShopFonts } from "@/utils/shopBrand";
+import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   // everyone else gets the same 404 as a store that doesn't exist.
   const admin = storeAdminClient();
   const { data: storeData } = await admin
-    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status").eq("slug", slug).maybeSingle();
+    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status, theme, font, allow_custom_font").eq("slug", slug).maybeSingle();
   if (!storeData) notFound();
 
   const isDraft = !storeData.active;
@@ -54,7 +56,12 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   const vendors = (vendorsData ?? []) as Vendor[];
   const products = (productsData ?? []) as Product[];
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
-  const accent = store.accent_color || "#39FF14";
+  // The shop's identity on its own page: theme background + display font,
+  // unless the operator or this visitor has switched custom fonts off.
+  const viewerFonts = await viewerWantsShopFonts();
+  const brand = brandFor(storeData as never, viewerFonts);
+  const accent = brand.accent;
+  const display = brand.font ? { fontFamily: brand.font } : undefined;
 
   // A store takes money only when it's public AND its operator is paid up. Draft or
   // unpaid → browse-only, with the reason shown rather than a dead button.
@@ -77,7 +84,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   }));
 
   return (
-    <main className="min-h-screen text-neutral-100">
+    <main className="min-h-screen text-neutral-100" style={{ background: brand.theme.background }}>
       {isDraft && (
         <div className="sticky top-0 z-40 border-b border-[#FFC93C]/30 bg-[#FFC93C]/[0.12] px-6 py-3 backdrop-blur">
           <p className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -92,28 +99,31 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
         </div>
       )}
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="pointer-events-none absolute inset-0 opacity-20" style={{ background: `radial-gradient(ellipse at top, ${accent}55, transparent 60%)` }} />
+        <div className="pointer-events-none absolute inset-0"
+          style={brand.theme.hero ? { background: brand.theme.hero } : { background: `radial-gradient(ellipse at top, ${accent}55, transparent 60%)`, opacity: brand.theme.key === "northedm" ? 0.2 : 0.12 }} />
         <div className="relative mx-auto max-w-6xl px-6 py-16">
           <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }]} fallback="/marketplace" />
           <p className="font-dm-mono text-xs uppercase tracking-[0.3em]" style={{ color: accent }}>on NorthEDM</p>
-          <h1 className="mt-3 font-bebas text-7xl leading-none tracking-wide md:text-8xl">{store.name}</h1>
+          <h1 className={`mt-3 break-words leading-none tracking-wide ${display ? "text-5xl md:text-7xl" : "font-bebas text-7xl md:text-8xl"}`} style={display}>{store.name}</h1>
           {store.tagline && <p className="mt-4 max-w-xl text-neutral-300">{store.tagline}</p>}
           <p className="mt-4 font-dm-mono text-xs text-neutral-500">
             {vendors.length} vendor{vendors.length === 1 ? "" : "s"} · {products.length} product{products.length === 1 ? "" : "s"}
           </p>
+          {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-5" />}
         </div>
       </section>
+      {brand.theme.band === "awning" && <div aria-hidden className="store-awning" />}
 
       <div className="mx-auto max-w-6xl px-6 py-12">
         {vendors.length > 0 && (
           <>
-            <h2 className="mb-4 font-bebas text-3xl tracking-wide">Vendors</h2>
+            <h2 className={`mb-4 text-3xl tracking-wide ${display ? "" : "font-bebas"}`} style={display}>Vendors</h2>
             <div className="mb-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {vendors.map((v) => (
                 <Link key={v.id} href={`/marketplace/${v.id}`}
                   className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:bg-white/[0.06]"
                   style={{ borderColor: `${accent}22` }}>
-                  <p className="font-bebas text-2xl tracking-wide">{v.name}</p>
+                  <p className={`text-2xl tracking-wide ${display ? "" : "font-bebas"}`} style={display}>{v.name}</p>
                   <p className="mt-1 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">{v.category || "vendor"}</p>
                   {v.description && <p className="mt-2 line-clamp-2 text-sm text-neutral-400">{v.description}</p>}
                 </Link>
@@ -122,7 +132,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
           </>
         )}
 
-        <h2 className="mb-4 font-bebas text-3xl tracking-wide">Products</h2>
+        <h2 className={`mb-4 text-3xl tracking-wide ${display ? "" : "font-bebas"}`} style={display}>Products</h2>
         {products.length === 0 ? (
           <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-neutral-500">
             No products in this store yet.
@@ -132,6 +142,8 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             slug={store.slug}
             products={cartProducts}
             accent={accent}
+            displayFont={brand.font}
+            cardBg={brand.theme.card}
             canOrder={canOrder}
             closedReason={closedReason}
           />

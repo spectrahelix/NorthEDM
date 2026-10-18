@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { STORE_THEMES } from "@/utils/storeThemes";
+import { SHOP_FONT_CHOICES } from "@/utils/storeFonts";
 
 type Store = {
   id: string; slug: string; name: string; tagline: string | null;
   owner_email: string | null; accent_color: string; operator_fee_bps: number; active: boolean;
+  theme: string; font: string | null; allow_custom_font: boolean;
 };
 
 export default function AdminStoresPage() {
@@ -42,6 +45,17 @@ export default function AdminStoresPage() {
     if (!res.ok) { setMsg(j.error || "Failed."); return; }
     setMsg(`Created as a DRAFT — preview at ${j.url} (only you and the operator can see it until you publish)`);
     setSlug(""); setName(""); setOwnerEmail(""); setTagline(""); setFeePct("");
+    load();
+  }
+
+  async function setBrand(slug: string, patch: { theme?: string; font?: string | null }) {
+    setMsg("");
+    const res = await fetch("/api/admin/stores", {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slug, ...patch }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) setMsg(j.error || "Couldn't save that.");
     load();
   }
 
@@ -115,6 +129,23 @@ export default function AdminStoresPage() {
                     </span>
                   </p>
                   <p className="font-dm-mono text-xs text-neutral-500">operator: {s.owner_email || "—"} · fee {(s.operator_fee_bps / 100)}%</p>
+                  {/* Shop identity — chosen with the vendor at setup. */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <label className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Theme</label>
+                    <select value={s.theme} onChange={(e) => setBrand(s.slug, { theme: e.target.value })}
+                      className="rounded-lg border border-white/10 bg-neutral-900 px-2 py-1 text-xs text-neutral-200">
+                      {STORE_THEMES.map((t) => <option key={t.key} value={t.key}>{t.label}{t.madeFor ? ` — for ${t.madeFor}` : ""}</option>)}
+                    </select>
+                    <label className="ml-2 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Font</label>
+                    <select value={s.font ?? ""} onChange={(e) => setBrand(s.slug, { font: e.target.value || null })}
+                      className="rounded-lg border border-white/10 bg-neutral-900 px-2 py-1 text-xs text-neutral-200">
+                      <option value="">Standard NorthEDM</option>
+                      {SHOP_FONT_CHOICES.map((f) => <option key={f.key} value={f.key}>{f.label} — {f.vibe}</option>)}
+                    </select>
+                    {s.font && !s.allow_custom_font && (
+                      <span className="font-dm-mono text-[10px] text-[#FFC93C]">operator has custom font switched off</span>
+                    )}
+                  </div>
                 </div>
                 <a href={`/${s.slug}`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-[#3AFFD4] hover:underline">
                   {s.active ? "storefront ↗" : "preview ↗"}
