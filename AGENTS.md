@@ -132,6 +132,12 @@ site up, in **/admin/stores**; vendors don't choose freely. Themes live in
 templates — Frank's four are there); fonts in `utils/storeFonts.ts` (curated,
 free-licence, one weight) and are loaded in `app/fonts/shopFonts.ts`.
 
+- **Operators choose their theme** on `/<slug>/manage` from the templates the
+  owner ticked for their store in /admin/stores (`stores.theme_options`), or
+  the standard NorthEDM backdrop. They also get **Store theme** and **Store
+  font** pills (Custom/Standard → `allow_custom_theme` / `allow_custom_font`).
+  The font itself is still set by the owner. Admins can also preview and save
+  a look right on the store page (admin-only panel).
 - A shop's **own pages** (`/<slug>`, `/marketplace/<id>`, item pages) show its
   theme and font. The main **/marketplace** keeps the NorthEDM look; only each
   shop's name uses its font there.

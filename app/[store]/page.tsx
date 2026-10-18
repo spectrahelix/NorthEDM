@@ -38,7 +38,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   // everyone else gets the same 404 as a store that doesn't exist.
   const admin = storeAdminClient();
   const { data: storeData } = await admin
-    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status, theme, font, allow_custom_font").eq("slug", slug).maybeSingle();
+    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status, theme, font, allow_custom_font, allow_custom_theme").eq("slug", slug).maybeSingle();
   if (!storeData) notFound();
 
   const isDraft = !storeData.active;
@@ -63,7 +63,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   // The shop's identity on its own page: theme background + display font,
   // unless the operator or this visitor has switched custom fonts off.
   const [viewerFonts, isAdmin] = await Promise.all([viewerWantsShopFonts(), viewerIsSiteAdmin()]);
-  const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; accent_color: string };
+  const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; accent_color: string };
   // A NorthEDM admin can preview other looks live (AdminLookPill); the preview
   // cookie is ignored for everyone else, so it never changes what they see.
   let look = { theme: saved.theme, font: saved.font };
@@ -74,7 +74,10 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
       look = { theme: isStoreTheme(t) ? t : saved.theme, font: f ? (isShopFont(f) ? f : saved.font) : null };
     }
   }
-  const brand = brandFor({ ...saved, ...look }, viewerFonts);
+  // While an admin is previewing, show the previewed theme even if the
+  // operator has their theme switched to Standard.
+  const previewing = look.theme !== saved.theme || look.font !== saved.font;
+  const brand = brandFor({ ...saved, ...look, ...(previewing ? { allow_custom_theme: true, allow_custom_font: true } : {}) }, viewerFonts);
   const accent = brand.accent;
   const display = brand.font ? { fontFamily: brand.font } : undefined;
 

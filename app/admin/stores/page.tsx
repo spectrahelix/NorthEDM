@@ -8,6 +8,7 @@ type Store = {
   id: string; slug: string; name: string; tagline: string | null;
   owner_email: string | null; accent_color: string; operator_fee_bps: number; active: boolean;
   theme: string; font: string | null; allow_custom_font: boolean;
+  allow_custom_theme: boolean; theme_options: string[];
 };
 
 export default function AdminStoresPage() {
@@ -48,7 +49,7 @@ export default function AdminStoresPage() {
     load();
   }
 
-  async function setBrand(slug: string, patch: { theme?: string; font?: string | null }) {
+  async function setBrand(slug: string, patch: { theme?: string; font?: string | null; themeOptions?: string[] }) {
     setMsg("");
     const res = await fetch("/api/admin/stores", {
       method: "PATCH", headers: { "content-type": "application/json" },
@@ -145,6 +146,23 @@ export default function AdminStoresPage() {
                     {s.font && !s.allow_custom_font && (
                       <span className="font-dm-mono text-[10px] text-[#FFC93C]">operator has custom font switched off</span>
                     )}
+                    {s.theme !== "northedm" && !s.allow_custom_theme && (
+                      <span className="font-dm-mono text-[10px] text-[#FFC93C]">operator has theme switched to standard</span>
+                    )}
+                  </div>
+                  {/* Templates the operator can choose from on their own manage page. */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">They can choose</span>
+                    {STORE_THEMES.filter((t) => t.key !== "northedm").map((t) => {
+                      const on = (s.theme_options ?? []).includes(t.key);
+                      return (
+                        <label key={t.key} className="flex items-center gap-1 text-xs text-neutral-300">
+                          <input type="checkbox" checked={on}
+                            onChange={() => setBrand(s.slug, { themeOptions: on ? s.theme_options.filter((k) => k !== t.key) : [...(s.theme_options ?? []), t.key] })} />
+                          {t.label}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
                 <a href={`/${s.slug}`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-[#3AFFD4] hover:underline">

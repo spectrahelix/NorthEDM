@@ -39,8 +39,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const patch: Record<string, unknown> = {};
     if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim().slice(0, 80);
     if (typeof body.tagline === "string") patch.tagline = body.tagline.trim().slice(0, 200) || null;
-    // The operator's own switch for their shop's custom font.
+    // The operator's own look controls: Custom/Standard switches for theme and
+    // font, and their theme — from the templates NorthEDM made available to
+    // this store (theme_options), or the standard NorthEDM backdrop.
     if (typeof body.allowCustomFont === "boolean") patch.allow_custom_font = body.allowCustomFont;
+    if (typeof body.allowCustomTheme === "boolean") patch.allow_custom_theme = body.allowCustomTheme;
+    if (body.theme !== undefined) {
+      const { data: cur } = await g.admin.from("stores").select("theme_options").eq("id", g.store.id).single();
+      const allowed = new Set<string>(["northedm", ...((cur?.theme_options as string[] | null) ?? [])]);
+      if (typeof body.theme !== "string" || !allowed.has(body.theme)) {
+        return NextResponse.json({ error: "That theme isn't available for your store." }, { status: 400 });
+      }
+      patch.theme = body.theme;
+      patch.allow_custom_theme = body.theme !== "northedm";
+    }
     // Only the readable palette (utils/accent.ts) — a free hex let an operator
     // pick a colour that made their own prices unreadable.
     if (body.accentColor !== undefined) {

@@ -21,14 +21,19 @@ export type ShopBrand = {
   hasFont: boolean;
 };
 
-type StoreBrandRow = { theme: string | null; font: string | null; allow_custom_font: boolean | null; accent_color: string | null };
+type StoreBrandRow = {
+  theme: string | null; font: string | null; accent_color: string | null;
+  allow_custom_font: boolean | null; allow_custom_theme?: boolean | null;
+};
 
 export async function viewerWantsShopFonts(): Promise<boolean> {
   return (await cookies()).get(SHOP_FONTS_COOKIE)?.value !== "off";
 }
 
 export function brandFor(store: StoreBrandRow | null, viewerOn: boolean, fallbackAccent?: string | null): ShopBrand {
-  const theme = storeTheme(store?.theme);
+  // The operator's Custom/Standard theme switch: Standard → NorthEDM backdrop,
+  // with their chosen theme kept for when they switch back.
+  const theme = storeTheme(store?.allow_custom_theme === false ? "northedm" : store?.theme);
   const family = store?.allow_custom_font !== false ? shopFontFamily(store?.font) : null;
   return {
     theme,
@@ -52,7 +57,7 @@ export async function brandsForVendors(
   if (!vendors.length) return out;
   const { data } = await storeAdminClient()
     .from("store_vendors")
-    .select("vendor_id, stores(theme, font, allow_custom_font, accent_color, owner_user_id)")
+    .select("vendor_id, stores(theme, font, allow_custom_font, allow_custom_theme, accent_color, owner_user_id)")
     .in("vendor_id", vendors.map((v) => v.id))
     .eq("status", "approved");
   type Row = { vendor_id: number; stores: (StoreBrandRow & { owner_user_id: string }) | (StoreBrandRow & { owner_user_id: string })[] | null };
