@@ -8,6 +8,7 @@ type Store = {
   id: string; slug: string; name: string; tagline: string | null;
   owner_email: string | null; accent_color: string; operator_fee_bps: number; active: boolean;
   theme: string; font: string | null; allow_custom_font: boolean;
+  allow_custom_theme: boolean; theme_options: string[];
 };
 
 export default function AdminStoresPage() {
@@ -48,7 +49,7 @@ export default function AdminStoresPage() {
     load();
   }
 
-  async function setBrand(slug: string, patch: { theme?: string; font?: string | null }) {
+  async function setBrand(slug: string, patch: { theme?: string; font?: string | null; themeOptions?: string[] }) {
     setMsg("");
     const res = await fetch("/api/admin/stores", {
       method: "PATCH", headers: { "content-type": "application/json" },
@@ -76,7 +77,7 @@ export default function AdminStoresPage() {
   if (forbidden) return <main className="flex min-h-screen items-center justify-center admin-surface text-neutral-400">Forbidden.</main>;
 
   return (
-    <main className="min-h-screen px-6 py-16 text-neutral-100 admin-surface">
+    <main className="min-h-screen overflow-x-hidden px-4 py-16 text-neutral-100 admin-surface sm:px-6">
       <div className="mx-auto max-w-3xl">
         <p className="font-dm-mono text-sm uppercase tracking-[0.3em] text-[#FFC93C]">Admin · Stores</p>
         <h1 className="mt-3 font-bebas text-5xl tracking-wide">Embedded Stores</h1>
@@ -85,20 +86,20 @@ export default function AdminStoresPage() {
           They manage it as operator; you stay host admin. (Payout split is Phase 2.)
         </p>
 
-        <form onSubmit={create} className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <form onSubmit={create} className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">New store</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name *" required
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
+              className="min-w-0 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
             <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3">
               <span className="font-dm-mono text-xs text-neutral-500">/</span>
               <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} placeholder="slug *" required
                 className="w-full bg-transparent px-1 py-2.5 text-sm focus:outline-none" />
             </div>
             <input value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Operator email *" type="email" required
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
+              className="min-w-0 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
             <input value={feePct} onChange={(e) => setFeePct(e.target.value)} inputMode="decimal" placeholder="Operator fee % (Phase 2)"
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
+              className="min-w-0 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none" />
             <input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Tagline (optional)"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:outline-none sm:col-span-2" />
           </div>
@@ -115,55 +116,93 @@ export default function AdminStoresPage() {
         {stores.length === 0 ? (
           <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm text-neutral-500">No stores yet.</p>
         ) : (
-          <div className="space-y-2">
-            {stores.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: s.accent_color }} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white">
-                    {s.name} <span className="ml-1 font-dm-mono text-xs text-neutral-500">/{s.slug}</span>
-                    <span className={`ml-2 rounded-full px-2 py-0.5 align-middle font-dm-mono text-[10px] uppercase tracking-widest ${
-                      s.active ? "bg-[#39FF14]/15 text-[#39FF14]" : "bg-[#FFC93C]/15 text-[#FFC93C]"
-                    }`}>
-                      {s.active ? "live" : "draft"}
-                    </span>
-                  </p>
-                  <p className="font-dm-mono text-xs text-neutral-500">operator: {s.owner_email || "—"} · fee {(s.operator_fee_bps / 100)}%</p>
-                  {/* Shop identity — chosen with the vendor at setup. */}
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <label className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Theme</label>
-                    <select value={s.theme} onChange={(e) => setBrand(s.slug, { theme: e.target.value })}
-                      className="rounded-lg border border-white/10 bg-neutral-900 px-2 py-1 text-xs text-neutral-200">
-                      {STORE_THEMES.map((t) => <option key={t.key} value={t.key}>{t.label}{t.madeFor ? ` — for ${t.madeFor}` : ""}</option>)}
-                    </select>
-                    <label className="ml-2 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Font</label>
-                    <select value={s.font ?? ""} onChange={(e) => setBrand(s.slug, { font: e.target.value || null })}
-                      className="rounded-lg border border-white/10 bg-neutral-900 px-2 py-1 text-xs text-neutral-200">
-                      <option value="">Standard NorthEDM</option>
-                      {SHOP_FONT_CHOICES.map((f) => <option key={f.key} value={f.key}>{f.label} — {f.vibe}</option>)}
-                    </select>
-                    {s.font && !s.allow_custom_font && (
-                      <span className="font-dm-mono text-[10px] text-[#FFC93C]">operator has custom font switched off</span>
+          <div className="space-y-3">
+            {stores.map((s) => {
+              const sel = "w-full min-w-0 rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-200";
+              const lbl = "mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500";
+              return (
+                <div key={s.id} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+                  {/* 1 · Who */}
+                  <div className="flex items-start gap-3 p-4 pb-3">
+                    <span className="mt-1.5 h-3 w-3 shrink-0 rounded-full" style={{ background: s.accent_color }} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="font-semibold text-white">{s.name}</p>
+                        <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest ${
+                          s.active ? "bg-[#39FF14]/15 text-[#39FF14]" : "bg-[#FFC93C]/15 text-[#FFC93C]"
+                        }`}>
+                          {s.active ? "live" : "draft"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate font-dm-mono text-xs text-neutral-500">northedm.com/{s.slug}</p>
+                      <p className="mt-0.5 truncate font-dm-mono text-xs text-neutral-500">operator: {s.owner_email || "—"} · fee {(s.operator_fee_bps / 100)}%</p>
+                    </div>
+                  </div>
+
+                  {/* 2 · Look — chosen with the vendor at setup */}
+                  <div className="space-y-3 border-t border-white/10 px-4 py-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="min-w-0">
+                        <span className={lbl}>Theme</span>
+                        <select value={s.theme} onChange={(e) => setBrand(s.slug, { theme: e.target.value })} className={sel}>
+                          {STORE_THEMES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                        </select>
+                      </label>
+                      <label className="min-w-0">
+                        <span className={lbl}>Font</span>
+                        <select value={s.font ?? ""} onChange={(e) => setBrand(s.slug, { font: e.target.value || null })} className={sel}>
+                          <option value="">Standard NorthEDM</option>
+                          {SHOP_FONT_CHOICES.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    <div>
+                      <span className={lbl}>Themes they can choose</span>
+                      <div className="flex flex-wrap gap-2">
+                        {STORE_THEMES.filter((t) => t.key !== "northedm").map((t) => {
+                          const on = (s.theme_options ?? []).includes(t.key);
+                          return (
+                            <button key={t.key} type="button"
+                              onClick={() => setBrand(s.slug, { themeOptions: on ? s.theme_options.filter((k) => k !== t.key) : [...(s.theme_options ?? []), t.key] })}
+                              className={`rounded-full border px-3 py-1 text-xs transition ${on ? "border-[#39FF14]/50 bg-[#39FF14]/10 text-[#39FF14]" : "border-white/10 text-neutral-400 hover:text-white"}`}>
+                              {on ? "✓ " : ""}{t.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {((s.font && !s.allow_custom_font) || (s.theme !== "northedm" && !s.allow_custom_theme)) && (
+                      <p className="font-dm-mono text-[10px] text-[#FFC93C]">
+                        Operator has switched {[s.theme !== "northedm" && !s.allow_custom_theme ? "theme" : "", s.font && !s.allow_custom_font ? "font" : ""].filter(Boolean).join(" and ")} to standard.
+                      </p>
                     )}
                   </div>
+
+                  {/* 3 · Actions */}
+                  <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
+                    <a href={`/${s.slug}`} target="_blank" rel="noopener noreferrer"
+                      className="rounded-lg border border-white/15 px-3 py-1.5 font-dm-mono text-xs text-[#3AFFD4] hover:bg-white/5">
+                      {s.active ? "Storefront ↗" : "Preview ↗"}
+                    </a>
+                    <a href={`/${s.slug}/manage`} target="_blank" rel="noopener noreferrer"
+                      className="rounded-lg border border-white/15 px-3 py-1.5 font-dm-mono text-xs text-neutral-300 hover:bg-white/5">
+                      Manage ↗
+                    </a>
+                    <button
+                      onClick={() => togglePublish(s.slug, !s.active)}
+                      disabled={publishing === s.slug}
+                      className={`ml-auto rounded-lg px-4 py-1.5 font-dm-mono text-xs transition disabled:opacity-50 ${
+                        s.active
+                          ? "border border-white/15 text-neutral-300 hover:bg-white/5"
+                          : "bg-[#39FF14] font-semibold text-black hover:opacity-90"
+                      }`}
+                    >
+                      {publishing === s.slug ? "…" : s.active ? "Unpublish" : "Publish"}
+                    </button>
+                  </div>
                 </div>
-                <a href={`/${s.slug}`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-[#3AFFD4] hover:underline">
-                  {s.active ? "storefront ↗" : "preview ↗"}
-                </a>
-                <a href={`/${s.slug}/manage`} target="_blank" rel="noopener noreferrer" className="font-dm-mono text-xs text-neutral-400 hover:underline">manage ↗</a>
-                <button
-                  onClick={() => togglePublish(s.slug, !s.active)}
-                  disabled={publishing === s.slug}
-                  className={`rounded-lg px-3 py-1.5 font-dm-mono text-xs transition disabled:opacity-50 ${
-                    s.active
-                      ? "border border-white/15 text-neutral-300 hover:bg-white/5"
-                      : "bg-[#39FF14] font-semibold text-black hover:opacity-90"
-                  }`}
-                >
-                  {publishing === s.slug ? "…" : s.active ? "Unpublish" : "Publish"}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

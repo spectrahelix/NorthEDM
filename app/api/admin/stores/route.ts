@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data: stores } = await g.admin
     .from("stores")
-    .select("id, slug, name, tagline, owner_user_id, accent_color, operator_fee_bps, active, created_at, theme, font, allow_custom_font")
+    .select("id, slug, name, tagline, owner_user_id, accent_color, operator_fee_bps, active, created_at, theme, font, allow_custom_font, allow_custom_theme, theme_options")
     .order("created_at", { ascending: false });
 
   // Attach owner emails + member counts.
@@ -78,11 +78,20 @@ export async function PATCH(req: Request) {
 
   // Shop identity: theme and font are the owner's call, agreed with the vendor
   // at setup — only keys from the curated lists are accepted.
-  if (body.theme !== undefined || body.font !== undefined) {
+  if (body.theme !== undefined || body.font !== undefined || body.themeOptions !== undefined) {
     const patch: Record<string, unknown> = {};
+    // Which templates the operator may choose from themselves.
+    if (body.themeOptions !== undefined) {
+      if (!Array.isArray(body.themeOptions) || !body.themeOptions.every((k: unknown) => isStoreTheme(k) && k !== "northedm")) {
+        return NextResponse.json({ error: "Unknown theme in options." }, { status: 400 });
+      }
+      patch.theme_options = [...new Set(body.themeOptions as string[])];
+    }
     if (body.theme !== undefined) {
       if (!isStoreTheme(body.theme)) return NextResponse.json({ error: "Unknown theme." }, { status: 400 });
       patch.theme = body.theme;
+      // Setting a look from the admin side shows it.
+      patch.allow_custom_theme = true;
     }
     if (body.font !== undefined) {
       if (body.font !== null && !isShopFont(body.font)) return NextResponse.json({ error: "Unknown font." }, { status: 400 });
