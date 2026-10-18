@@ -15,12 +15,14 @@ export async function uploadProductPhoto(picked: File): Promise<string> {
   return j.url as string;
 }
 
-/** Put a photo on an existing product, touching nothing else on it. */
-export async function setProductPhoto(productId: number, imageUrl: string) {
-  const res = await fetch(`/api/vendor/products/${productId}`, {
-    method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl }),
+export type GalleryImage = { id: number; url: string; position: number };
+
+/** Add an uploaded photo to the end of an item's gallery. Returns the gallery. */
+export async function addProductImage(productId: number, url: string): Promise<GalleryImage[]> {
+  const res = await fetch(`/api/vendor/products/${productId}/images`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }),
   });
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j.error || "Couldn't save the photo to that item.");
-  return j.product as Record<string, unknown>;
+  if (!res.ok) throw new Error(j.error || "Couldn't add that photo.");
+  return j.images as GalleryImage[];
 }

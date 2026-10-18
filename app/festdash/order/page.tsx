@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { ProductThumb } from "@/app/components/ProductThumb";
 
 type Vendor = { id: number; name: string; category: string; description: string };
 type MenuItem = { id: number; name: string; description: string; price: number; image_url: string | null; category: string };
@@ -387,7 +388,9 @@ export default function OrderPage() {
                       return (
                         <div key={item.id} className="flex items-center gap-4 rounded-xl border border-white/8 bg-white/3 p-4">
                           {item.image_url && (
-                            <img src={item.image_url} alt={item.name} className="h-16 w-16 rounded-lg object-cover shrink-0" />
+                            <div className="w-16 shrink-0 overflow-hidden rounded-lg">
+                              <ProductThumb src={item.image_url} alt={item.name} />
+                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-white">{item.name}</p>

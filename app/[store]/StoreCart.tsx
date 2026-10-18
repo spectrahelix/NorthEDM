@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ProductThumb } from "@/app/components/ProductThumb";
 
-export type StoreProduct = { id: number; name: string; price_cents: number; vendor_name: string | null };
+export type StoreProduct = {
+  id: number; name: string; price_cents: number; vendor_name: string | null;
+  image_url: string | null; href: string;
+};
 
 const money = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -53,37 +58,43 @@ export function StoreCart({
 
   return (
     <>
-      {/* Per-product add controls, rendered into each card by the page. */}
-      <div className="hidden" aria-hidden />
-
-      {/* Quantity steppers keyed by product, exposed via a simple grid below the list */}
-      <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {/* One card per item: photo (opens the item and its gallery), details, and
+          the Add control together. It used to be a photo grid with a second,
+          separate list of Add buttons underneath — every item shown twice. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {products.map((p) => {
           const n = qty[p.id] ?? 0;
+          const priced = p.price_cents > 0;
           return (
-            <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2.5">
-              <div className="min-w-0">
-                <p className="truncate text-sm text-neutral-200">{p.name}</p>
-                <p className="font-dm-mono text-[11px] text-neutral-500">{money(p.price_cents)}</p>
-              </div>
-              {n === 0 ? (
-                <button
-                  onClick={() => bump(p.id, 1)}
-                  disabled={!canOrder}
-                  className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                  style={{ background: accent }}
-                >
-                  Add
-                </button>
-              ) : (
-                <div className="flex shrink-0 items-center gap-2">
-                  <button onClick={() => bump(p.id, -1)} aria-label={`Remove one ${p.name}`}
-                    className="h-7 w-7 rounded-lg border border-white/15 text-neutral-300 hover:bg-white/5">−</button>
-                  <span className="w-5 text-center font-dm-mono text-sm">{n}</span>
-                  <button onClick={() => bump(p.id, 1)} aria-label={`Add one ${p.name}`}
-                    className="h-7 w-7 rounded-lg border border-white/15 text-neutral-300 hover:bg-white/5">+</button>
+            <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+              <Link href={p.href} className="block transition hover:opacity-90">
+                <ProductThumb src={p.image_url} alt={p.name} />
+              </Link>
+              <div className="flex flex-1 flex-col p-3">
+                <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline">{p.name}</Link>
+                {p.vendor_name && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{p.vendor_name}</p>}
+                <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                  <p className="font-bebas text-xl" style={{ color: accent }}>{priced ? money(p.price_cents) : "—"}</p>
+                  {n === 0 ? (
+                    <button
+                      onClick={() => bump(p.id, 1)}
+                      disabled={!canOrder || !priced}
+                      className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ background: accent }}
+                    >
+                      Add
+                    </button>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button onClick={() => bump(p.id, -1)} aria-label={`Remove one ${p.name}`}
+                        className="h-7 w-7 rounded-lg border border-white/15 text-neutral-300 hover:bg-white/5">−</button>
+                      <span className="w-4 text-center font-dm-mono text-sm">{n}</span>
+                      <button onClick={() => bump(p.id, 1)} aria-label={`Add one ${p.name}`}
+                        className="h-7 w-7 rounded-lg border border-white/15 text-neutral-300 hover:bg-white/5">+</button>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

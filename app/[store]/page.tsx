@@ -72,7 +72,9 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
     name: p.name ?? "Item",
     price_cents: Math.round(Number(p.price ?? 0) * 100),
     vendor_name: vendorName.get(p.vendor_id) ?? null,
-  })).filter((p) => p.price_cents > 0);
+    image_url: p.image_url,
+    href: `/marketplace/${p.vendor_id}/item/${p.id}`,
+  }));
 
   return (
     <main className="min-h-screen text-neutral-100">
@@ -126,23 +128,6 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             No products in this store yet.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((p) => (
-              <Link key={p.id} href={`/marketplace/${p.vendor_id}`}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:bg-white/[0.06]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.image_url || "/northedm-logo.svg"} alt="" className="h-40 w-full object-cover" />
-                <div className="flex flex-1 flex-col p-4">
-                  <p className="font-semibold text-white">{p.name}</p>
-                  <p className="font-dm-mono text-xs text-neutral-500">{vendorName.get(p.vendor_id) || ""}</p>
-                  <p className="mt-2 font-bebas text-2xl" style={{ color: accent }}>${Number(p.price ?? 0).toFixed(2)}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {cartProducts.length > 0 && (
           <StoreCart
             slug={store.slug}
             products={cartProducts}
