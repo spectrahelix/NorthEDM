@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
-import { storeAdminClient, viewerCanPreviewStore } from "@/utils/store";
+import { storeAdminClient, viewerCanPreviewStore, viewerIsSiteAdmin } from "@/utils/store";
+import { cookies } from "next/headers";
+import { AdminLookPill } from "@/app/components/AdminLookPill";
+import { lookPreviewCookie, isShopFont } from "@/utils/storeFonts";
+import { isStoreTheme } from "@/utils/storeThemes";
 import { BackBar } from "@/app/components/BackBar";
 import { StoreCart, type StoreProduct } from "./StoreCart";
 import { brandFor, viewerWantsShopFonts } from "@/utils/shopBrand";
@@ -58,8 +62,19 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
   // The shop's identity on its own page: theme background + display font,
   // unless the operator or this visitor has switched custom fonts off.
-  const viewerFonts = await viewerWantsShopFonts();
-  const brand = brandFor(storeData as never, viewerFonts);
+  const [viewerFonts, isAdmin] = await Promise.all([viewerWantsShopFonts(), viewerIsSiteAdmin()]);
+  const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; accent_color: string };
+  // A NorthEDM admin can preview other looks live (AdminLookPill); the preview
+  // cookie is ignored for everyone else, so it never changes what they see.
+  let look = { theme: saved.theme, font: saved.font };
+  if (isAdmin) {
+    const raw = (await cookies()).get(lookPreviewCookie(slug))?.value;
+    if (raw) {
+      const [t, f] = decodeURIComponent(raw).split("|");
+      look = { theme: isStoreTheme(t) ? t : saved.theme, font: f ? (isShopFont(f) ? f : saved.font) : null };
+    }
+  }
+  const brand = brandFor({ ...saved, ...look }, viewerFonts);
   const accent = brand.accent;
   const display = brand.font ? { fontFamily: brand.font } : undefined;
 
@@ -110,6 +125,11 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             {vendors.length} vendor{vendors.length === 1 ? "" : "s"} · {products.length} product{products.length === 1 ? "" : "s"}
           </p>
           {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-5" />}
+          {isAdmin && (
+            <div>
+              <AdminLookPill slug={store.slug} savedTheme={saved.theme} savedFont={saved.font} theme={look.theme} font={look.font} />
+            </div>
+          )}
         </div>
       </section>
       {brand.theme.band === "awning" && <div aria-hidden className="store-awning" />}

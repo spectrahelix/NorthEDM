@@ -30,3 +30,10 @@ export function isShopFont(key: unknown): key is ShopFontKey {
 
 /** Guests' own switch, remembered per device. "off" = standard fonts everywhere. */
 export const SHOP_FONTS_COOKIE = "ne_shop_fonts";
+
+/**
+ * Admin's live look-preview for one store: `ne_look_<slug>` = "theme|font".
+ * Read only when the viewer is a NorthEDM admin, so it can't change what
+ * anyone else sees. Cleared on save.
+ */
+export const lookPreviewCookie = (slug: string) => `ne_look_${slug.replace(/[^a-z0-9-]/g, "")}`;
