@@ -6,6 +6,8 @@ import { VendorEditForm } from "./components/VendorEditForm";
 import { BackBar } from "@/app/components/BackBar";
 import { accentOr } from "@/utils/accent";
 import { ProductThumb } from "@/app/components/ProductThumb";
+import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
+import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
 function normalizeUrl(url: string) {
   return /^https?:\/\//.test(url) ? url : `https://${url}`;
@@ -83,16 +85,22 @@ export default async function VendorDetailPage({
     .order("created_at", { ascending: false });
 
   const products = (productData ?? []) as Product[];
-  const accent = accentOr(vendor.accent_color);
+  // This shop's identity on its own page (theme + font from its store).
+  const [brand, viewerFonts] = await Promise.all([
+    brandsForVendors([{ id: vendor.id, user_id: vendor.user_id, accent_color: vendor.accent_color }]).then((m) => m.get(vendor.id)!),
+    viewerWantsShopFonts(),
+  ]);
+  const accent = brand.theme.accent ?? accentOr(vendor.accent_color);
+  const display = brand.font ? { fontFamily: brand.font, fontWeight: 400 } : undefined;
 
   return (
-    <main className="min-h-screen px-6 py-16 text-white">
+    <main className="min-h-screen px-6 py-16 text-white" style={{ background: brand.theme.background }}>
       <div className="mx-auto max-w-5xl">
         <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }]} fallback="/marketplace" />
 
         <div className="mt-6 rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-5xl font-semibold">
+            <h1 className="break-words text-5xl font-semibold" style={display}>
               {vendor.name || "Unnamed Vendor"}
             </h1>
             {vendor.website && (
@@ -188,7 +196,8 @@ export default async function VendorDetailPage({
             <p className="text-sm uppercase tracking-[0.3em]" style={{ color: accent }}>
               Inventory
             </p>
-            <h2 className="mt-2 text-3xl font-semibold">Available Products</h2>
+            <h2 className="mt-2 text-3xl font-semibold" style={display}>Available Products</h2>
+            {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-3" />}
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -201,9 +210,9 @@ export default async function VendorDetailPage({
                 >
                   <ProductThumb src={product.image_url} alt={product.name || ""} />
                   <div className="flex flex-1 flex-col p-3">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-white">{product.name || "Unnamed Product"}</h3>
+                    <h3 className="line-clamp-2 text-sm font-semibold text-white" style={display}>{product.name || "Unnamed Product"}</h3>
                     {product.category && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{product.category}</p>}
-                    <p className="mt-auto pt-2 font-bebas text-xl" style={{ color: accent }}>${Number(product.price ?? 0).toFixed(2)}</p>
+                    <p className={`mt-auto pt-2 text-xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }}>${Number(product.price ?? 0).toFixed(2)}</p>
                   </div>
                 </Link>
               ))

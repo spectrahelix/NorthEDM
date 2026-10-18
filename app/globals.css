@@ -134,3 +134,20 @@ body {
 .admin-surface {
   background: linear-gradient(135deg, rgba(255, 92, 58, 0.03) 0%, transparent 60%);
 }
+
+/* Store theme decoration: a market-stall awning (red & cream stripes with a
+   scalloped edge) under the store hero. Used by the "midway-awning" theme. */
+.store-awning {
+  position: relative;
+  height: 28px;
+  background: repeating-linear-gradient(90deg, #CA6F5A 0 28px, #E0C698 28px 56px);
+  margin-bottom: 12px;
+}
+.store-awning::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -12px; height: 12px;
+  background:
+    radial-gradient(circle at 14px 0, #CA6F5A 13px, transparent 14px) 0 0 / 56px 12px repeat-x,
+    radial-gradient(circle at 42px 0, #E0C698 13px, transparent 14px) 0 0 / 56px 12px repeat-x;
+}

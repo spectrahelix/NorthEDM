@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
+import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
+import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
 export const metadata: Metadata = {
   title: "Marketplace",
@@ -24,6 +26,7 @@ type Vendor = {
   is_founder: boolean | null;
   website: string | null;
   accent_color: string | null;
+  user_id: string | null;
 };
 
 function normalizeUrl(url: string) {
@@ -68,12 +71,17 @@ export default async function MarketplacePage() {
 
   const { data } = await supabase
     .from("vendors")
-    .select("id, name, category, description, vendor_type, is_founder, website, accent_color")
+    .select("id, name, category, description, vendor_type, is_founder, website, accent_color, user_id")
     .eq("status", "approved")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
   const vendors = (data ?? []) as Vendor[];
+
+  // The marketplace keeps the NorthEDM look; each shop's name shows in its own
+  // font (unless its operator or this visitor has shop fonts switched off).
+  const [brands, viewerFonts] = await Promise.all([brandsForVendors(vendors), viewerWantsShopFonts()]);
+  const anyShopFont = [...brands.values()].some((b) => b.hasFont);
 
   // Which vendors are active on FestDash → show an "Order on FestDash" button
   // on their card. Read via service role (festdash_vendors isn't anon-readable).
@@ -300,6 +308,7 @@ export default async function MarketplacePage() {
             <h2 className="mt-3 text-3xl font-semibold">
               Active vendors in the NorthEDM ecosystem
             </h2>
+            {anyShopFont && <ShopFontToggle enabled={viewerFonts} className="mt-4" />}
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -315,7 +324,8 @@ export default async function MarketplacePage() {
                   className="absolute inset-0 z-0 rounded-3xl"
                 />
                 <div className="relative z-10 flex items-center justify-between gap-3">
-                  <h3 className="text-2xl font-semibold">
+                  <h3 className="text-2xl font-semibold"
+                    style={brands.get(vendor.id)?.font ? { fontFamily: brands.get(vendor.id)!.font!, fontWeight: 400 } : undefined}>
                     {vendor.name || "Unnamed Vendor"}
                   </h3>
 

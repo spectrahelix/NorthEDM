@@ -5,6 +5,8 @@ import { createClient } from "@/utils/supabase/server";
 import { BackBar } from "@/app/components/BackBar";
 import { ProductGallery } from "@/app/components/ProductGallery";
 import { accentOr } from "@/utils/accent";
+import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
+import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,7 @@ async function load(id: string, itemId: string) {
   if (!product) return null;
   const [{ data: gallery }, { data: vendor }] = await Promise.all([
     supabase.from("product_images").select("url").eq("product_id", product.id).order("position").order("id"),
-    supabase.from("vendors").select("id, name, accent_color").eq("id", product.vendor_id).maybeSingle(),
+    supabase.from("vendors").select("id, name, accent_color, user_id").eq("id", product.vendor_id).maybeSingle(),
   ]);
   const images = (gallery ?? []).map((g) => g.url as string);
   if (images.length === 0 && product.image_url) images.push(product.image_url as string);
@@ -47,12 +49,17 @@ export default async function ItemPage({ params }: Params) {
   const d = await load(id, itemId);
   if (!d) notFound();
   const { product: p, images, vendor } = d;
-  const accent = accentOr(vendor?.accent_color as string | null);
+  const [brand, viewerFonts] = await Promise.all([
+    brandsForVendors([{ id: p.vendor_id as number, user_id: vendor?.user_id as string | null, accent_color: vendor?.accent_color as string | null }]).then((m) => m.get(p.vendor_id as number)!),
+    viewerWantsShopFonts(),
+  ]);
+  const accent = brand.theme.accent ?? accentOr(vendor?.accent_color as string | null);
+  const display = brand.font ? { fontFamily: brand.font } : undefined;
   const live = p.is_public && p.status === "published";
   const vendorName = (vendor?.name as string) || "Vendor";
 
   return (
-    <main className="min-h-screen px-6 py-12 text-white">
+    <main className="min-h-screen px-6 py-12 text-white" style={{ background: brand.theme.background }}>
       <div className="mx-auto max-w-5xl">
         <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }, { label: vendorName, href: `/marketplace/${p.vendor_id}` }]} fallback={`/marketplace/${p.vendor_id}`} />
         {!live && (
@@ -64,12 +71,14 @@ export default async function ItemPage({ params }: Params) {
           <ProductGallery images={images} alt={p.name as string} />
           <div>
             {p.category && <p className="font-dm-mono text-xs uppercase tracking-[0.25em]" style={{ color: accent }}>{p.category as string}</p>}
-            <h1 className="mt-2 font-bebas text-5xl leading-none tracking-wide">{p.name as string}</h1>
-            <p className="mt-4 font-bebas text-4xl" style={{ color: accent }}>${Number(p.price ?? 0).toFixed(2)}</p>
+            <h1 className={`mt-2 break-words leading-none tracking-wide ${display ? "text-4xl" : "font-bebas text-5xl"}`} style={display}>{p.name as string}</h1>
+            <p className={`mt-4 text-4xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }}>${Number(p.price ?? 0).toFixed(2)}</p>
             <p className="mt-1 font-dm-mono text-xs text-neutral-500">
               {Number(p.inventory_count ?? 0) > 0 ? `${p.inventory_count} in stock` : "Out of stock"}
             </p>
             {p.description && <p className="mt-6 whitespace-pre-line leading-7 text-neutral-300">{p.description as string}</p>}
+            {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-6" />}
+            <br />
             <Link href={`/marketplace/${p.vendor_id}`}
               className="mt-8 inline-block rounded-xl border border-white/15 px-5 py-2.5 text-sm text-neutral-200 transition hover:bg-white/5">
               More from {vendorName} →

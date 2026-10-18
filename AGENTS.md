@@ -123,6 +123,28 @@ Built for the first real vendor and now the standard for anything new:
   with `AccentPicker`. Each was measured readable as text *and* behind black
   button text; a free colour input let owners make their own prices unreadable.
 
+## Shop identity — theme + font per store
+
+Each store has a **theme** (background, accent) and a **font** (names,
+headings, prices). The owner picks both WITH the vendor when setting their
+site up, in **/admin/stores**; vendors don't choose freely. Themes live in
+`utils/storeThemes.ts` (built from the vendor's own logo palette and offered as
+templates — Frank's four are there); fonts in `utils/storeFonts.ts` (curated,
+free-licence, one weight) and are loaded in `app/fonts/shopFonts.ts`.
+
+- A shop's **own pages** (`/<slug>`, `/marketplace/<id>`, item pages) show its
+  theme and font. The main **/marketplace** keeps the NorthEDM look; only each
+  shop's name uses its font there.
+- Two switches can turn a shop font off: the **operator's** ("Show my custom
+  font" on `/<slug>/manage`, `stores.allow_custom_font`) and the **visitor's**
+  ("Shop fonts" pill, `ne_shop_fonts` cookie, remembered per device). Either off
+  → standard font. Themes are unaffected by both.
+- Descriptions and small print always stay in the standard font.
+- Adding a theme: contrast-check its accent like `utils/accent.ts` (>= 4.5:1 as
+  text on the theme's darkest area and behind black button text).
+- `next/font` options must be written as literals in each call — a shared
+  options object type-checks but fails the build.
+
 ## "Lights out" / "Lights on" — the owner's switch words
 
 The owner's words for hiding a vendor who hasn't paid, and restoring them once

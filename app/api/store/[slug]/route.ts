@@ -39,6 +39,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const patch: Record<string, unknown> = {};
     if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim().slice(0, 80);
     if (typeof body.tagline === "string") patch.tagline = body.tagline.trim().slice(0, 200) || null;
+    // The operator's own switch for their shop's custom font.
+    if (typeof body.allowCustomFont === "boolean") patch.allow_custom_font = body.allowCustomFont;
     // Only the readable palette (utils/accent.ts) — a free hex let an operator
     // pick a colour that made their own prices unreadable.
     if (body.accentColor !== undefined) {

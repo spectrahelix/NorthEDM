@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/utils/admin";
 import { RESERVED_SLUGS } from "@/utils/store";
+import { isStoreTheme } from "@/utils/storeThemes";
+import { isShopFont } from "@/utils/storeFonts";
 
 // Host admin (CJ): create embedded stores + assign an operator.
 export async function GET() {
@@ -9,7 +11,7 @@ export async function GET() {
 
   const { data: stores } = await g.admin
     .from("stores")
-    .select("id, slug, name, tagline, owner_user_id, accent_color, operator_fee_bps, active, created_at")
+    .select("id, slug, name, tagline, owner_user_id, accent_color, operator_fee_bps, active, created_at, theme, font, allow_custom_font")
     .order("created_at", { ascending: false });
 
   // Attach owner emails + member counts.
@@ -72,8 +74,26 @@ export async function PATCH(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const slug = String(body.slug || "").trim().toLowerCase();
-  const active = body.active === true;
   if (!slug) return NextResponse.json({ error: "Missing slug." }, { status: 400 });
+
+  // Shop identity: theme and font are the owner's call, agreed with the vendor
+  // at setup — only keys from the curated lists are accepted.
+  if (body.theme !== undefined || body.font !== undefined) {
+    const patch: Record<string, unknown> = {};
+    if (body.theme !== undefined) {
+      if (!isStoreTheme(body.theme)) return NextResponse.json({ error: "Unknown theme." }, { status: 400 });
+      patch.theme = body.theme;
+    }
+    if (body.font !== undefined) {
+      if (body.font !== null && !isShopFont(body.font)) return NextResponse.json({ error: "Unknown font." }, { status: 400 });
+      patch.font = body.font;
+    }
+    const { error } = await g.admin.from("stores").update(patch).eq("slug", slug);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  const active = body.active === true;
 
   const { error } = await g.admin.from("stores").update({ active }).eq("slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
