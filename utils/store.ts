@@ -31,6 +31,16 @@ type StoreRow = { id: string; slug: string; owner_user_id: string };
  * Unlike guardStoreOperator this never errors for anonymous visitors, because the
  * public storefront must still render for them when the store IS live.
  */
+/** True for NorthEDM's own admins (the owner, archons, wardens) — not store operators. */
+export async function viewerIsSiteAdmin(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  if (user.email === OWNER_EMAIL) return true;
+  const { data: up } = await supabase.from("user_profiles").select("role").eq("id", user.id).maybeSingle();
+  return up?.role === "archon" || up?.role === "warden";
+}
+
 export async function viewerCanPreviewStore(ownerUserId: string): Promise<boolean> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
