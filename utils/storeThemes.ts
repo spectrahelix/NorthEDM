@@ -111,6 +111,26 @@ STORE_THEMES.push(
     watermark: true,
   },
   {
+    // Obsidian Lotus's aura and watermark + Chakra Spectrum's band, leaning
+    // purple (his favourite). Made at his request, 2026-10-19.
+    key: "amethyst-lotus",
+    label: "Amethyst Lotus",
+    madeFor: "The Obsidian Cloak",
+    background: [
+      `radial-gradient(ellipse 70% 360px at 50% 120px, rgba(${CHAKRA.amethyst},.55), transparent 75%)`,
+      `radial-gradient(ellipse 32% 260px at 6% 260px, rgba(${CHAKRA.amethyst},.50), transparent 70%)`,
+      `radial-gradient(ellipse 26% 220px at 22% 150px, rgba(${CHAKRA.sky},.22), transparent 70%)`,
+      `radial-gradient(ellipse 24% 210px at 50% 30px, rgba(${CHAKRA.sun},.16), transparent 70%)`,
+      `radial-gradient(ellipse 26% 220px at 78% 150px, rgba(${CHAKRA.rose},.22), transparent 70%)`,
+      `radial-gradient(ellipse 32% 260px at 94% 260px, rgba(${CHAKRA.orchid},.48), transparent 70%)`,
+      "linear-gradient(180deg, #17111F 0%, #110D17 45%, #09080C 100%)",
+    ].join(", "),
+    accent: "#9F7AEA", // deep amethyst — 6.0:1 / 6.4:1
+    card: "rgba(255,255,255,0.04)",
+    band: "spectrum",
+    watermark: true,
+  },
+  {
     key: "chakra-spectrum",
     label: "Chakra Spectrum",
     madeFor: "The Obsidian Cloak",

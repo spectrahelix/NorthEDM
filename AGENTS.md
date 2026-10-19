@@ -129,7 +129,7 @@ Each store has a **theme** (background, accent) and a **font** (names,
 headings, prices). The owner picks both WITH the vendor when setting their
 site up, in **/admin/stores**; vendors don't choose freely. Themes live in
 `utils/storeThemes.ts` (built from the vendor's own logo palette and offered as
-templates — Frank's four and Travis's three are there); fonts in `utils/storeFonts.ts` (curated,
+templates — Frank's four and Travis's four are there); fonts in `utils/storeFonts.ts` (curated,
 free-licence, one weight) and are loaded in `app/fonts/shopFonts.ts`.
 
 - **Operators choose their theme** on `/<slug>/manage` from the templates the
