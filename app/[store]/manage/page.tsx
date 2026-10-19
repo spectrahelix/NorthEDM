@@ -7,8 +7,9 @@ import { AccentPicker } from "@/app/components/AccentPicker";
 import { storeTheme } from "@/utils/storeThemes";
 import { PillSwitch } from "@/app/components/PillSwitch";
 import { SHOP_FONT_CHOICES } from "@/utils/storeFonts";
+import { StoreLogoUpload } from "@/app/components/StoreLogoUpload";
 
-type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number; theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; theme_options: string[] };
+type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number; theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; theme_options: string[]; logo_url: string | null };
 type Member = { vendor_id: number; status: string; name: string; category: string | null };
 type Available = { id: number; name: string | null; category: string | null };
 
@@ -84,6 +85,10 @@ export default function StoreManagePage() {
             Standard. The font itself is set with NorthEDM at setup. */}
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Your shop&apos;s look</p>
+          <p className="mb-2 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Logo</p>
+          <div className="mb-5">
+            <StoreLogoUpload slug={slug} logoUrl={store?.logo_url ?? null} onChanged={() => { setMsg("Logo saved."); load(); }} />
+          </div>
           <div className="flex flex-wrap gap-2">
             <PillSwitch label="Store theme" value={!!store && store.allow_custom_theme && store.theme !== "northedm"}
               disabled={!store || store.theme === "northedm"}

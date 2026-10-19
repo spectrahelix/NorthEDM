@@ -22,7 +22,11 @@ export const ACCEPT_WEB_IMAGES = "image/jpeg,image/png,image/webp,image/gif";
 const MAX_EDGE = 1600;
 const SAFE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
-export async function toWebImage(file: File): Promise<File> {
+/**
+ * `keepTransparency`: output WebP instead of JPEG so see-through areas stay
+ * see-through (logos). Photos keep JPEG, which every browser shows.
+ */
+export async function toWebImage(file: File, opts: { keepTransparency?: boolean } = {}): Promise<File> {
   const isSafe = SAFE_TYPES.has(file.type) && !/\.(heic|heif)$/i.test(file.name);
   // Small, web-native files go up untouched (keeps PNG transparency, GIF motion).
   if (isSafe && file.size <= 1.5 * 1024 * 1024) return file;
@@ -39,10 +43,13 @@ export async function toWebImage(file: File): Promise<File> {
     if (!ctx) return file;
     ctx.drawImage(bitmap, 0, 0, w, h);
     bitmap.close?.();
-    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.85));
+    const type = opts.keepTransparency ? "image/webp" : "image/jpeg";
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, type, 0.86));
     if (!blob) return file;
     const base = file.name.replace(/\.[^.]+$/, "") || "photo";
-    return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
+    return opts.keepTransparency
+      ? new File([blob], `${base}.webp`, { type: "image/webp" })
+      : new File([blob], `${base}.jpg`, { type: "image/jpeg" });
   } catch {
     return file;
   }

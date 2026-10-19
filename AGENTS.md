@@ -129,7 +129,7 @@ Each store has a **theme** (background, accent) and a **font** (names,
 headings, prices). The owner picks both WITH the vendor when setting their
 site up, in **/admin/stores**; vendors don't choose freely. Themes live in
 `utils/storeThemes.ts` (built from the vendor's own logo palette and offered as
-templates — Frank's four are there); fonts in `utils/storeFonts.ts` (curated,
+templates — Frank's four and Travis's three are there); fonts in `utils/storeFonts.ts` (curated,
 free-licence, one weight) and are loaded in `app/fonts/shopFonts.ts`.
 
 - **Operators choose their theme** on `/<slug>/manage` from the templates the
@@ -138,6 +138,14 @@ free-licence, one weight) and are loaded in `app/fonts/shopFonts.ts`.
   font** pills (Custom/Standard → `allow_custom_theme` / `allow_custom_font`).
   The font itself is still set by the owner. Admins can also preview and save
   a look right on the store page (admin-only panel).
+- **Logo:** `stores.logo_url`, shown at the top of the storefront (and as a
+  faint watermark on themes with `watermark: true`). Operators/admins upload it
+  on `/<slug>/manage` (`/api/store/<slug>/logo`, converted with
+  `toWebImage(file, { keepTransparency: true })` so see-through logos stay
+  see-through). Frank's and Travis's are served from `public/stores/`.
+- Theme previews for the owner are rendered with the real page code against a
+  mocked backend and measured for text contrast on the actual pixels — mock-up
+  drawings drifted from what the code produced.
 - A shop's **own pages** (`/<slug>`, `/marketplace/<id>`, item pages) show its
   theme and font. The main **/marketplace** keeps the NorthEDM look; only each
   shop's name uses its font there.

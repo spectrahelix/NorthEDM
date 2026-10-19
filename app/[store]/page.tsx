@@ -38,7 +38,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   // everyone else gets the same 404 as a store that doesn't exist.
   const admin = storeAdminClient();
   const { data: storeData } = await admin
-    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status, theme, font, allow_custom_font, allow_custom_theme").eq("slug", slug).maybeSingle();
+    .from("stores").select("id, slug, name, tagline, accent_color, active, owner_user_id, billing_status, theme, font, allow_custom_font, allow_custom_theme, logo_url").eq("slug", slug).maybeSingle();
   if (!storeData) notFound();
 
   const isDraft = !storeData.active;
@@ -102,7 +102,13 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   }));
 
   return (
-    <main className="min-h-screen text-neutral-100" style={{ background: brand.theme.background }}>
+    <main className="relative min-h-screen overflow-x-clip text-neutral-100" style={{ background: brand.theme.background }}>
+      {/* A faint watermark of the shop's logo, drifting behind its products. */}
+      {brand.theme.watermark && (storeData as { logo_url?: string | null }).logo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img aria-hidden src={(storeData as { logo_url: string }).logo_url} alt=""
+          className="pointer-events-none absolute -right-24 top-[520px] w-[520px] max-w-none select-none opacity-[0.07]" />
+      )}
       {isDraft && (
         <div className="sticky top-0 z-40 border-b border-[#FFC93C]/30 bg-[#FFC93C]/[0.12] px-6 py-3 backdrop-blur">
           <p className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -121,6 +127,12 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
           style={brand.theme.hero ? { background: brand.theme.hero } : { background: `radial-gradient(ellipse at top, ${accent}55, transparent 60%)`, opacity: brand.theme.key === "northedm" ? 0.2 : 0.12 }} />
         <div className="relative mx-auto max-w-6xl px-6 py-16">
           <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }]} fallback="/marketplace" />
+          {/* The shop's own logo, front and centre of its storefront. */}
+          {(storeData as { logo_url?: string | null }).logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={(storeData as { logo_url: string }).logo_url} alt={`${store.name} logo`}
+              className="mb-6 mt-2 h-40 w-40 rounded-3xl object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.6)] md:h-48 md:w-48" />
+          )}
           <p className="font-dm-mono text-xs uppercase tracking-[0.3em]" style={{ color: accent }}>on NorthEDM</p>
           <h1 className={`mt-3 break-words leading-none tracking-wide ${display ? "text-5xl md:text-7xl" : "font-bebas text-7xl md:text-8xl"}`} style={display}>{store.name}</h1>
           {store.tagline && <p className="mt-4 max-w-xl text-neutral-300">{store.tagline}</p>}
@@ -136,6 +148,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
         </div>
       </section>
       {brand.theme.band === "awning" && <div aria-hidden className="store-awning" />}
+      {brand.theme.band === "spectrum" && <div aria-hidden className="store-spectrum" />}
 
       <div className="mx-auto max-w-6xl px-6 py-12">
         {vendors.length > 0 && (

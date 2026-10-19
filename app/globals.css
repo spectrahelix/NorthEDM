@@ -151,3 +151,12 @@ body {
     radial-gradient(circle at 14px 0, #CA6F5A 13px, transparent 14px) 0 0 / 56px 12px repeat-x,
     radial-gradient(circle at 42px 0, #E0C698 13px, transparent 14px) 0 0 / 56px 12px repeat-x;
 }
+
+/* Store theme decoration: a glowing seven-colour chakra band under the store
+   hero. Used by the "chakra-spectrum" theme (The Obsidian Cloak's palette). */
+.store-spectrum {
+  height: 6px;
+  margin-bottom: 18px;
+  background: linear-gradient(90deg, #6C4795, #4A98C9, #9EC155, #FED85F, #F6A553, #E66785, #CB4B91);
+  box-shadow: 0 0 18px rgba(230, 103, 133, 0.35), 0 0 36px rgba(74, 152, 201, 0.25);
+}
