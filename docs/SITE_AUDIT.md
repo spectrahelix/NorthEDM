@@ -2,20 +2,20 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-10-12 17:51 UTC
+**Last run:** 2026-10-19 15:34 UTC
 **Health:** 🟠 5 high vulnerabilities
 
 | Area | Result |
 | :-- | :-- |
-| Features (pages) | **78** routes (9 dynamic) |
-| API endpoints | **88** |
-| Users | **27** total · 3 new (7d) · 13 new (30d) |
-| Latest signup | 2026-10-12 (0d ago) |
+| Features (pages) | **79** routes (10 dynamic) |
+| API endpoints | **90** |
+| Users | **27** total · 2 new (7d) · 13 new (30d) |
+| Latest signup | 2026-10-12 (6d ago) |
 | Open bug/feedback reports | 0 of 13 total |
 | Security (npm audit) | 0 critical · 5 high · 0 moderate · 0 low |
 | Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
-| Migrations | 56 (latest: `20261010700000_vendor_accent_color.sql`) |
+| Migrations | 61 (latest: `20261019100000_store_logo.sql`) |
 | Env vars referenced | 23 |
 | TODO/FIXME | 0 |
 
@@ -25,7 +25,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 
 ---
 
-## Feature inventory (78 pages)
+## Feature inventory (79 pages)
 
 - `/[store]`
 - `/[store]/manage`
@@ -77,6 +77,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/login`
 - `/marketplace`
 - `/marketplace/[id]`
+- `/marketplace/[id]/item/[itemId]`
 - `/marketplace/apply`
 - `/messages`
 - `/offline`
@@ -106,7 +107,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (88)
+## API endpoints (90)
 
 - `/api/admin/artisan`
 - `/api/admin/blocks`
@@ -181,10 +182,12 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/store-credit`
 - `/api/store/[slug]`
 - `/api/store/[slug]/checkout`
+- `/api/store/[slug]/logo`
 - `/api/track`
 - `/api/vendor/photos`
 - `/api/vendor/products`
 - `/api/vendor/products/[id]`
+- `/api/vendor/products/[id]/images`
 - `/api/vendor/products/upload`
 - `/api/vendor/square/connect`
 - `/api/vendor/square/disconnect`
