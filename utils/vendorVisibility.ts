@@ -7,11 +7,20 @@ import { storeAdminClient } from "@/utils/store";
  * hide them on its own. The home page and /marketplace both had a fixed Frank
  * card that stayed up after he was put lights out on 2026-10-18.
  */
-export async function vendorIsPublic(vendorId: number): Promise<boolean> {
+/** Which of these vendors are showing to the public right now — one query. */
+export async function publicVendorIds(ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set();
   const { data } = await storeAdminClient()
     .from("vendors")
-    .select("status, is_public, suspended_at")
-    .eq("id", vendorId)
-    .maybeSingle();
-  return !!data && data.status === "approved" && data.is_public === true && !data.suspended_at;
+    .select("id, status, is_public, suspended_at")
+    .in("id", ids);
+  return new Set(
+    (data ?? [])
+      .filter((v) => v.status === "approved" && v.is_public === true && !v.suspended_at)
+      .map((v) => Number(v.id)),
+  );
+}
+
+export async function vendorIsPublic(vendorId: number): Promise<boolean> {
+  return (await publicVendorIds([vendorId])).has(vendorId);
 }

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const {
     vendorId, eventName, campgroundZone, campsiteNotes,
-    campsitePhotoUrl, deliveryWindow, items, totalCents, customerName,
+    campsitePhotoUrl, deliveryWindow, items, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
     licensePlate, carPhotoUrl, customerLat, customerLng, useCredit,
     promoCode,
@@ -25,13 +25,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
 
-  const grossCents = Number(totalCents) || 0;
-
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+
+  // The vendor must be live on FestDash and visible to the public. The order
+  // page only lists such vendors, but a crafted request could name a hidden
+  // ("lights out") one — this is the check that actually enforces it.
+  const vid = Number(vendorId);
+  const [{ data: vendorRow }, { data: fdRow }] = await Promise.all([
+    admin.from("vendors").select("id, status, is_public, suspended_at").eq("id", vid).maybeSingle(),
+    admin.from("festdash_vendors").select("vendor_id").eq("vendor_id", vid).eq("is_active", true).maybeSingle(),
+  ]);
+  if (!vendorRow || vendorRow.status !== "approved" || !vendorRow.is_public || vendorRow.suspended_at || !fdRow) {
+    return NextResponse.json({ error: "This vendor isn't taking FestDash orders right now." }, { status: 403 });
+  }
+
+  // Re-price every line from the database. The browser's prices and total are
+  // ignored — they used to be trusted, so an edited request could have bought
+  // an $85 item for a cent. Lines are matched by product_id (what the order
+  // page sends now) or, for a page loaded before that change, by name within
+  // this vendor's menu. The stored line carries product_id so the payment
+  // webhook can take the stock down, which it was silently failing to do.
+  const { data: menu } = await admin
+    .from("products")
+    .select("id, name, price, inventory_count")
+    .eq("vendor_id", vid)
+    .eq("is_public", true)
+    .eq("status", "published");
+  const byId = new Map((menu ?? []).map((m) => [Number(m.id), m]));
+  const byName = new Map((menu ?? []).map((m) => [String(m.name ?? "").trim().toLowerCase(), m]));
+  const lines: { product_id: number; name: string; qty: number; price: number }[] = [];
+  for (const raw of items as { product_id?: unknown; id?: unknown; name?: unknown; qty?: unknown }[]) {
+    const qty = Math.floor(Number(raw?.qty) || 0);
+    if (qty < 1) return NextResponse.json({ error: "Each item needs a quantity of at least 1." }, { status: 400 });
+    const m = byId.get(Number(raw.product_id ?? raw.id)) ?? byName.get(String(raw.name ?? "").trim().toLowerCase());
+    if (!m) {
+      return NextResponse.json(
+        { error: `“${String(raw.name ?? "An item")}” isn't on this vendor's menu any more — please refresh and try again.` },
+        { status: 400 }
+      );
+    }
+    if ((m.inventory_count ?? 0) < qty) {
+      return NextResponse.json({ error: `Only ${m.inventory_count ?? 0} of “${m.name}” left.` }, { status: 400 });
+    }
+    lines.push({ product_id: Number(m.id), name: String(m.name), qty, price: Math.round(Number(m.price) * 100) });
+  }
+  const grossCents = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
+  if (grossCents <= 0) return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
 
   // Apply a commission code if supplied. The customer gets percent_off the
   // vendor's items; the same amount is booked as commission to NorthEDM (the
@@ -115,7 +158,7 @@ export async function POST(req: Request) {
       customer_lat: typeof customerLat === "number" ? customerLat : null,
       customer_lng: typeof customerLng === "number" ? customerLng : null,
       delivery_window: deliveryWindow,
-      items,
+      items: lines,
       total_cents: netCents,
       store_credit_cents: creditCents,
       discount_cents: discountCents,
@@ -206,7 +249,7 @@ export async function POST(req: Request) {
     .maybeSingle();
   const vendorAccount = (fv?.stripe_account_id as string | null) || null;
 
-  const itemSummary = (items as { name: string; qty: number }[])
+  const itemSummary = lines
     .map((i) => `${i.qty}× ${i.name}`)
     .join(", ")
     .slice(0, 250);

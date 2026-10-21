@@ -48,7 +48,7 @@ export default async function FestDashPage() {
   const vIds = fdVendors.map((v) => v.vendor_id).filter(Boolean);
   const uIds = fdVendors.map((v) => v.user_id).filter(Boolean);
   const [vRows, showRows, profRows] = await Promise.all([
-    vIds.length ? admin.from("vendors").select("id, name, suspended_at").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null; suspended_at: string | null }[] }),
+    vIds.length ? admin.from("vendors").select("id, name, status, is_public, suspended_at").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null; status: string | null; is_public: boolean | null; suspended_at: string | null }[] }),
     uIds.length ? admin.from("vendor_shows").select("*").in("user_id", uIds) : Promise.resolve({ data: [] as VendorShow[] }),
     uIds.length ? admin.from("user_profiles").select("id, hide_shows").in("id", uIds) : Promise.resolve({ data: [] as { id: string; hide_shows: boolean }[] }),
   ]);
@@ -63,10 +63,13 @@ export default async function FestDashPage() {
   // rule, so suspension has to be applied by hand. Without it a suspended
   // vendor — hidden from the marketplace, their store and the FestDash menu —
   // was still named here on the public FestDash page.
-  const suspended = new Set(
-    (vRows.data ?? []).filter((v) => v.suspended_at).map((v) => v.id)
+  // Same rule as the order page's list (which goes through RLS): approved,
+  // listed, and not suspended. "Approved — not listed" vendors used to be
+  // named here while hidden everywhere else.
+  const visible = new Set(
+    (vRows.data ?? []).filter((v) => v.status === "approved" && v.is_public && !v.suspended_at).map((v) => v.id)
   );
-  const activeVendors = (fdVendors ?? []).filter((v) => !suspended.has(v.vendor_id)).map((v) => {
+  const activeVendors = (fdVendors ?? []).filter((v) => visible.has(v.vendor_id)).map((v) => {
     const shows = hideById.get(v.user_id) ? [] : (showsByUser.get(v.user_id) ?? []);
     return { vendorId: v.vendor_id as number, name: (nameById.get(v.vendor_id) as string) || "Vendor", cur: currentShow(shows) };
   });
@@ -241,35 +244,49 @@ export default async function FestDashPage() {
         </div>
       </section>
 
-      {/* Active FestDash vendors */}
-      {activeVendors.length > 0 && (
-        <section className="mx-auto max-w-5xl px-6 py-16">
+      {/* Active FestDash vendors. The section and its button stay even when
+          nobody is delivering right now (e.g. every vendor is lights out), so
+          there is always a way to the vendor list. */}
+      <section className="mx-auto max-w-5xl px-6 py-16">
           <h2 className="text-center font-bebas text-4xl tracking-wide">On FestDash Now</h2>
           <p className="mt-2 text-center text-neutral-400">Vendors delivering through FestDash — and where to find them.</p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeVendors.map((v) => (
-              <Link key={v.vendorId} href={`/marketplace/${v.vendorId}`}
-                className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-[#FB923C]/40 hover:bg-white/[0.05]">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="truncate font-bebas text-2xl tracking-wide group-hover:text-[#FB923C]">{v.name}</h3>
-                  {v.cur?.live && (
-                    <span className="shrink-0 rounded-full px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest" style={{ color: "#39FF14", background: "#39FF1414" }}>🟢 Live</span>
+        {activeVendors.length > 0 ? (
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {activeVendors.map((v) => (
+                <Link key={v.vendorId} href={`/marketplace/${v.vendorId}`}
+                  className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-[#FB923C]/40 hover:bg-white/[0.05]">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="truncate font-bebas text-2xl tracking-wide group-hover:text-[#FB923C]">{v.name}</h3>
+                    {v.cur?.live && (
+                      <span className="shrink-0 rounded-full px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest" style={{ color: "#39FF14", background: "#39FF1414" }}>🟢 Live</span>
+                    )}
+                  </div>
+                  {v.cur ? (
+                    <p className="mt-1.5 text-sm text-neutral-400">
+                      {v.cur.live ? "At" : "Next"}: <span className="text-neutral-200">{v.cur.show.festival_name}</span>
+                      {v.cur.show.location ? ` — ${v.cur.show.location}` : ""}
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 font-dm-mono text-xs text-neutral-600">Delivering on FestDash</p>
                   )}
-                </div>
-                {v.cur ? (
-                  <p className="mt-1.5 text-sm text-neutral-400">
-                    {v.cur.live ? "At" : "Next"}: <span className="text-neutral-200">{v.cur.show.festival_name}</span>
-                    {v.cur.show.location ? ` — ${v.cur.show.location}` : ""}
-                  </p>
-                ) : (
-                  <p className="mt-1.5 font-dm-mono text-xs text-neutral-600">Delivering on FestDash</p>
-                )}
-                <p className="mt-3 font-dm-mono text-[11px] uppercase tracking-widest text-[#FB923C]">View market →</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+                  <p className="mt-3 font-dm-mono text-[11px] uppercase tracking-widest text-[#FB923C]">View market →</p>
+                </Link>
+              ))}
+            </div>
+        ) : (
+          <p className="mx-auto mt-8 max-w-md rounded-2xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center text-sm text-neutral-500">
+            No vendors are delivering right now — check back soon.
+          </p>
+        )}
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/festdash/order"
+            className="rounded-2xl border border-orange-500/40 px-6 py-3 font-semibold text-orange-400 transition hover:bg-orange-500/10"
+          >
+            Browse FestDash vendors →
+          </Link>
+        </div>
+      </section>
 
       {/* Vendor CTA */}
       <section className="border-y border-white/10 bg-orange-950/20 px-6 py-20">
