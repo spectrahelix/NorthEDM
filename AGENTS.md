@@ -206,6 +206,10 @@ don't obey suspension on their own — Frank's featured cards on `/` and
 gated with `publicVendorIds([...])` / `vendorIsPublic(id)` from
 `utils/vendorVisibility.ts`. Add any new one the same way.
 
+**`/portfolio` is exempt.** It is the owner's credits list for NorthEDM's own
+work, not a storefront; the vendor names on it (Frank's General Store included)
+stay up through lights out. Owner's decision, 2026-10-21 — don't "fix" it.
+
 **Pages are not the security boundary — RLS is.** On 2026-10-21 every page
 404'd correctly while `festdash_vendors`, `store_vendors` and `vendor_shows`
 were readable in full through the REST API with the publishable key (ids, join
