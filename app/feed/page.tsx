@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
 import { WeatherStrip } from "@/app/components/WeatherStrip";
+import { vendorIsPublic } from "@/utils/vendorVisibility";
 
 export const metadata: Metadata = {
   title: "What's Happening",
@@ -121,6 +122,7 @@ function formatDateRange(start: string, end: string) {
 
 export default async function FeedPage() {
   const supabase = await createClient();
+  const homesteadPublic = await vendorIsPublic(6); // hand-written pin below
 
   const [
     { data: eventsData },
@@ -262,6 +264,7 @@ export default async function FeedPage() {
           <h2 className="font-bebas text-4xl tracking-wide">Trending Vendors</h2>
 
           {/* Homestead Life — permanent founder pin */}
+          {homesteadPublic && (
           <a
             href="https://homestead-life.com"
             target="_blank"
@@ -282,6 +285,7 @@ export default async function FeedPage() {
               Everything Balm · Essential Oils · Natural Skincare
             </p>
           </a>
+          )}
 
           {vendors.length === 0 ? (
             <p className="text-sm text-neutral-500">No vendors yet.</p>

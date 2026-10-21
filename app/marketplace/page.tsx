@@ -4,7 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
-import { vendorIsPublic } from "@/utils/vendorVisibility";
+import { publicVendorIds } from "@/utils/vendorVisibility";
 
 export const metadata: Metadata = {
   title: "Marketplace",
@@ -97,7 +97,9 @@ export default async function MarketplacePage() {
     .select("vendor_id")
     .eq("is_active", true);
   const festdashIds = new Set<number>((fdRows ?? []).map((r) => r.vendor_id as number));
-  const frankPublic = await vendorIsPublic(5);
+  const publicVendors = await publicVendorIds([5, 6]);
+  const frankPublic = publicVendors.has(5);
+  const homesteadPublic = publicVendors.has(6);
 
   // Show the "get your own Marketplace" CTA to anyone who doesn't already have access.
   const { data: { user } } = await supabase.auth.getUser();
@@ -165,8 +167,10 @@ export default async function MarketplacePage() {
         </div>
       </section>
 
-      {/* ── Homestead Life Founder Spotlight ──────────────── */}
+      {/* ── Homestead Life Founder Spotlight (+ Frank). Each hidden while lights out. */}
+      {(homesteadPublic || frankPublic) && (
       <section className="mx-auto max-w-6xl px-6 pt-16 pb-4">
+        {homesteadPublic && (
         <div className="relative overflow-hidden rounded-[2rem] border border-[#3AFFD4]/25 bg-[#3AFFD4]/[0.04] p-8 sm:p-10">
           <div
             className="pointer-events-none absolute right-0 top-0 h-72 w-72 opacity-15"
@@ -255,6 +259,7 @@ export default async function MarketplacePage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Find it at Frank's — featured, delivered on FestDash. Hidden while he's lights out. */}
         {frankPublic && (
@@ -303,6 +308,7 @@ export default async function MarketplacePage() {
         </div>
         )}
       </section>
+      )}
 
       {vendors.length > 0 ? (
         <section className="mx-auto max-w-6xl px-6 py-16">

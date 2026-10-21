@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { SocialAuth } from "@/app/components/SocialAuth";
 import type { Metadata } from "next";
-import { vendorIsPublic } from "@/utils/vendorVisibility";
+import { publicVendorIds } from "@/utils/vendorVisibility";
 
 export const metadata: Metadata = {
   title: "NorthEDM — Unite the Northeast",
@@ -51,7 +51,12 @@ const FEATURES = [
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const frankPublic = await vendorIsPublic(5);
+  // Hand-written vendor cards below are typed in, not read from the database,
+  // so suspension can't hide them on its own — each is gated here.
+  const publicVendors = await publicVendorIds([5, 6, 8]);
+  const frankPublic = publicVendors.has(5);
+  const homesteadPublic = publicVendors.has(6);
+  const carlyPublic = publicVendors.has(8);
   const [
     { data: { user } },
     { data },
@@ -353,6 +358,7 @@ export default async function HomePage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Homestead Life — permanent founder vendor */}
+          {homesteadPublic && (
           <div className="group flex flex-col rounded-3xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.04] p-6 transition hover:border-[#3AFFD4]/60 hover:bg-[#3AFFD4]/[0.07]">
             <div className="mb-3 flex items-start justify-between gap-2">
               <h3 className="font-bebas text-xl leading-snug tracking-wide">
@@ -392,6 +398,7 @@ export default async function HomePage() {
               </span>
             </div>
           </div>
+          )}
 
           {/* Find it at Frank's — on FestDash. Hidden while he's lights out. */}
           {frankPublic && (
@@ -460,6 +467,7 @@ export default async function HomePage() {
           </Link>
 
           {/* CarlyIsFunny — created by NorthEDM */}
+          {carlyPublic && (
           <div className="group flex flex-col rounded-3xl border border-[#FF5C3A]/30 bg-[#FF5C3A]/[0.04] p-6 transition hover:border-[#FF5C3A]/60 hover:bg-[#FF5C3A]/[0.07]">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="font-dm-mono text-[10px] uppercase tracking-[0.25em] text-[#FF5C3A]">
@@ -496,6 +504,7 @@ export default async function HomePage() {
               </a>
             </div>
           </div>
+          )}
 
           {vendors.map((vendor) => (
             <Link

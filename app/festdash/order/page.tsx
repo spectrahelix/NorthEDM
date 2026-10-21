@@ -254,7 +254,7 @@ export default function OrderPage() {
         customerLat,
         customerLng,
         deliveryWindow,
-        items: cart.map((c) => ({ name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
+        items: cart.map((c) => ({ product_id: c.id, name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
         useCredit,
         promoCode: promo?.code,

@@ -188,16 +188,36 @@ the same thing — the owner tried those on 2026-10-18 and chose lights out/on.)
    Stores → Publish** in /admin.
 
 **Verify, don't assume.** Logged out, after lights out: `/marketplace/<id>`,
-`/marketplace/<id>/item/<itemId>` and `/<store slug>` return 404, the vendor is
-absent from `/marketplace`, `/festdash` and `/api/festdash/vendors`, and
-`/api/festdash/menu/<id>` is empty. After lights on, the same checks show them.
-Compare against a vendor that is still public, so a broken page can't pass.
+`/marketplace/<id>/item/<itemId>` and `/<store slug>` return 404; the vendor is
+absent from `/`, `/marketplace`, `/feed`, `/festdash`, `/api/search?q=<name>` and
+`/api/festdash/vendors`; `/api/festdash/menu/<id>` is empty. Then read the
+database directly with the publishable key (`<project>/rest/v1/<table>?select=*`
+with `apikey` + `Authorization: Bearer` headers) for `vendors`, `products`,
+`product_images`, `stores`, `store_vendors`, `festdash_vendors`, `vendor_shows`:
+all must come back empty for that vendor. Repeat as a signed-in regular customer
+(Splunk) — `festdash_vendors` isn't readable logged out at all, so a logged-out
+probe of it proves nothing. After lights on, the same checks show them. Compare
+against a vendor that is still public, so a broken page can't pass.
 
 **Hand-written vendor cards** (typed into a page, not read from the database)
 don't obey suspension on their own — Frank's featured cards on `/` and
-`/marketplace` stayed up after lights out on 2026-10-18. Wrap every such card in
-`vendorIsPublic(<id>)` from `utils/vendorVisibility.ts`, and include `/` and
-`/marketplace` in the logged-out check above.
+`/marketplace` stayed up after lights out on 2026-10-18. Every such card
+(Frank, Homestead Life, CarlyIsFunny on `/`, `/marketplace`, `/feed`) is now
+gated with `publicVendorIds([...])` / `vendorIsPublic(id)` from
+`utils/vendorVisibility.ts`. Add any new one the same way.
+
+**Pages are not the security boundary — RLS is.** On 2026-10-21 every page
+404'd correctly while `festdash_vendors`, `store_vendors` and `vendor_shows`
+were readable in full through the REST API with the publishable key (ids, join
+dates, the operator's user id, `stripe_account_id`). Side tables now follow the
+vendors table's own RLS (`exists (select 1 from public.vendors v where v.id =
+vendor_id)`), and `festdash_vendors` grants anon/authenticated only
+`id, vendor_id, is_active, joined_at` (a column-level REVOKE alone does nothing
+while a table-wide SELECT grant exists — verified). Any new table that names a
+vendor gets the same treatment. Money paths enforce it too: `/api/festdash/orders`
+re-prices every line from `products` and refuses a vendor that isn't approved,
+listed, unsuspended and active on FestDash; store checkout refuses a suspended
+vendor's items.
 
 Suspension is enforced in RLS (`vendor_is_suspended()`), but anything read
 with the service role skips RLS and must filter `suspended_at` itself — the

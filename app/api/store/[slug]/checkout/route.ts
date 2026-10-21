@@ -47,12 +47,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     .in("id", ids);
   const byId = new Map((products ?? []).map((p) => [Number(p.id), p]));
 
+  // A "lights out" vendor's items can't be bought even by a crafted request:
+  // the page already hides them, but this route re-reads with the service
+  // role, which skips the visibility rules.
+  const vendorIds = [...new Set((products ?? []).map((p) => Number(p.vendor_id)))];
+  const { data: vendorRows } = vendorIds.length
+    ? await admin.from("vendors").select("id, status, is_public, suspended_at").in("id", vendorIds)
+    : { data: [] as { id: number; status: string; is_public: boolean; suspended_at: string | null }[] };
+  const sellable = new Set(
+    (vendorRows ?? []).filter((v) => v.status === "approved" && v.is_public && !v.suspended_at).map((v) => Number(v.id)),
+  );
+
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
   const orderItems: { product_id: number; vendor_id: number; name: string; price_cents: number; qty: number }[] = [];
   for (const it of items) {
     const p = byId.get(Number(it.id));
     const qty = Math.max(1, Math.floor(Number(it.qty) || 0));
-    if (!p || !p.is_public || p.status !== "published") {
+    if (!p || !p.is_public || p.status !== "published" || !sellable.has(Number(p.vendor_id))) {
       return NextResponse.json({ error: "An item is no longer available." }, { status: 400 });
     }
     if (!memberIds.has(Number(p.vendor_id))) {
