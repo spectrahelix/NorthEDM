@@ -193,6 +193,12 @@ absent from `/marketplace`, `/festdash` and `/api/festdash/vendors`, and
 `/api/festdash/menu/<id>` is empty. After lights on, the same checks show them.
 Compare against a vendor that is still public, so a broken page can't pass.
 
+**Hand-written vendor cards** (typed into a page, not read from the database)
+don't obey suspension on their own — Frank's featured cards on `/` and
+`/marketplace` stayed up after lights out on 2026-10-18. Wrap every such card in
+`vendorIsPublic(<id>)` from `utils/vendorVisibility.ts`, and include `/` and
+`/marketplace` in the logged-out check above.
+
 Suspension is enforced in RLS (`vendor_is_suspended()`), but anything read
 with the service role skips RLS and must filter `suspended_at` itself — the
 `/festdash` vendor list once leaked a hidden vendor this way.
