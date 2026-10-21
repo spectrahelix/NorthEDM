@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { SocialAuth } from "@/app/components/SocialAuth";
 import type { Metadata } from "next";
+import { vendorIsPublic } from "@/utils/vendorVisibility";
 
 export const metadata: Metadata = {
   title: "NorthEDM — Unite the Northeast",
@@ -50,6 +51,7 @@ const FEATURES = [
 
 export default async function HomePage() {
   const supabase = await createClient();
+  const frankPublic = await vendorIsPublic(5);
   const [
     { data: { user } },
     { data },
@@ -391,7 +393,8 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Find it at Frank's — on FestDash */}
+          {/* Find it at Frank's — on FestDash. Hidden while he's lights out. */}
+          {frankPublic && (
           <div className="group flex flex-col rounded-3xl border border-orange-500/30 bg-orange-950/15 p-6 transition hover:border-orange-500/60 hover:bg-orange-950/25">
             <div className="mb-3 flex items-start justify-between gap-2">
               <h3 className="font-bebas text-xl leading-snug tracking-wide">
@@ -423,6 +426,7 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
+          )}
 
           {/* CJ's Foraging Tours — permanent founder vendor */}
           <Link

@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
+import { vendorIsPublic } from "@/utils/vendorVisibility";
 
 export const metadata: Metadata = {
   title: "Marketplace",
@@ -27,6 +28,7 @@ type Vendor = {
   website: string | null;
   accent_color: string | null;
   user_id: string | null;
+  suspended_at: string | null;
 };
 
 function normalizeUrl(url: string) {
@@ -71,7 +73,7 @@ export default async function MarketplacePage() {
 
   const { data } = await supabase
     .from("vendors")
-    .select("id, name, category, description, vendor_type, is_founder, website, accent_color, user_id")
+    .select("id, name, category, description, vendor_type, is_founder, website, accent_color, user_id, suspended_at")
     .eq("status", "approved")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
@@ -95,6 +97,7 @@ export default async function MarketplacePage() {
     .select("vendor_id")
     .eq("is_active", true);
   const festdashIds = new Set<number>((fdRows ?? []).map((r) => r.vendor_id as number));
+  const frankPublic = await vendorIsPublic(5);
 
   // Show the "get your own Marketplace" CTA to anyone who doesn't already have access.
   const { data: { user } } = await supabase.auth.getUser();
@@ -253,7 +256,8 @@ export default async function MarketplacePage() {
           </div>
         </div>
 
-        {/* Find it at Frank's — featured, delivered on FestDash */}
+        {/* Find it at Frank's — featured, delivered on FestDash. Hidden while he's lights out. */}
+        {frankPublic && (
         <div className="relative mt-4 overflow-hidden rounded-[2rem] border border-orange-500/25 bg-orange-950/15 p-8 sm:p-10">
           <div
             className="pointer-events-none absolute right-0 top-0 h-72 w-72 opacity-15"
@@ -297,6 +301,7 @@ export default async function MarketplacePage() {
             </div>
           </div>
         </div>
+        )}
       </section>
 
       {vendors.length > 0 ? (
@@ -329,6 +334,13 @@ export default async function MarketplacePage() {
                     {vendor.name || "Unnamed Vendor"}
                   </h3>
 
+                  {/* Only admins and the vendor themself can read a lights-out vendor (RLS), so this
+                      tag only ever appears to them — it says why they still see it. */}
+                  {vendor.suspended_at ? (
+                    <span className="rounded-full bg-[#FFC93C]/15 px-3 py-1 font-dm-mono text-[10px] uppercase tracking-widest text-[#FFC93C]">
+                      Lights out · hidden from the public
+                    </span>
+                  ) : null}
                   {vendor.vendor_type === "featured" ? (
                     <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs text-purple-300">
                       Featured
