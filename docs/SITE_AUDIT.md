@@ -2,24 +2,24 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-10-19 15:34 UTC
-**Health:** 🟠 5 high vulnerabilities
+**Last run:** 2026-10-26 15:09 UTC
+**Health:** 🔴 1 critical vulnerability · 🟠 1 high vulnerability
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **79** routes (10 dynamic) |
 | API endpoints | **90** |
-| Users | **27** total · 2 new (7d) · 13 new (30d) |
-| Latest signup | 2026-10-12 (6d ago) |
+| Users | **28** total · 1 new (7d) · 4 new (30d) |
+| Latest signup | 2026-10-25 (1d ago) |
 | Open bug/feedback reports | 0 of 13 total |
-| Security (npm audit) | 0 critical · 5 high · 0 moderate · 0 low |
+| Security (npm audit) | 1 critical · 1 high · 0 moderate · 0 low |
 | Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
-| Migrations | 61 (latest: `20261019100000_store_logo.sql`) |
+| Migrations | 62 (latest: `20261021100000_lights_out_side_tables.sql`) |
 | Env vars referenced | 23 |
 | TODO/FIXME | 0 |
 
-**High/critical advisories:** @next/eslint-plugin-next (high), braces (high), eslint-config-next (high), fast-glob (high), micromatch (high)
+**High/critical advisories:** next (critical), zod (high)
 
 <sub>FYI (not a problem): 21 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
