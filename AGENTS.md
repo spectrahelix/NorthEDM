@@ -58,6 +58,16 @@ Likewise, don't name a root cause you haven't tested end to end. Missing
 SPF/DKIM was blamed for signups failing; a single real email sent through the
 live route proved delivery was fine and the real fault was elsewhere.
 
+## Branch hygiene after a squash merge
+
+PRs are squash-merged, and force-push is not available in these sessions. Right
+after a PR merges, run `git fetch origin main && git merge origin/main` on the
+working branch **before starting new work** — at that moment both sides hold
+identical content, so the merge is clean and the branch descends from `main`.
+Skip it and the next PR shows conflicts in every file the squash touched; the
+resolution is then "keep ours" once `git diff origin/main <pre-work tip>` is
+proven empty, but that is a detour you don't need.
+
 ## Know which commit you're reading
 
 `git checkout main` can land on a stale local branch. Confirm
