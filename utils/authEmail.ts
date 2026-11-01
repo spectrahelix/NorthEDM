@@ -94,34 +94,41 @@ export async function sendAuthEmail(
   kind: AuthEmailKind,
   actionLink: string
 ): Promise<SendResult> {
-  const key = process.env.BREVO_API_KEY;
-  if (!key) return { ok: false, error: "No email provider configured (BREVO_API_KEY)." };
-
-  const sender = process.env.BREVO_SENDER_EMAIL || "no-reply@northedm.com";
   const c = COPY[kind];
   const { html, text } = render(kind, actionLink);
+  return sendEmail({ to, subject: c.subject, html, text });
+}
 
+/**
+ * Send one branded email through Brevo. The auth emails and the admin notices
+ * (e.g. the "pick your username" nudge) share this so the provider call lives
+ * in one place.
+ */
+export async function sendEmail(args: { to: string; subject: string; html: string; text: string }): Promise<SendResult> {
+  const key = process.env.BREVO_API_KEY;
+  if (!key) return { ok: false, error: "No email provider configured (BREVO_API_KEY)." };
+  const sender = process.env.BREVO_SENDER_EMAIL || "no-reply@northedm.com";
   try {
     const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: { "api-key": key, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({
         sender: { name: BRAND, email: sender },
-        to: [{ email: to }],
-        subject: c.subject,
-        htmlContent: html,
-        textContent: text,
+        to: [{ email: args.to }],
+        subject: args.subject,
+        htmlContent: args.html,
+        textContent: args.text,
       }),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      console.error("auth email send failed:", res.status, detail);
+      console.error("email send failed:", res.status, detail);
       return { ok: false, error: `Email provider rejected the message (${res.status}).` };
     }
     return { ok: true };
   } catch (e) {
-    console.error("auth email send error:", e);
+    console.error("email send error:", e);
     return { ok: false, error: e instanceof Error ? e.message : "Email send failed." };
   }
 }
