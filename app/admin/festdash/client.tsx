@@ -2,6 +2,7 @@
 import { AppliedAt } from "@/app/components/AppliedAt";
 import { useState } from "react";
 
+import Link from "next/link";
 type Application = {
   id: string; business_name: string; contact_name: string; email: string;
   phone: string | null; product_types: string; typical_events: string | null;
@@ -291,6 +292,11 @@ export default function FestDashAdminClient({
             </div>
           </>
         )}
+
+        {/* Coordinators (regional purse keepers) */}
+        <Link href="/admin/festdash/coordinators" className="mt-10 inline-block rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 hover:bg-white/5">
+          🌍 Coordinators &amp; regional shops — purse keepers, shop fees, remittances →
+        </Link>
 
         {/* Runners */}
         <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">

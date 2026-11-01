@@ -161,3 +161,46 @@ on `festdash_vendors` (e.g. `stripe_account_id`).
 1. **Payments processor** — ✅ **DECIDED: Stripe Connect** (Express accounts for vendors; handles escrow hold + payout).
 2. **Maps provider** — ✅ **DECIDED: Mapbox** (live ping map; data layer is keyless, map needs a free key).
 3. Run the **realtime** + **storage policy** + **schema** SQL when ready (see migrations).
+
+
+## Gambia / coordinator model
+
+Added 2026-11-01 for Gee (The Gambia), where the rails are mobile-money wallets
+(Wave first, then QMoney and Afrimoney), cash on delivery, and ordering over
+WhatsApp. Stage one is live; stage two is the only part that needs a third party.
+
+**Roles.** A **coordinator** (purse keeper) is an approved promoter the owner
+switches on in `/admin/festdash/coordinators`, with a region and wallet numbers
+they maintain themselves in `/festdash/purse`. Shops the coordinator signs up are
+assigned to them there too (`vendors.coordinator_user_id`, `currency`,
+`whatsapp_number`).
+
+**Money.** Shops pay a flat fee ($30/month by default) to be listed; customers
+pay the coordinator's wallet or cash at handover; the coordinator keeps 10% of
+each sale and 10% of each fee, pays the shop its 80%, and sends the owner the
+rest by Remitly. The site never holds any of it — it books every confirmed sale,
+every fee and every remittance in `coordinator_ledger`, and the owner confirms
+the dollars that actually land. Percentages and the fee live in
+`coordinator_program_settings`.
+
+**Flow.** Checkout for a coordinator shop offers Wave / QMoney / Afrimoney /
+cash (and a prefilled "order on WhatsApp" link). A wallet order waits in
+`awaiting_confirmation`: the customer sees the wallet number and a short
+reference (`FD-xxxxxx`), pays in their app, enters the transaction ref; the
+coordinator matches it in their wallet and taps confirm; the order enters the
+shop's queue. Cash orders go to the queue at once and settle when the runner
+enters the delivery code. A shop with no current fee period is hidden from the
+FestDash list and refused by the order API.
+
+**Stage two.** Wave publishes a Business/Checkout API (requires a Wave Business
+account in The Gambia); Afrimoney follows the GSMA merchant API (onboarding via
+Africell); QMoney integrates by partnership. Gambian aggregators (Modem Pay,
+Waychit) claim one API for all three. Any of them replaces the manual confirm
+with a signed webhook that sets `payment_ref`/`payment_confirmed_*` — the data
+model already has the columns.
+
+**Payouts to the coordinator.** Stripe Connect's self-serve cross-border payouts
+do not reach The Gambia; Stripe Global Payouts does (GMD by wire) but is a
+separate integration. Until then the coordinator keeps his cut from what he
+collects, which is why the ledger counts "owed to owner" rather than "owed to
+coordinator".

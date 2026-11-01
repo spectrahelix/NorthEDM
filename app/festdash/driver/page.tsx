@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
+import { formatMoney } from "@/utils/money";
 type Order = {
   id: string;
   customer_name: string | null;
@@ -20,6 +21,8 @@ type Order = {
   driver_id: string | null;
   customer_lat: number | null;
   customer_lng: number | null;
+  currency?: string;
+  payment_method?: string;
   created_at: string;
 };
 
@@ -408,12 +411,12 @@ export default function DriverPage() {
                 {selected.items.map((item, i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-white">{item.qty}× {item.name}</span>
-                    <span className="text-neutral-400">${(item.price / 100).toFixed(2)}</span>
+                    <span className="text-neutral-400">{formatMoney(item.price, selected.currency)}</span>
                   </div>
                 ))}
                 <div className="mt-2 flex justify-between border-t border-white/10 pt-2 font-semibold">
                   <span className="text-white">Order total</span>
-                  <span className="text-orange-400">${(selected.total_cents / 100).toFixed(2)}</span>
+                  <span className="text-orange-400">{formatMoney(selected.total_cents, selected.currency)}</span>
                 </div>
               </div>
             </div>
@@ -454,6 +457,11 @@ function OrderCard({ order, onDetails, children }: { order: Order; onDetails: ()
       </div>
 
       <p className="mb-3 text-xs text-neutral-500">Window: {order.delivery_window}</p>
+      {order.payment_method === "cash" && (
+        <p className="mb-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300">
+          💵 Cash on delivery — collect {formatMoney(order.total_cents, order.currency)} at handover
+        </p>
+      )}
 
       {order.campsite_photo_url && (
         <img src={order.campsite_photo_url} alt="Campsite" className="mb-3 w-full rounded-xl object-cover" style={{ maxHeight: 180 }} />

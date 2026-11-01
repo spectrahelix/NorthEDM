@@ -86,6 +86,16 @@ Lifecycle: `held → paid` (window closed, transfer sent) or `held → reversed`
 - **Refund/chargeback:** if the customer is refunded, reverse the promoter transfer
   (`stripe.transfers.createReversal`) so we don't pay commission on undone sales.
 
+## Coordinator regions (The Gambia) — cash handled off-platform
+
+Where customers pay by mobile wallet or cash and the promoter is a regional
+**coordinator** who collects locally, NorthEDM never touches the money at all:
+the coordinator holds it, pays the shops, keeps his cut, and remits NorthEDM's
+share by Remitly. The site keeps the book (`coordinator_ledger`) and the owner
+confirms what lands. That is a cleaner posture than the Stripe pass-through
+above, with the usual caveat that collecting on NorthEDM's behalf is the
+coordinator's regulatory question in his own country. Design: docs/FESTDASH.md.
+
 ## Promoter not yet connected
 
 If a promoter's code drives a sale before they've connected a bank, the commission is

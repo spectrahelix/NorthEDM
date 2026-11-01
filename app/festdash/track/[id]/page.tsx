@@ -5,6 +5,8 @@ import Link from "next/link";
 import { use } from "react";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
+import { formatMoney } from "@/utils/money";
+import { METHOD_LABEL, orderRef, isWalletMethod } from "@/utils/gambiaPay";
 type Order = {
   id: string;
   vendor_id: number;
@@ -16,8 +18,13 @@ type Order = {
   delivery_window: string;
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
-  status: "awaiting_payment" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  status: "awaiting_payment" | "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
   confirmation_code: string | null;
+  payment_method: string;
+  payment_to: string | null;
+  payment_ref: string | null;
+  payment_status: string;
+  currency: string;
   driver_lat: number | null;
   driver_lng: number | null;
   location_updated_at: string | null;
@@ -66,6 +73,9 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
   const supabase = createClient();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refInput, setRefInput] = useState("");
+  const [refSaving, setRefSaving] = useState(false);
+  const [refMsg, setRefMsg] = useState("");
 
   const loadOrder = useCallback(async () => {
     const { data } = await supabase
@@ -122,6 +132,67 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
         <div className="text-center">
           <p className="text-neutral-400">Order not found.</p>
           <Link href="/festdash" className="mt-4 block text-orange-400 hover:underline">Back to FestDash</Link>
+        </div>
+      </main>
+    );
+  }
+
+  // A wallet order (Wave / QMoney / Afrimoney): show where to pay and take the
+  // customer's transaction reference. The purse keeper confirms from their
+  // wallet; realtime flips this page to the tracker when they do.
+  if (order.status === "awaiting_confirmation") {
+    const methodKey = isWalletMethod(order.payment_method) ? order.payment_method : "wave";
+    const method = METHOD_LABEL[methodKey];
+    const ref = orderRef(order.id);
+    const saveRef = async () => {
+      setRefSaving(true);
+      setRefMsg("");
+      const res = await fetch(`/api/festdash/orders/${order.id}/payment-ref`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: refInput.trim() }),
+      });
+      const j = await res.json().catch(() => ({}));
+      setRefSaving(false);
+      if (res.ok) { setRefInput(""); await loadOrder(); } else setRefMsg(j.error ?? "Couldn't save that — try again.");
+    };
+    return (
+      <main className="min-h-screen px-6 py-16">
+        <div className="mx-auto max-w-md">
+          <div className="mb-4 text-4xl">📲</div>
+          <h1 className="mb-2 font-bebas text-3xl tracking-wide text-white">
+            Pay {formatMoney(order.total_cents, order.currency)} by {method}
+          </h1>
+          <p className="mb-6 text-neutral-400">
+            Send it from your {method} app to the shop&apos;s purse keeper and put the reference in the transfer note so it can be matched.
+          </p>
+          <div className="mb-4 rounded-2xl border border-orange-500/20 bg-orange-950/20 p-5">
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-400">Send to</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{order.payment_to ?? "—"}</p>
+            <p className="mt-3 font-dm-mono text-xs uppercase tracking-widest text-orange-400">Reference</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{ref}</p>
+          </div>
+          {order.payment_ref ? (
+            <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-300">
+              ✓ Reference <span className="font-dm-mono">{order.payment_ref}</span> received. The purse keeper confirms it from their wallet and this page updates on its own.
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/3 p-4">
+              <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Your {method} transaction reference</label>
+              <input
+                value={refInput}
+                onChange={(e) => setRefInput(e.target.value)}
+                placeholder="the transaction ID shown in the app"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+              />
+              <button
+                onClick={saveRef}
+                disabled={refSaving || !refInput.trim()}
+                className="mt-3 w-full rounded-2xl bg-orange-500 py-3 font-semibold text-white hover:bg-orange-400 disabled:opacity-50"
+              >
+                {refSaving ? "Saving…" : "I've paid — submit reference"}
+              </button>
+              {refMsg && <p className="mt-2 text-xs text-red-400">{refMsg}</p>}
+            </div>
+          )}
         </div>
       </main>
     );
@@ -272,12 +343,12 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
               {order.items.map((item, i) => (
                 <div key={i} className="flex justify-between py-1 text-sm">
                   <span className="text-white">{item.qty}× {item.name}</span>
-                  <span className="text-neutral-400">${(item.price / 100).toFixed(2)}</span>
+                  <span className="text-neutral-400">{formatMoney(item.price, order.currency)}</span>
                 </div>
               ))}
               <div className="mt-3 flex justify-between border-t border-white/10 pt-3 font-semibold">
                 <span className="text-white">Total</span>
-                <span className="text-orange-400">${(order.total_cents / 100).toFixed(2)}</span>
+                <span className="text-orange-400">{formatMoney(order.total_cents, order.currency)}</span>
               </div>
             </div>
 

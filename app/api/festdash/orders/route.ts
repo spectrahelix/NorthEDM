@@ -3,6 +3,8 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe, platformFeeCents } from "@/utils/stripe";
 
+import { isLocalMethod, isWalletMethod, walletNumberFor } from "@/utils/gambiaPay";
+import { activeSubscription, coordinatorFor } from "@/utils/coordinator";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -18,7 +20,7 @@ export async function POST(req: Request) {
     campsitePhotoUrl, deliveryWindow, items, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
     licensePlate, carPhotoUrl, customerLat, customerLng, useCredit,
-    promoCode,
+    promoCode, paymentMethod,
   } = body;
 
   if (!vendorId || !eventName || !campgroundZone || !deliveryWindow || !items?.length) {
@@ -36,11 +38,35 @@ export async function POST(req: Request) {
   // ("lights out") one — this is the check that actually enforces it.
   const vid = Number(vendorId);
   const [{ data: vendorRow }, { data: fdRow }] = await Promise.all([
-    admin.from("vendors").select("id, status, is_public, suspended_at").eq("id", vid).maybeSingle(),
+    admin.from("vendors").select("id, status, is_public, suspended_at, coordinator_user_id, currency").eq("id", vid).maybeSingle(),
     admin.from("festdash_vendors").select("vendor_id").eq("vendor_id", vid).eq("is_active", true).maybeSingle(),
   ]);
   if (!vendorRow || vendorRow.status !== "approved" || !vendorRow.is_public || vendorRow.suspended_at || !fdRow) {
     return NextResponse.json({ error: "This vendor isn't taking FestDash orders right now." }, { status: 403 });
+  }
+
+  // A shop in a coordinator region is paid through its purse keeper's mobile
+  // wallet or in cash on delivery — never a card — and is open only while its
+  // monthly fee is current. The wallet number is snapshotted onto the order so
+  // the customer always sees the number that was current when they ordered.
+  const local = !!vendorRow.coordinator_user_id;
+  const currency = String(vendorRow.currency || "USD");
+  let payTo: string | null = null;
+  if (local) {
+    if (!isLocalMethod(paymentMethod)) {
+      return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney, Afrimoney or cash on delivery." }, { status: 400 });
+    }
+    const sub = await activeSubscription(admin, vid);
+    if (!sub) return NextResponse.json({ error: "This shop's FestDash listing isn't active right now." }, { status: 403 });
+    if (isWalletMethod(paymentMethod)) {
+      const purse = await coordinatorFor(admin, vendorRow.coordinator_user_id as string);
+      payTo = walletNumberFor(purse, paymentMethod);
+      if (!payTo) {
+        return NextResponse.json({ error: `${paymentMethod} isn't set up for this shop yet — pick another way to pay.` }, { status: 400 });
+      }
+    }
+  } else if (paymentMethod && paymentMethod !== "card") {
+    return NextResponse.json({ error: "This vendor takes card payments only." }, { status: 400 });
   }
 
   // Re-price every line from the database. The browser's prices and total are
@@ -122,7 +148,7 @@ export async function POST(req: Request) {
   // from the real balance so the client can't over-redeem.
   const discountedCents = grossCents - discountCents;
   let creditCents = 0;
-  if (useCredit) {
+  if (useCredit && !local) {
     const { data: bal } = await admin
       .from("store_credit_balances")
       .select("balance_cents")
@@ -136,7 +162,9 @@ export async function POST(req: Request) {
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
   const confirmationCode = phoneDigits.length >= 4 ? phoneDigits.slice(-4) : null;
 
-  const { data, error } = await supabase
+  // Service role: ordinary sessions can't insert order rows (closed in the
+  // 2026-11-01 hardening); every check above is what stands in for that.
+  const { data, error } = await admin
     .from("festdash_orders")
     .insert([{
       vendor_id: Number(vendorId),
@@ -167,9 +195,12 @@ export async function POST(req: Request) {
       promo_code_id: promoCodeId,
       // Hold new orders out of the vendor queue until the card is authorized.
       // The webhook / confirm step promotes them to "pending" once escrowed.
-      status: "awaiting_payment",
-      payment_status: "unpaid",
+      status: local ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
+      payment_status: local ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : "unpaid",
       paid: false,
+      payment_method: local ? paymentMethod : "card",
+      payment_to: payTo,
+      currency,
     }])
     .select()
     .single();
@@ -193,6 +224,13 @@ export async function POST(req: Request) {
       discount_cents: discountCents,
       commission_cents: commissionCents,
     });
+  }
+
+  // Local-rail orders stop here: no card, no escrow. A wallet order waits for
+  // the purse keeper's confirmation (/festdash/purse); a cash order goes
+  // straight into the shop's queue and settles at handover.
+  if (local) {
+    return NextResponse.json({ order: data });
   }
 
   // Deduct the applied credit from the wallet. If this fails (e.g. a race

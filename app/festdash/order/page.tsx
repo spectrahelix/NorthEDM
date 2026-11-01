@@ -6,7 +6,13 @@ import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 import { ProductThumb } from "@/app/components/ProductThumb";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
-type Vendor = { id: number; name: string; category: string; description: string };
+import { formatMoney } from "@/utils/money";
+import { METHOD_LABEL, WALLET_METHODS, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
+type Vendor = {
+  id: number; name: string; category: string; description: string;
+  coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
+  payments?: VendorPayments;
+};
 type MenuItem = { id: number; name: string; description: string; price: number; image_url: string | null; category: string };
 type CartItem = MenuItem & { qty: number };
 
@@ -75,6 +81,7 @@ export default function OrderPage() {
   // Store credit
   const [creditBalanceCents, setCreditBalanceCents] = useState(0);
   const [useCredit, setUseCredit] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<LocalMethod | null>(null);
 
   // Promo / commission code
   const [promoInput, setPromoInput] = useState("");
@@ -145,6 +152,14 @@ export default function OrderPage() {
   const discountedCents = cartTotalCents - promoDiscountCents;
   const appliedCreditCents = useCredit ? Math.min(creditBalanceCents, discountedCents) : 0;
   const netTotalCents = discountedCents - appliedCreditCents;
+
+  // Coordinator-region shops: local rails, local currency, no store credit.
+  const local = !!selectedVendor?.coordinator_user_id;
+  const currency = selectedVendor?.currency ?? "USD";
+  const money = (cents: number) => formatMoney(cents, currency);
+  const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
+  const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
+  const payableCents = local ? discountedCents : netTotalCents;
 
   async function applyPromo() {
     if (!promoInput.trim() || !selectedVendor) return;
@@ -226,7 +241,21 @@ export default function OrderPage() {
     );
   }
 
+  function whatsappText() {
+    return [
+      `Hi! I'd like to order from ${selectedVendor?.name ?? "your shop"} on FestDash:`,
+      ...cart.map((c) => `${c.qty}× ${c.name} (${money(Math.round(c.price * c.qty * 100))})`),
+      `Total: ${money(cartTotalCents)}`,
+      `Name: ${customerName}`,
+      `Phone: ${customerPhone}`,
+      `Deliver to: ${[campground, subCampground, campsiteRow && `row ${campsiteRow}`, tent && `tent ${tent}`].filter(Boolean).join(", ")}`,
+      campsiteNotes && `Notes: ${campsiteNotes}`,
+      `Window: ${deliveryWindow}`,
+    ].filter(Boolean).join("\n");
+  }
+
   async function submitOrder() {
+    if (local && !paymentMethod) { setError("Choose how you'll pay first."); return; }
     setSubmitting(true);
     setError("");
     const finalEvent = eventName === "Local Market / Other" ? customEvent : eventName;
@@ -260,6 +289,7 @@ export default function OrderPage() {
         useCredit,
         promoCode: promo?.code,
         customerName,
+        paymentMethod: local ? paymentMethod : undefined,
       }),
     });
 
@@ -398,7 +428,7 @@ export default function OrderPage() {
                             {item.description && (
                               <p className="text-xs text-neutral-500 line-clamp-2">{item.description}</p>
                             )}
-                            <p className="mt-1 text-sm text-orange-400">${item.price.toFixed(2)}</p>
+                            <p className="mt-1 text-sm text-orange-400">{money(Math.round(item.price * 100))}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {qty > 0 ? (
@@ -427,7 +457,7 @@ export default function OrderPage() {
             <div className="mx-auto flex max-w-2xl items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-400">{cart.reduce((s, c) => s + c.qty, 0)} items</p>
-                <p className="font-semibold text-white">${cartTotal.toFixed(2)}</p>
+                <p className="font-semibold text-white">{money(cartTotalCents)}</p>
               </div>
               <button
                 onClick={() => setStep(3)}
@@ -708,13 +738,13 @@ export default function OrderPage() {
             {cart.map((c) => (
               <div key={c.id} className="flex justify-between py-1.5">
                 <span className="text-sm text-white">{c.qty}× {c.name}</span>
-                <span className="text-sm text-neutral-400">${(c.price * c.qty).toFixed(2)}</span>
+                <span className="text-sm text-neutral-400">{money(Math.round(c.price * c.qty * 100))}</span>
               </div>
             ))}
             <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-400">Subtotal</span>
-                <span className="text-neutral-300">${cartTotal.toFixed(2)}</span>
+                <span className="text-neutral-300">{money(cartTotalCents)}</span>
               </div>
 
               {/* Promo / commission code */}
@@ -725,7 +755,7 @@ export default function OrderPage() {
                     <span className="text-neutral-500">({promo.percentOff}% off)</span>
                     <button onClick={removePromo} className="text-neutral-500 hover:text-white" aria-label="Remove code">✕</button>
                   </span>
-                  <span className="text-[#39FF14]">−${(promoDiscountCents / 100).toFixed(2)}</span>
+                  <span className="text-[#39FF14]">−{money(promoDiscountCents)}</span>
                 </div>
               ) : (
                 <div className="flex gap-2">
@@ -746,7 +776,7 @@ export default function OrderPage() {
               )}
               {promoError && <p className="text-xs text-[#FF5C3A]">{promoError}</p>}
 
-              {creditBalanceCents > 0 && (
+              {!local && creditBalanceCents > 0 && (
                 <label className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-neutral-300">
                     <input
@@ -764,7 +794,7 @@ export default function OrderPage() {
               )}
               <div className="flex justify-between font-semibold">
                 <span className="text-white">Total</span>
-                <span className="text-orange-400">${(netTotalCents / 100).toFixed(2)}</span>
+                <span className="text-orange-400">{money(payableCents)}</span>
               </div>
             </div>
           </div>
@@ -789,11 +819,51 @@ export default function OrderPage() {
             </div>
           </div>
 
-          {/* Payment + confirmation notice */}
-          <div className="rounded-2xl border border-orange-500/20 bg-orange-950/20 p-4 text-sm text-orange-300">
-            🔒 You&apos;ll be taken to secure checkout. Your card is <span className="font-semibold">authorized and held in escrow</span> — it&apos;s only charged when your order is delivered.
-            On delivery, give your runner the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
-          </div>
+          {/* Payment */}
+          {local ? (
+            <>
+              <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
+                <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[...walletOptions, "cash" as const].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPaymentMethod(m)}
+                      className={`rounded-xl border px-4 py-3 text-left text-sm transition ${paymentMethod === m ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}
+                    >
+                      <span className="font-semibold">{METHOD_LABEL[m]}</span>
+                      <span className="block text-xs text-neutral-500">
+                        {m === "cash" ? "Pay the runner when your order arrives" : `Send to ${walletNumberFor(selectedVendor?.payments, m)}, then enter your transaction reference`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {paymentMethod && paymentMethod !== "cash" && (
+                  <p className="mt-3 text-xs text-neutral-500">
+                    After you place the order you&apos;ll get a short reference to put in the {METHOD_LABEL[paymentMethod]} transfer note.
+                    The shop&apos;s purse keeper confirms it, then the shop starts on your order.
+                  </p>
+                )}
+                <p className="mt-3 text-xs text-neutral-600">On delivery, give your runner the last 4 digits of your phone to confirm.</p>
+              </div>
+              {whatsappTo && (
+                <a
+                  href={whatsappLink(whatsappTo, whatsappText())}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-[#25D366]/40 bg-[#25D366]/10 px-4 py-3 text-sm font-semibold text-[#25D366] hover:bg-[#25D366]/20"
+                >
+                  💬 Prefer WhatsApp? Send this order on WhatsApp instead
+                </a>
+              )}
+            </>
+          ) : (
+            <div className="rounded-2xl border border-orange-500/20 bg-orange-950/20 p-4 text-sm text-orange-300">
+              🔒 You&apos;ll be taken to secure checkout. Your card is <span className="font-semibold">authorized and held in escrow</span> — it&apos;s only charged when your order is delivered.
+              On delivery, give your runner the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
+            </div>
+          )}
 
           {error && (
             <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
@@ -804,7 +874,7 @@ export default function OrderPage() {
             disabled={submitting}
             className="w-full rounded-2xl bg-orange-500 py-4 text-lg font-semibold text-white transition hover:bg-orange-400 disabled:opacity-50"
           >
-            {submitting ? "Starting secure checkout…" : "Continue to Payment 🔒"}
+            {submitting ? (local ? "Placing order…" : "Starting secure checkout…") : local ? "Place order" : "Continue to Payment 🔒"}
           </button>
         </div>
       </div>
