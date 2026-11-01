@@ -43,6 +43,8 @@ export type UserProfile = {
   region?: string | null;
   postal_code?: string | null;
   hide_shows?: boolean;
+  username?: string | null;
+  username_chosen_at?: string | null;
 };
 
 /**
@@ -52,7 +54,7 @@ export type UserProfile = {
  * reach their owner only through the `my_private_profile()` RPC.
  */
 export const PROFILE_COLUMNS =
-  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, artisan_status, artisan_applied_at, stage_name, artisan_craft, artisan_statement, pronouns, website, socials, is_vendor, vendor_id, is_marketplace, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, username";
+  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, artisan_status, artisan_applied_at, stage_name, artisan_craft, artisan_statement, pronouns, website, socials, is_vendor, vendor_id, is_marketplace, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, username, username_chosen_at";
 
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the
 // user chose to hide from the forum (they always show on their own profile).

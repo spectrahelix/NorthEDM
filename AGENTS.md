@@ -281,6 +281,15 @@ runner's live ping never worked before 2026-11-01.
 **Post-sign-in redirects go through `safeNext()`** (`utils/safeRedirect.ts`):
 only a same-site path is accepted as a `next` value.
 
+**Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
+`usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`
+marks that the person picked or kept their name: the email signup form stamps
+it, Google sign-ins (email-prefix username from `finalizeAuthedUser`) and
+admin-created accounts don't, and the layout shows `UsernamePrompt` once to any
+signed-in profile without the stamp (`/api/profile/username` checks and saves;
+"Later" hides it for the browser session). Existing accounts were backfilled as
+chosen on 2026-11-02 so nobody was prompted retroactively.
+
 **Dependencies:** `npm audit` runs at session start. Next.js must stay at
 16.4.1 or newer (two remote-code-execution advisories cover every 16.x up to
 16.4.0). Moderate findings left in `eslint`/`@capacitor/cli` are lint tooling,

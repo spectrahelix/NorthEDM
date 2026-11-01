@@ -6,6 +6,7 @@ import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/auth
 import { humaniseAuthError } from "@/utils/authErrors";
 import { firstPasswordProblem } from "@/utils/passwordRules";
 import { safeNext, safeOrigin } from "@/utils/safeRedirect";
+import { usernameProblem } from "@/utils/username";
 import {
   clientIp,
   clientContradictsItself,
@@ -14,7 +15,6 @@ import {
   recordAttempt,
 } from "@/utils/botSignals";
 
-const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
 export async function POST(req: NextRequest) {
   const { email, password, username, origin: rawOrigin, referralCode, website, elapsedMs, next: rawNext } =
@@ -56,8 +56,9 @@ export async function POST(req: NextRequest) {
   if (!email || !password || !username || !rawOrigin) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
-  if (!USERNAME_RE.test(username)) {
-    return NextResponse.json({ error: "Invalid username." }, { status: 400 });
+  const usernameIssue = usernameProblem(String(username));
+  if (usernameIssue) {
+    return NextResponse.json({ error: usernameIssue }, { status: 400 });
   }
   // Mirror of the rules the signup form shows live, so a request that skips the
   // form gets the same answer. Supabase is still the authority — anything this
@@ -230,7 +231,7 @@ export async function POST(req: NextRequest) {
   // one whose generics don't match.
   async function seedProfiles(userId: string) {
     await Promise.all([
-      admin.from("user_profiles").upsert({ id: userId, username }, { onConflict: "id" }),
+      admin.from("user_profiles").upsert({ id: userId, username, username_chosen_at: new Date().toISOString() }, { onConflict: "id" }),
       admin.from("user_profiles").upsert({
         id: userId,
         display_name: username,
