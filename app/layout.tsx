@@ -11,6 +11,8 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { createClient } from "@/utils/supabase/server";
 import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
+import { UsernamePrompt } from "./components/UsernamePrompt";
+import { suggestUsername } from "@/utils/username";
 const bebasNeue = Bebas_Neue({
   weight: "400",
   subsets: ["latin"],
@@ -96,13 +98,19 @@ export default async function RootLayout({
 
   let forumRole: string | null = null;
   let hasVendor = false;
+  let usernamePrompt: { current: string | null; suggestion: string } | null = null;
   if (user) {
     const [{ data: userProfile }, { data: profileData }] = await Promise.all([
-      supabase.from("user_profiles").select("role").eq("id", user.id).single(),
+      supabase.from("user_profiles").select("role, username, username_chosen_at").eq("id", user.id).single(),
       supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single(),
     ]);
     forumRole = userProfile?.role ?? null;
     hasVendor = !!profileData?.vendor_id;
+    // A profile that exists but was never given a chosen username gets the
+    // one-time prompt (Google sign-ins, admin-created accounts).
+    if (userProfile && !userProfile.username_chosen_at) {
+      usernamePrompt = { current: (userProfile.username as string | null) ?? null, suggestion: suggestUsername(user.email) };
+    }
   }
 
   const ADMIN_EMAIL = "cjblue27@gmail.com";
@@ -123,6 +131,7 @@ export default async function RootLayout({
         <HoodieWelcome />
         <BugReporter />
         <InstallPrompt />
+        {usernamePrompt && <UsernamePrompt current={usernamePrompt.current} suggestion={usernamePrompt.suggestion} />}
         <WaveField />
         <div style={{ position: "relative", zIndex: 1 }}>
         <header className="sticky top-0 z-30" style={{ position: "sticky", background: "rgba(3,3,3,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>

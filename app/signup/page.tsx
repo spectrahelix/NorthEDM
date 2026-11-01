@@ -6,8 +6,8 @@ import { SocialAuth } from "@/app/components/SocialAuth";
 import { passwordRequirements, passwordIsValid, firstPasswordProblem } from "@/utils/passwordRules";
 
 import { safeNext } from "@/utils/safeRedirect";
-const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
+import { USERNAME_RE } from "@/utils/username";
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

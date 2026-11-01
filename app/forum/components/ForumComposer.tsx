@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
+import { USERNAME_RE } from "@/utils/username";
 async function moderate(content: string): Promise<string | null> {
   try {
     const res = await fetch("/api/moderate", {
@@ -82,7 +82,7 @@ export function ForumComposer({
 
     const { error: upsertError } = await supabase
       .from("user_profiles")
-      .upsert({ id: user!.id, username: val }, { onConflict: "id" });
+      .upsert({ id: user!.id, username: val, username_chosen_at: new Date().toISOString() }, { onConflict: "id" });
 
     setSubmitting(false);
     if (upsertError) {
