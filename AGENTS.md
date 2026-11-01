@@ -282,6 +282,49 @@ not runtime.
 Mapbox dashboard to the site's domains — and every caller falls back to text
 without it.
 
+## Gambia / coordinator model ("purse keeper") — stage one, 2026-11-01
+
+A regional **coordinator** (Gee, The Gambia) signs up local shops, collects
+their flat monthly fee and customers' payments **locally**, keeps his cut,
+pays the shops, and sends the owner's share by Remitly. **No money moves
+through the site; it records what moved and who confirmed it.** Full design in
+[`docs/FESTDASH.md`](docs/FESTDASH.md#gambia--coordinator-model).
+
+- A shop is "in the model" when `vendors.coordinator_user_id` is set (owner
+  does this in **/admin/festdash/coordinators**, with `currency` = `GMD` and
+  the shop's WhatsApp). Such a shop is listed on FestDash **only while a
+  `vendor_subscriptions` period is current** (both `/api/festdash/vendors` and
+  the `/festdash` page apply this), and its checkout offers **Wave / QMoney /
+  Afrimoney / cash on delivery** instead of Stripe. Never a card.
+- Wallet order → `status = awaiting_confirmation`, `payment_to` snapshots the
+  purse keeper's wallet number, the customer submits their transaction ref
+  (`/api/festdash/orders/[id]/payment-ref`), the coordinator confirms in
+  **/festdash/purse** (`…/confirm-payment`) → `pending`, `payment_status =
+  paid_mobile`. Cash → straight to `pending`, `payment_status = cod`, settled
+  (`paid_cash`) when the delivery code is entered. Both book a `sale` row in
+  `coordinator_ledger` with the split; the booking is idempotent per order.
+- **Splits are settings, not code**: `coordinator_program_settings` (sale
+  shop 80 / owner 10 / coordinator 10; fee $30 of which coordinator 10%).
+  Change them in the admin page, never by editing percentages in a route.
+- The coordinator's book: `coordinator_ledger` (`sale` | `subscription` |
+  `remittance`). Sales are in the shop's currency; fees in USD; a remittance
+  is whatever the coordinator sent, and the **owner confirms the USD that
+  landed** in /admin/festdash/coordinators. "Owed" = owner share − sent.
+- `is_coordinator` and all wallet numbers are written only by API routes
+  (service role). `festdash_promoters` has no end-user UPDATE policy, so a
+  promoter cannot make themselves a coordinator.
+- Stage two (not built): a Wave Business API or Gambian aggregator webhook
+  auto-confirms wallet payments. It needs a Gambian business account only the
+  coordinator can open; it changes nothing in the data model.
+- **Runner pool now carries `payment_method`**: a cash order shows the runner
+  "collect D… at handover". Keep that in any pool-column edit.
+- **Every `festdash_orders` write is the service role** except the runner's
+  GPS columns. The 2026-11-01 lockdown closed end-user inserts, and the order
+  route's insert was still on the customer's session — it broke under the
+  lockdown and was caught before any live order hit it. Don't add a write on
+  the user client; `npm run check` doesn't catch this one, the scan in the
+  audit notes does.
+
 Currently lights out (update this list when it changes):
 - **The Obsidian Cloak** — vendor 22, store `theobsidiancloak`, Travis
   (tzaminski@gmail.com). Since 2026-10-10.
