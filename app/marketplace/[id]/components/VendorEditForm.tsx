@@ -64,7 +64,8 @@ export function VendorEditForm({
         description: fields.description.trim(),
         category: fields.category.trim(),
         contact: fields.contact.trim(),
-        email: fields.email.trim(),
+        // The listing's public address. The personal email lives on /profile/edit.
+        business_email: fields.email.trim() || null,
         website: fields.website.trim(),
         phone: fields.phone.trim(),
         show_phone: fields.showPhone,
@@ -113,7 +114,7 @@ export function VendorEditForm({
             { key: "name", label: "Business Name" },
             { key: "category", label: "Category" },
             { key: "description", label: "Description", multiline: true },
-            { key: "email", label: "Contact Email" },
+            { key: "email", label: "Public contact email" },
             { key: "website", label: "Website" },
             { key: "phone", label: "Phone Number" },
             { key: "contact", label: "Contact Method (email / direct / phone)" },

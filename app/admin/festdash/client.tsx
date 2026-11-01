@@ -28,6 +28,10 @@ type Order = {
   status: string; total_cents: number; created_at: string;
 };
 type UnenrolledVendor = { id: number; name: string; category: string };
+type Runner = {
+  id: string; user_id: string; display_name: string; phone: string | null; vehicle: string | null;
+  is_active: boolean; approved_at: string | null; created_at: string;
+};
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    "bg-yellow-500/20 text-yellow-400",
@@ -44,11 +48,13 @@ export default function FestDashAdminClient({
   activeVendors: initialActiveVendors,
   recentOrders,
   unenrolledVendors: initialUnenrolled,
+  runners: initialRunners,
 }: {
   applications: Application[];
   activeVendors: ActiveVendor[];
   recentOrders: Order[];
   unenrolledVendors: UnenrolledVendor[];
+  runners: Runner[];
 }) {
   const [applications, setApplications] = useState(initial);
   const [activeVendors, setActiveVendors] = useState(initialActiveVendors);
@@ -56,6 +62,26 @@ export default function FestDashAdminClient({
   const [acting, setActing] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState<number | null>(null);
   const [toggling, setToggling] = useState<number | null>(null);
+  const [runners, setRunners] = useState(initialRunners);
+  const [runnerBusy, setRunnerBusy] = useState<string | null>(null);
+
+  // Runners register themselves but start inactive; this is the switch.
+  async function setRunnerActive(id: string, isActive: boolean) {
+    setRunnerBusy(id);
+    const res = await fetch("/api/festdash/admin/drivers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, isActive }),
+    });
+    if (res.ok) {
+      const j = await res.json();
+      setRunners((rs) => rs.map((r) => (r.id === id ? { ...r, ...j.runner } : r)));
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error ?? "Couldn't update that runner.");
+    }
+    setRunnerBusy(null);
+  }
 
   async function act(id: string, action: "approve" | "reject") {
     setActing(id);
@@ -264,6 +290,40 @@ export default function FestDashAdminClient({
               ))}
             </div>
           </>
+        )}
+
+        {/* Runners */}
+        <h2 className="mt-10 mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+          Runners ({runners.filter((r) => r.is_active).length} active · {runners.filter((r) => !r.is_active).length} waiting)
+        </h2>
+        {runners.length === 0 ? (
+          <p className="text-sm text-neutral-600">Nobody has registered as a runner yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {runners.map((r) => (
+              <div key={r.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 ${r.is_active ? "border-green-500/20 bg-green-500/5" : "border-yellow-500/20 bg-yellow-500/5"}`}>
+                <div className="min-w-0">
+                  <p className="font-semibold text-white">{r.display_name}</p>
+                  <p className="font-dm-mono text-xs text-neutral-500">
+                    {r.vehicle || "no vehicle given"}{r.phone ? ` · ${r.phone}` : ""} · registered {new Date(r.created_at).toLocaleDateString()}
+                    {r.approved_at ? ` · activated ${new Date(r.approved_at).toLocaleDateString()}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${r.is_active ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                    {r.is_active ? "Active" : "Waiting"}
+                  </span>
+                  <button
+                    onClick={() => setRunnerActive(r.id, !r.is_active)}
+                    disabled={runnerBusy === r.id}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${r.is_active ? "border border-white/10 text-neutral-300 hover:bg-white/5" : "bg-green-500 text-black hover:bg-green-400"}`}
+                  >
+                    {runnerBusy === r.id ? "…" : r.is_active ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Recent orders */}

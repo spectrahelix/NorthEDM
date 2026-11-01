@@ -9,7 +9,7 @@ import {
   type BorderKey,
 } from "@/app/components/AvatarBorder";
 import { RankBadge } from "@/app/components/RankBadge";
-import { profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
+import { PROFILE_COLUMNS, profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
 import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
 import { VendorEditor } from "./VendorEditor";
 import { ArtisanEditor } from "./ArtisanEditor";
@@ -57,14 +57,13 @@ export default function EditProfilePage() {
       if (!user) { router.push("/signup"); return; }
       setUserId(user.id);
       setAccountEmail(user.email ?? null);
-      supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
+      Promise.all([
+        supabase.from("user_profiles").select(PROFILE_COLUMNS).eq("id", user.id).single(),
+        // Personal details come back only to their owner, through the RPC.
+        supabase.rpc("my_private_profile"),
+      ]).then(([{ data }, { data: priv }]) => {
           if (data) {
-            const p = data as UserProfile;
+            const p = { ...(data as UserProfile), ...((priv ?? {}) as Partial<UserProfile>) } as UserProfile;
             setProfile(p);
             setDisplayName(p.display_name);
             setBio(p.bio);

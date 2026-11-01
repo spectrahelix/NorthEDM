@@ -10,7 +10,11 @@ export async function GET(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const like = `%${q}%`;
+  // The term is interpolated into PostgREST `or=` filters, where commas and
+  // parentheses are syntax. Strip them so a query can't add its own clauses.
+  const term = q.replace(/[,()"'\\]/g, " ").replace(/\s+/g, " ").trim();
+  if (term.length < 2) return NextResponse.json({});
+  const like = `%${term}%`;
 
   const [
     { data: vendors },

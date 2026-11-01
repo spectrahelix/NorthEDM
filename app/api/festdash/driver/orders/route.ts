@@ -9,6 +9,15 @@ function getAdminClient() {
   );
 }
 
+// What a runner may see. The open pool shows only what's needed to decide
+// whether to take the job; a claimed order adds what's needed to find the
+// customer. Never included: the customer's phone (the delivery code is its
+// last four digits), their email, and the payment / promo fields.
+const POOL_COLUMNS =
+  "id, vendor_id, event_name, campground, sub_campground, campground_zone, delivery_window, items, total_cents, status, driver_id, created_at, updated_at";
+const MINE_COLUMNS =
+  `${POOL_COLUMNS}, customer_name, campsite_row, tent, campsite_notes, campsite_photo_url, car_photo_url, license_plate, customer_lat, customer_lng, driver_lat, driver_lng, location_updated_at`;
+
 // GET — orders a driver can act on: the open pool + their own deliveries.
 export async function GET() {
   const supabase = await createClient();
@@ -30,14 +39,14 @@ export async function GET() {
 
   const { data: available } = await admin
     .from("festdash_orders")
-    .select("*")
+    .select(POOL_COLUMNS)
     .eq("status", "accepted")
     .is("driver_id", null)
     .order("created_at", { ascending: true });
 
   const { data: mine } = await admin
     .from("festdash_orders")
-    .select("*")
+    .select(MINE_COLUMNS)
     .eq("driver_id", user.id)
     .in("status", ["accepted", "in_transit"])
     .order("created_at", { ascending: true });

@@ -26,10 +26,12 @@ export default async function FestDashAdminPage() {
     { data: applications },
     { data: activeVendors },
     { data: recentOrders },
+    { data: runners },
   ] = await Promise.all([
     admin.from("festdash_vendor_applications").select("*").order("created_at", { ascending: false }),
     admin.from("festdash_vendors").select("id, vendor_id, is_active, joined_at, vendors(name, category)").order("joined_at", { ascending: false }),
     admin.from("festdash_orders").select("id, customer_name, event_name, status, total_cents, created_at").order("created_at", { ascending: false }).limit(20),
+    admin.from("festdash_drivers").select("id, user_id, display_name, phone, vehicle, is_active, approved_at, created_at").order("created_at", { ascending: false }),
   ]);
 
   // All approved vendors not yet enrolled in FestDash
@@ -47,6 +49,7 @@ export default async function FestDashAdminPage() {
       activeVendors={activeVendors ?? []}
       recentOrders={recentOrders ?? []}
       unenrolledVendors={unenrolledVendors ?? []}
+      runners={runners ?? []}
     />
   );
 }

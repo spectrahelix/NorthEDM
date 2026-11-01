@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { AccentPicker } from "@/app/components/AccentPicker";
 import { DEFAULT_ACCENT } from "@/utils/accent";
 
+import { VENDOR_PUBLIC_COLUMNS } from "@/utils/vendorColumns";
 /**
  * A vendor's own business details, editable by them.
  *
@@ -54,16 +55,17 @@ export function VendorEditor({ vendorId }: { vendorId: number }) {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    createClient()
-      .from("vendors")
-      .select("*")
-      .eq("id", vendorId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) setLoadError(error.message);
-        else if (!data) setLoadError("We couldn't find your vendor record. Contact NorthEDM.");
-        else setV(data as VendorRow);
-      });
+    const sb = createClient();
+    Promise.all([
+      sb.from("vendors").select(VENDOR_PUBLIC_COLUMNS).eq("id", vendorId).maybeSingle(),
+      // Personal contact columns are grant-protected; the vendor (and admins)
+      // get them back through this RPC only.
+      sb.rpc("vendor_private_contact", { p_vendor_id: vendorId }),
+    ]).then(([{ data, error }, { data: priv }]) => {
+      if (error) setLoadError(error.message);
+      else if (!data) setLoadError("We couldn't find your vendor record. Contact NorthEDM.");
+      else setV({ ...(data as unknown as VendorRow), ...((priv ?? {}) as Partial<VendorRow>) });
+    });
   }, [vendorId]);
 
   function set<K extends keyof VendorRow>(key: K, value: VendorRow[K]) {

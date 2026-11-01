@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { use } from "react";
 
+import LiveMap from "@/app/components/festdash/LiveMap";
 type Order = {
   id: string;
   vendor_id: number;
@@ -147,18 +148,14 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
   const currentStep = STATUS_INDEX[order.status] ?? 0;
   const isDeclined = order.status === "declined";
 
-  // Live runner map (Mapbox Static Images API — no SDK needed)
+  // Live runner map (Mapbox GL via <LiveMap>; renders only when a token is set)
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const hasRunnerLoc = order.driver_lat != null && order.driver_lng != null;
-  const runnerPin = `pin-l+f97316(${order.driver_lng},${order.driver_lat})`;
-  const sitePin =
+  const runnerPoint = hasRunnerLoc ? { lat: order.driver_lat!, lng: order.driver_lng! } : null;
+  const sitePoint =
     order.customer_lat != null && order.customer_lng != null
-      ? `pin-s+22c55e(${order.customer_lng},${order.customer_lat})`
+      ? { lat: order.customer_lat, lng: order.customer_lng }
       : null;
-  const mapView = sitePin ? "auto" : `${order.driver_lng},${order.driver_lat},14`;
-  const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${[runnerPin, sitePin]
-    .filter(Boolean)
-    .join(",")}/${mapView}/600x300@2x?access_token=${mapboxToken}`;
 
   // Live runner -> campsite distance + rough ETA (~4 mph on-site pace)
   const hasSite = order.customer_lat != null && order.customer_lng != null;
@@ -250,8 +247,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                   )}
                 </div>
                 {hasRunnerLoc && mapboxToken ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mapUrl} alt="Runner location" className="w-full object-cover" style={{ maxHeight: 280 }} />
+                  <LiveMap token={mapboxToken} runner={runnerPoint} site={sitePoint} height={280} className="" />
                 ) : hasRunnerLoc ? (
                   <div className="px-4 pb-4 text-sm text-neutral-400">
                     Runner is near {order.driver_lat!.toFixed(4)}, {order.driver_lng!.toFixed(4)}.

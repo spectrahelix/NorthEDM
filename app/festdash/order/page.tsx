@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 import { ProductThumb } from "@/app/components/ProductThumb";
 
+import LiveMap from "@/app/components/festdash/LiveMap";
 type Vendor = { id: number; name: string; category: string; description: string };
 type MenuItem = { id: number; name: string; description: string; price: number; image_url: string | null; category: string };
 type CartItem = MenuItem & { qty: number };
@@ -66,6 +67,8 @@ export default function OrderPage() {
   const [uploadingCar, setUploadingCar] = useState(false);
   const [customerLat, setCustomerLat] = useState<number | null>(null);
   const [customerLng, setCustomerLng] = useState<number | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
@@ -85,13 +88,11 @@ export default function OrderPage() {
       if (!user) { setAuthed(false); setLoadingVendors(false); return; }
       setAuthed(true);
       // Auto-fill name + phone from the user's saved profile personal info.
-      const { data: me } = await supabase
-        .from("user_profiles")
-        .select("full_name, phone")
-        .eq("id", user.id)
-        .single();
-      setCustomerName(me?.full_name || (user.email ? user.email.split("@")[0] : ""));
-      if (me?.phone) setCustomerPhone(me.phone);
+      // Personal details come back only to their owner, through the RPC.
+      const { data: me } = await supabase.rpc("my_private_profile");
+      const mine = (me ?? {}) as { full_name?: string | null; phone?: string | null };
+      setCustomerName(mine.full_name || (user.email ? user.email.split("@")[0] : ""));
+      if (mine.phone) setCustomerPhone(mine.phone);
 
       const res = await fetch("/api/festdash/vendors");
       const json = await res.json();
@@ -596,6 +597,27 @@ export default function OrderPage() {
               )}
               {locError && <p className="mt-1 text-xs text-red-400">{locError}</p>}
               <p className="mt-1 text-xs text-neutral-600">Stand at your site and tap — your runner gets live distance to you.</p>
+              {mapboxToken && (
+                showMap || (customerLat != null && customerLng != null) ? (
+                  <div className="mt-3">
+                    <LiveMap
+                      token={mapboxToken}
+                      pick={customerLat != null && customerLng != null ? { lat: customerLat, lng: customerLng } : null}
+                      onPick={(p) => { setCustomerLat(p.lat); setCustomerLng(p.lng); setLocError(""); }}
+                      height={240}
+                    />
+                    <p className="mt-1 text-xs text-neutral-600">Tap your campsite on the map, or drag the pin to fine-tune it.</p>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowMap(true)}
+                    className="mt-2 text-xs text-neutral-400 underline-offset-2 hover:text-white hover:underline"
+                  >
+                    🗺️ Drop a pin on a map instead
+                  </button>
+                )
+              )}
             </div>
 
             {/* Find-my-car */}

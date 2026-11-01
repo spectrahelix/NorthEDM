@@ -9,6 +9,7 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
+import { VENDOR_PUBLIC_COLUMNS } from "@/utils/vendorColumns";
 function normalizeUrl(url: string) {
   return /^https?:\/\//.test(url) ? url : `https://${url}`;
 }
@@ -16,7 +17,7 @@ function normalizeUrl(url: string) {
 type Vendor = {
   id: number;
   name: string | null;
-  email: string | null;
+  business_email: string | null;
   category: string | null;
   description: string | null;
   capacity: string | null;
@@ -60,7 +61,7 @@ export default async function VendorDetailPage({
 
   const { data: vendorData, error: vendorError } = await supabase
     .from("vendors")
-    .select("*")
+    .select(VENDOR_PUBLIC_COLUMNS)
     .eq("id", vendorId)
     .eq("status", "approved")
     .eq("is_public", true)
@@ -121,7 +122,7 @@ export default async function VendorDetailPage({
                   description: vendor.description ?? "",
                   category: vendor.category ?? "",
                   contact: vendor.contact ?? "",
-                  email: vendor.email ?? "",
+                  email: vendor.business_email ?? "",
                   website: vendor.website ?? "",
                   phone: vendor.phone ?? "",
                   showPhone: vendor.show_phone ?? false,
@@ -164,11 +165,11 @@ export default async function VendorDetailPage({
             ) : null}
           </div>
 
-          {(vendor.email || vendor.website || (vendor.show_phone && vendor.phone)) ? (
+          {(vendor.business_email || vendor.website || (vendor.show_phone && vendor.phone)) ? (
             <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-5">
               <p className="text-sm text-neutral-400">Contact</p>
-              {vendor.email ? (
-                <p className="mt-2 text-lg text-neutral-200">{vendor.email}</p>
+              {vendor.business_email ? (
+                <p className="mt-2 text-lg text-neutral-200">{vendor.business_email}</p>
               ) : null}
               {vendor.show_phone && vendor.phone ? (
                 <p className="mt-1 text-lg text-neutral-200">

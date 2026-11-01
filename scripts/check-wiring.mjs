@@ -152,6 +152,29 @@ for (const f of code) {
 }
 if (!rawImageInputs) console.log("   all image pickers convert before upload");
 
+// 5. Grant-protected tables are never read with select("*") by an ordinary
+// session. user_profiles (name, phone, address, pending email) and vendors
+// (personal email, first/last name) hide those columns from anon and
+// authenticated at the database level, so `select("*")` on them returns
+// "permission denied" — a page that does it renders empty with no error in
+// the UI. Read PROFILE_COLUMNS / VENDOR_PUBLIC_COLUMNS, and the owner's own
+// private fields through my_private_profile() / vendor_private_contact(id).
+// A service-role client may still read everything, so a receiver named like
+// one (admin, svc, service, storeAdminClient()) is allowed.
+console.log('\n5. select("*") on grant-protected tables');
+let starReads = 0;
+const starRe = /([A-Za-z_$][\w$]*(?:\(\))?)\s*\.from\(\s*"(user_profiles|vendors)"\s*\)\s*\.select\(\s*"\*"\s*[,)]/g;
+for (const f of code) {
+  const txt = read(f);
+  for (const m of txt.matchAll(starRe)) {
+    if (/admin|svc|service/i.test(m[1])) continue;
+    starReads++;
+    const line = txt.slice(0, m.index).split("\n").length;
+    note(`   ✗ ${rel(f)}:${line} reads ${m[2]} with select("*") through \`${m[1]}\` — use PROFILE_COLUMNS / VENDOR_PUBLIC_COLUMNS (private fields via the RPCs)`);
+  }
+}
+if (!starReads) console.log("   no ordinary-session select(\"*\") on user_profiles or vendors");
+
 console.log(
   problems === 0
     ? "\n✅ wiring looks consistent"

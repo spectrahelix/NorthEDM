@@ -68,8 +68,8 @@ in_transit → delivered/declined); vendor-dashboard audio alert.
 | Area | Gap |
 |---|---|
 | **Payments / escrow / payouts** | Fully stubbed. `stripe_payment_intent`/`paid` unused; checkout says "pay the driver." No hold, no payout. |
-| **Live GPS tracking** | None. No geolocation capture, no map, no driver position. Track page is text-only. |
-| **Driver registration & assignment** | No driver role/table; no order→driver mapping. |
+| **Live GPS tracking** | Runner's browser shares position every ~12s while en route (`/api/festdash/orders/[id]/location`); the customer's track page updates live over realtime with distance + ETA. The map (`LiveMap`, Mapbox GL) renders once `NEXT_PUBLIC_MAPBOX_TOKEN` is set; text fallback otherwise. Customers can pin their campsite by GPS or by dropping a pin on the map. |
+| **Driver registration & assignment** | `festdash_drivers` (self-registration at `/festdash/driver`, **inactive until the owner activates them in /admin/festdash**); claim = conditional update on `festdash_orders.driver_id`. |
 | **Confirmation code** | Absent. No phone capture, no last-4 code, no verify-on-delivery. |
 | **Car photo + license plate** | Absent (only a campsite photo exists). |
 | **Structured campsite fields** | Only one free-text `campground_zone`; need campground + sub-campground + row + tent. |
@@ -150,8 +150,9 @@ on `festdash_vendors` (e.g. `stripe_account_id`).
   expanded checkout (car photo + plate, structured campsite, phone); confirmation
   code generation + verify-on-delivery; guarded state machine; driver
   registration + order assignment; realtime/storage SQL documented.
-- **Phase 2 — Live GPS:** driver/customer geolocation capture → realtime
-  broadcast → customer track view (coords/distance first; Mapbox map once keyed).
+- **Phase 2 — Live GPS:** ✅ built (2026-11-01): geolocation capture → realtime
+  → track view with distance/ETA, Mapbox GL map behind `NEXT_PUBLIC_MAPBOX_TOKEN`.
+  Note: the site's `Permissions-Policy` header must keep `geolocation=(self)`.
 - **Phase 3 — Payments:** Stripe Connect — prepay/authorize → escrow hold →
   capture/transfer on confirmed delivery → refund on decline/cancel; vendor
   Connect onboarding replacing the "link Square/GoDaddy" step.

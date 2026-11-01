@@ -2,7 +2,7 @@ import { AppliedAt } from "@/app/components/AppliedAt";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ArtisanActions } from "./ArtisanRow";
-import type { UserProfile } from "@/utils/supabase/user-profiles";
+import { PROFILE_COLUMNS, type UserProfile } from "@/utils/supabase/user-profiles";
 
 export const metadata = { title: "Admin · Artisans" };
 
@@ -54,7 +54,7 @@ export default async function AdminArtisansPage() {
   const [{ data: pendingData }, { data: verifiedData }] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("*")
+      .select(PROFILE_COLUMNS)
       .eq("artisan_status", "pending")
       .eq("is_artisan", false)
       // Longest-waiting first, by when they APPLIED rather than when they
@@ -62,7 +62,7 @@ export default async function AdminArtisansPage() {
       .order("artisan_applied_at", { ascending: true, nullsFirst: false }),
     supabase
       .from("user_profiles")
-      .select("*")
+      .select(PROFILE_COLUMNS)
       .eq("is_artisan", true)
       .order("created_at", { ascending: false }),
   ]);
