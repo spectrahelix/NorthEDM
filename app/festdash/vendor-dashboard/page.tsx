@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 
+import { formatMoney } from "@/utils/money";
 type Order = {
   id: string;
   customer_name: string;
@@ -11,11 +12,14 @@ type Order = {
   delivery_window: string;
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
-  status: "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  status: "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  currency?: string;
+  payment_method?: string;
   created_at: string;
 };
 
 const STATUS_LABELS: Record<Order["status"], string> = {
+  awaiting_confirmation: "Awaiting payment",
   pending: "New Order",
   accepted: "Accepted",
   in_transit: "Out for Delivery",
@@ -24,6 +28,7 @@ const STATUS_LABELS: Record<Order["status"], string> = {
 };
 
 const STATUS_COLORS: Record<Order["status"], string> = {
+  awaiting_confirmation: "bg-yellow-500/20 text-yellow-400",
   pending: "bg-orange-500/20 text-orange-400",
   accepted: "bg-blue-500/20 text-blue-400",
   in_transit: "bg-purple-500/20 text-purple-400",
@@ -164,6 +169,7 @@ export default function VendorDashboard() {
   }
 
   const pending = orders.filter((o) => o.status === "pending");
+  const awaitingPay = orders.filter((o) => o.status === "awaiting_confirmation");
   const active = orders.filter((o) => o.status === "accepted" || o.status === "in_transit");
   const done = orders.filter((o) => o.status === "delivered" || o.status === "declined");
 
@@ -245,6 +251,11 @@ export default function VendorDashboard() {
         {/* Pending — most prominent */}
         {pending.length > 0 && (
           <div className="mb-6">
+            {awaitingPay.length > 0 && (
+          <p className="mb-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-2 text-xs text-yellow-300">
+            {awaitingPay.length} wallet order{awaitingPay.length === 1 ? "" : "s"} waiting for the purse keeper to confirm payment — they appear here once confirmed.
+          </p>
+        )}
             <h2 className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-orange-400">
               New Orders ({pending.length})
             </h2>
@@ -357,12 +368,12 @@ export default function VendorDashboard() {
                 {selected.items.map((item, i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-white">{item.qty}× {item.name}</span>
-                    <span className="text-neutral-400">${(item.price / 100).toFixed(2)}</span>
+                    <span className="text-neutral-400">{formatMoney(item.price, selected.currency)}</span>
                   </div>
                 ))}
                 <div className="mt-2 flex justify-between border-t border-white/10 pt-2 font-semibold">
                   <span className="text-white">Total</span>
-                  <span className="text-orange-400">${(selected.total_cents / 100).toFixed(2)}</span>
+                  <span className="text-orange-400">{formatMoney(selected.total_cents, selected.currency)}</span>
                 </div>
               </div>
 
@@ -483,7 +494,7 @@ function OrderCard({
             {STATUS_LABELS[order.status]}
           </span>
           <span className="text-sm font-semibold text-orange-400">
-            ${(order.total_cents / 100).toFixed(2)}
+            {formatMoney(order.total_cents, order.currency)}{order.payment_method === "cash" ? " · cash on delivery" : ""}
           </span>
         </div>
       </div>

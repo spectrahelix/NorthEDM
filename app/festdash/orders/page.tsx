@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 
+import { formatMoney } from "@/utils/money";
 type Order = {
   id: string;
   vendor_id: number;
@@ -11,11 +12,13 @@ type Order = {
   delivery_window: string;
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
-  status: "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  status: "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
+  currency?: string;
   created_at: string;
 };
 
 const STATUS_LABELS: Record<Order["status"], string> = {
+  awaiting_confirmation: "Waiting for payment confirmation",
   pending:    "Waiting on Vendor",
   accepted:   "Accepted",
   in_transit: "On the Way 🏃",
@@ -24,6 +27,7 @@ const STATUS_LABELS: Record<Order["status"], string> = {
 };
 
 const STATUS_COLORS: Record<Order["status"], string> = {
+  awaiting_confirmation: "bg-yellow-500/20 text-yellow-400",
   pending:    "bg-yellow-500/20 text-yellow-400",
   accepted:   "bg-blue-500/20 text-blue-400",
   in_transit: "bg-purple-500/20 text-purple-400",
@@ -125,7 +129,7 @@ function OrderRow({ order }: { order: Order }) {
           <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[order.status]}`}>
             {STATUS_LABELS[order.status]}
           </span>
-          <span className="text-sm font-semibold text-orange-400">${(order.total_cents / 100).toFixed(2)}</span>
+          <span className="text-sm font-semibold text-orange-400">{formatMoney(order.total_cents, order.currency)}</span>
         </div>
       </div>
       <p className="text-xs text-neutral-500">

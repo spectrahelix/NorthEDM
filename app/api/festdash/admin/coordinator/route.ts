@@ -1,0 +1,91 @@
+import { NextResponse } from "next/server";
+import { adminGuard } from "@/utils/admin";
+
+// Owner's controls for the coordinator model. GET returns everything the admin
+// page shows; PATCH applies one change at a time.
+export async function GET() {
+  const g = await adminGuard();
+  if (!g.ok) return NextResponse.json({ error: g.error }, { status: g.status });
+  const admin = g.admin;
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: promoters }, { data: vendors }, { data: subs }, { data: ledger }, { data: settings }] = await Promise.all([
+    admin.from("festdash_promoters").select("id, user_id, display_name, is_active, is_coordinator, region, wave_number, qmoney_number, afrimoney_number, whatsapp_number, remitly_name").order("display_name"),
+    admin.from("vendors").select("id, name, status, is_public, suspended_at, coordinator_user_id, region, currency, whatsapp_number").eq("status", "approved").order("name"),
+    admin.from("vendor_subscriptions").select("vendor_id, period_end").gte("period_end", today),
+    admin.from("coordinator_ledger").select("*").order("created_at", { ascending: false }).limit(300),
+    admin.from("coordinator_program_settings").select("*").eq("id", 1).maybeSingle(),
+  ]);
+  const paidThrough = new Map<number, string>();
+  for (const s of subs ?? []) {
+    const cur = paidThrough.get(Number(s.vendor_id));
+    if (!cur || s.period_end > cur) paidThrough.set(Number(s.vendor_id), s.period_end);
+  }
+  return NextResponse.json({
+    promoters: promoters ?? [],
+    vendors: (vendors ?? []).map((v) => ({ ...v, paid_through: paidThrough.get(Number(v.id)) ?? null })),
+    ledger: ledger ?? [],
+    settings,
+  });
+}
+
+export async function PATCH(req: Request) {
+  const g = await adminGuard();
+  if (!g.ok) return NextResponse.json({ error: g.error }, { status: g.status });
+  const admin = g.admin;
+  const body = await req.json().catch(() => ({}));
+
+  if (body.action === "set_coordinator") {
+    const promoterId = String(body.promoterId ?? "");
+    const on = !!body.isCoordinator;
+    const region = typeof body.region === "string" ? body.region.trim().toLowerCase().slice(0, 40) || null : null;
+    if (!promoterId) return NextResponse.json({ error: "promoterId required" }, { status: 400 });
+    const { data, error } = await admin.from("festdash_promoters")
+      .update({ is_coordinator: on, region: on ? region : null })
+      .eq("id", promoterId).select("id, is_coordinator, region").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ promoter: data });
+  }
+
+  if (body.action === "assign_vendor") {
+    const vendorId = Number(body.vendorId);
+    const coordinatorUserId = body.coordinatorUserId ? String(body.coordinatorUserId) : null;
+    const currency = typeof body.currency === "string" && /^[A-Z]{3}$/.test(body.currency) ? body.currency : "USD";
+    const region = typeof body.region === "string" ? body.region.trim().toLowerCase().slice(0, 40) || null : null;
+    const whatsapp = typeof body.whatsapp === "string" ? body.whatsapp.trim().slice(0, 40) || null : null;
+    if (!vendorId) return NextResponse.json({ error: "vendorId required" }, { status: 400 });
+    if (coordinatorUserId) {
+      const { data: c } = await admin.from("festdash_promoters").select("id").eq("user_id", coordinatorUserId).eq("is_coordinator", true).maybeSingle();
+      if (!c) return NextResponse.json({ error: "That account isn't a coordinator." }, { status: 400 });
+    }
+    const { data, error } = await admin.from("vendors")
+      .update({ coordinator_user_id: coordinatorUserId, currency: coordinatorUserId ? currency : "USD", region: coordinatorUserId ? region : null, whatsapp_number: whatsapp })
+      .eq("id", vendorId).select("id, coordinator_user_id, currency, region, whatsapp_number").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ vendor: data });
+  }
+
+  if (body.action === "confirm_remittance") {
+    const id = String(body.id ?? "");
+    const receivedUsd = Number(body.receivedUsd);
+    if (!id || !Number.isFinite(receivedUsd) || receivedUsd < 0) return NextResponse.json({ error: "id and receivedUsd required" }, { status: 400 });
+    const { data, error } = await admin.from("coordinator_ledger")
+      .update({ received_at: new Date().toISOString(), received_usd_cents: Math.round(receivedUsd * 100), received_by: g.userId })
+      .eq("id", id).eq("kind", "remittance").select("id, received_at, received_usd_cents").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ remittance: data });
+  }
+
+  if (body.action === "set_settings") {
+    const n = (v: unknown, lo: number, hi: number) => { const x = Math.round(Number(v)); return Number.isFinite(x) && x >= lo && x <= hi ? x : null; };
+    const patch: Record<string, number> = {};
+    const so = n(body.sale_owner_bps, 0, 5000), sc = n(body.sale_coordinator_bps, 0, 5000), fee = n(body.subscription_fee_cents, 0, 1_000_000), sub = n(body.subscription_coordinator_bps, 0, 10000);
+    if (so != null) patch.sale_owner_bps = so; if (sc != null) patch.sale_coordinator_bps = sc;
+    if (fee != null) patch.subscription_fee_cents = fee; if (sub != null) patch.subscription_coordinator_bps = sub;
+    if (!Object.keys(patch).length) return NextResponse.json({ error: "nothing to change" }, { status: 400 });
+    const { data, error } = await admin.from("coordinator_program_settings").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", 1).select("*").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ settings: data });
+  }
+
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+}

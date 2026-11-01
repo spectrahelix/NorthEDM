@@ -33,6 +33,7 @@ export default function PromoterDashboard() {
   const [hoodies, setHoodies] = useState<Hoodie[]>([]);
   const [hoodieTotals, setHoodieTotals] = useState<HoodieTotals | null>(null);
   const [payout, setPayout] = useState<{ connected: boolean; onboarded: boolean } | null>(null);
+  const [isCoordinator, setIsCoordinator] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [myCode, setMyCode] = useState<string | null>(null);
   const [myLink, setMyLink] = useState<string>("");
@@ -54,7 +55,7 @@ export default function PromoterDashboard() {
 
       const { data: promoter } = await supabase
         .from("festdash_promoters")
-        .select("is_active, referral_code")
+        .select("is_active, referral_code, is_coordinator")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -62,6 +63,7 @@ export default function PromoterDashboard() {
       setIsPromoter(true);
 
       // Permanent, reusable code + its QR — the one they post/print/share.
+      setIsCoordinator(!!(promoter as { is_coordinator?: boolean }).is_coordinator);
       if (promoter.referral_code) {
         const link = `${window.location.origin}/signup?ref=${promoter.referral_code}`;
         setMyCode(promoter.referral_code as string);
@@ -147,6 +149,13 @@ export default function PromoterDashboard() {
             <p className="mt-1 font-bebas text-4xl text-white">{referralCount}</p>
           </div>
         </div>
+
+        {isCoordinator && (
+          <Link href="/festdash/purse" className="mb-6 block rounded-2xl border border-orange-500/30 bg-orange-500/10 p-5 hover:bg-orange-500/15">
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-400">🌍 Purse keeper</p>
+            <p className="mt-1 text-sm text-neutral-200">Confirm wallet payments, log shop fees and what you&apos;ve sent to NorthEDM →</p>
+          </Link>
+        )}
 
         {/* Cash payouts */}
         <div className="mb-8 rounded-2xl border border-[#39FF14]/20 bg-[#39FF14]/[0.04] p-5">

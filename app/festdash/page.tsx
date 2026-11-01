@@ -48,7 +48,7 @@ export default async function FestDashPage() {
   const vIds = fdVendors.map((v) => v.vendor_id).filter(Boolean);
   const uIds = fdVendors.map((v) => v.user_id).filter(Boolean);
   const [vRows, showRows, profRows] = await Promise.all([
-    vIds.length ? admin.from("vendors").select("id, name, status, is_public, suspended_at").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null; status: string | null; is_public: boolean | null; suspended_at: string | null }[] }),
+    vIds.length ? admin.from("vendors").select("id, name, status, is_public, suspended_at, coordinator_user_id").in("id", vIds) : Promise.resolve({ data: [] as { id: number; name: string | null; status: string | null; is_public: boolean | null; suspended_at: string | null; coordinator_user_id: string | null }[] }),
     uIds.length ? admin.from("vendor_shows").select("*").in("user_id", uIds) : Promise.resolve({ data: [] as VendorShow[] }),
     uIds.length ? admin.from("user_profiles").select("id, hide_shows").in("id", uIds) : Promise.resolve({ data: [] as { id: string; hide_shows: boolean }[] }),
   ]);
@@ -69,6 +69,15 @@ export default async function FestDashPage() {
   const visible = new Set(
     (vRows.data ?? []).filter((v) => v.status === "approved" && v.is_public && !v.suspended_at).map((v) => v.id)
   );
+  // Coordinator-region shops are listed only while their monthly fee is current
+  // (the same rule /api/festdash/vendors applies to the order page).
+  const coordVendorIds = (vRows.data ?? []).filter((v) => v.coordinator_user_id).map((v) => v.id);
+  if (coordVendorIds.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: subs } = await admin.from("vendor_subscriptions").select("vendor_id").in("vendor_id", coordVendorIds).gte("period_end", today);
+    const paid = new Set((subs ?? []).map((s) => Number(s.vendor_id)));
+    for (const vid of coordVendorIds) if (!paid.has(vid)) visible.delete(vid);
+  }
   const activeVendors = (fdVendors ?? []).filter((v) => visible.has(v.vendor_id)).map((v) => {
     const shows = hideById.get(v.user_id) ? [] : (showsByUser.get(v.user_id) ?? []);
     return { vendorId: v.vendor_id as number, name: (nameById.get(v.vendor_id) as string) || "Vendor", cur: currentShow(shows) };

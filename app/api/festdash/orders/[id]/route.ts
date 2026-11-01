@@ -4,8 +4,10 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
 import { checkWrite } from "@/utils/dbWrite";
 
+import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
 // Allowed status transitions — orders can't skip steps or move backwards.
 const TRANSITIONS: Record<string, string[]> = {
+  awaiting_confirmation: ["declined"],
   pending: ["accepted", "declined"],
   accepted: ["in_transit", "delivered"],
   in_transit: ["delivered"],
@@ -32,7 +34,7 @@ export async function PATCH(
   // Load the order (RLS lets the owning vendor / assigned driver read it)
   const { data: order } = await supabase
     .from("festdash_orders")
-    .select("id, vendor_id, driver_id, status, confirmation_code")
+    .select("id, vendor_id, driver_id, status, confirmation_code, payment_method, total_cents, currency, payment_ref")
     .eq("id", id)
     .single();
 
@@ -91,6 +93,23 @@ export async function PATCH(
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Cash on delivery: the handover is the payment. Mark it collected and book
+  // the split for the shop's coordinator (idempotent per order).
+  if (status === "delivered" && order.payment_method === "cash") {
+    await admin
+      .from("festdash_orders")
+      .update({ payment_status: "paid_cash", paid: true, payment_confirmed_by: user.id, payment_confirmed_at: new Date().toISOString() })
+      .eq("id", id);
+    const { data: v } = await admin.from("vendors").select("coordinator_user_id").eq("id", order.vendor_id).maybeSingle();
+    if (v?.coordinator_user_id) {
+      const settings = await loadSplitSettings(admin);
+      await recordSaleSplit(admin, {
+        id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), currency: String(order.currency || "USD"),
+        payment_method: "cash", payment_ref: order.payment_ref ?? null,
+      }, v.coordinator_user_id as string, settings, user.id);
+    }
+  }
 
   // Escrow settlement, tied to the new state:
   //   delivered → CAPTURE the authorized hold (funds move to the vendor, minus
