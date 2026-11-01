@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 import { ComposeModal } from "./components/ComposeModal";
-import type { UserProfile } from "@/utils/supabase/user-profiles";
+import { PROFILE_COLUMNS, type UserProfile } from "@/utils/supabase/user-profiles";
 
 type Message = {
   id: number;
@@ -57,7 +57,7 @@ export default function MessagesPage() {
     if (otherIds.length > 0) {
       const { data: profiles } = await supabase
         .from("user_profiles")
-        .select("*")
+        .select(PROFILE_COLUMNS)
         .in("id", otherIds);
       const profileMap: Record<string, UserProfile> = {};
       for (const p of (profiles ?? []) as UserProfile[]) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
+import { notifyNewRunner } from "@/utils/alerts";
 // GET — the current user's driver profile (or null if not registered)
 export async function GET() {
   const supabase = await createClient();
@@ -27,6 +28,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
 
+  // A first registration alerts the owner; editing an existing one does not.
+  const { data: existing } = await supabase
+    .from("festdash_drivers")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  // `is_active` is deliberately not sent: new runners start inactive and only
+  // the owner switches them on (/admin/festdash). The database enforces this
+  // as well (protect_runner_activation), so a direct call can't self-activate.
   const { data, error } = await supabase
     .from("festdash_drivers")
     .upsert(
@@ -35,7 +46,6 @@ export async function POST(req: Request) {
         display_name: displayName.trim(),
         phone: phone?.trim() || null,
         vehicle: vehicle?.trim() || null,
-        is_active: true,
       },
       { onConflict: "user_id" }
     )
@@ -43,5 +53,8 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!existing) {
+    await notifyNewRunner({ name: data.display_name, email: user.email ?? null, vehicle: data.vehicle ?? null });
+  }
   return NextResponse.json({ driver: data });
 }

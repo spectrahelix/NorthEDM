@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
 
+import LiveMap from "@/app/components/festdash/LiveMap";
 type Order = {
   id: string;
-  customer_name: string;
+  customer_name: string | null;
   event_name: string;
   campground_zone: string;
   campsite_notes: string;
@@ -34,6 +35,8 @@ export default function DriverPage() {
   const [mine, setMine] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   // Registration form
   const [displayName, setDisplayName] = useState("");
@@ -61,7 +64,7 @@ export default function DriverPage() {
       const res = await fetch("/api/festdash/driver");
       const j = await res.json();
       setDriver(j.driver ?? null);
-      if (j.driver) await loadOrders();
+      if (j.driver?.is_active) await loadOrders();
       setLoading(false);
 
       channel = supabase
@@ -82,10 +85,11 @@ export default function DriverPage() {
     let lastSent = 0;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setMyPos({ lat: latitude, lng: longitude });
         const now = Date.now();
         if (now - lastSent < 12000) return; // throttle to ~12s
         lastSent = now;
-        const { latitude, longitude } = pos.coords;
         ids.forEach((oid) => {
           fetch(`/api/festdash/orders/${oid}/location`, {
             method: "POST",
@@ -100,6 +104,16 @@ export default function DriverPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [transitIds]);
 
+  // Centre the detail map on the runner even before a delivery is en route.
+  useEffect(() => {
+    if (!selected || myPos || typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setMyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  }, [selected, myPos]);
+
   async function register(e: React.FormEvent) {
     e.preventDefault();
     setRegError("");
@@ -112,7 +126,7 @@ export default function DriverPage() {
     const j = await res.json();
     if (res.ok) {
       setDriver(j.driver);
-      await loadOrders();
+      if (j.driver?.is_active) await loadOrders();
     } else {
       setRegError(j.error ?? "Registration failed.");
     }
@@ -233,6 +247,28 @@ export default function DriverPage() {
     );
   }
 
+  // ── Registered, awaiting activation ─────────────────────────────
+  if (!driver.is_active) {
+    return (
+      <main className="min-h-screen px-6 py-16">
+        <div className="mx-auto max-w-md">
+          <BackBar crumbs={[{ label: "FestDash", href: "/festdash" }]} fallback="/festdash" />
+          <div className="mb-2 text-4xl">🏃</div>
+          <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">
+            Thanks, <span className="text-orange-400">{driver.display_name}</span>
+          </h1>
+          <p className="mb-4 text-neutral-400">
+            Your runner registration is in. NorthEDM switches every runner on by hand before they can
+            see or claim deliveries — the open orders show up here as soon as that&apos;s done.
+          </p>
+          <p className="font-dm-mono text-xs text-neutral-600">
+            Registered as {driver.display_name}{driver.vehicle ? ` · ${driver.vehicle}` : ""}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   // ── Driver console ───────────────────────────────────────────────
   return (
     <main className="min-h-screen p-4">
@@ -334,7 +370,7 @@ export default function DriverPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900 p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold text-white">{selected.customer_name}</h3>
+              <h3 className="font-semibold text-white">{selected.customer_name ?? "Order details"}</h3>
               <button onClick={() => setSelected(null)} className="text-neutral-500 hover:text-white">✕</button>
             </div>
             <div className="space-y-3 text-sm">
@@ -343,6 +379,14 @@ export default function DriverPage() {
                 <p className="text-white">{selected.campground_zone}</p>
                 {selected.campsite_notes && <p className="mt-1 text-neutral-400">{selected.campsite_notes}</p>}
               </div>
+              {mapboxToken && (selected.customer_lat != null || myPos) && (
+                <LiveMap
+                  token={mapboxToken}
+                  site={selected.customer_lat != null && selected.customer_lng != null ? { lat: selected.customer_lat, lng: selected.customer_lng } : null}
+                  me={myPos}
+                  height={220}
+                />
+              )}
               {selected.license_plate && (
                 <div className="rounded-xl bg-white/5 p-3">
                   <p className="font-dm-mono text-xs text-neutral-500 mb-1">LICENSE PLATE</p>
@@ -392,7 +436,7 @@ function OrderCard({ order, onDetails, children }: { order: Order; onDetails: ()
     <div className={`rounded-2xl border p-5 ${order.status === "in_transit" ? "border-purple-500/30 bg-purple-950/20" : "border-white/10 bg-white/3"}`}>
       <div className="mb-3 flex items-start justify-between">
         <div>
-          <p className="font-semibold text-white">{order.customer_name}</p>
+          <p className="font-semibold text-white">{order.customer_name ?? "New order"}</p>
           <p className="text-sm text-orange-400">{order.campground_zone}</p>
           <p className="text-xs text-neutral-500">{order.event_name}</p>
         </div>

@@ -123,6 +123,21 @@ export async function notifyNewSignup(opts: { email: string; name?: string }) {
   ]);
 }
 
+/** Owner alert for a new runner registration — they stay inactive until activated. */
+export async function notifyNewRunner(opts: { name: string; email?: string | null; vehicle?: string | null }) {
+  const path = "/admin/festdash";
+  const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
+  const who = opts.email ? `${opts.name} (${opts.email})` : opts.name;
+  const message =
+    `New FestDash runner registration from ${who}${opts.vehicle ? ` — ${opts.vehicle}` : ""}. ` +
+    `They stay inactive until you activate them.`;
+  await Promise.allSettled([
+    notifyAdminsInApp("festdash_runner_registration", message, path),
+    emailOwner(`🏃 New FestDash runner — ${who}`, `${message}\n\nActivate or ignore here: ${reviewUrl}`),
+    pushOwner("New FestDash runner", who, reviewUrl),
+  ]);
+}
+
 /** Owner alert for a paid store order — all channels (it's high-signal: money). */
 export async function notifyNewOrder(opts: { total_cents: number; email?: string | null; itemCount: number }) {
   const path = "/admin/shop/orders";

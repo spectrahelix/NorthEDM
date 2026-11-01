@@ -76,8 +76,16 @@ export async function PATCH(
     patch.confirmed_at = new Date().toISOString();
   }
 
-  // RLS enforces vendor/driver ownership on the write
-  const { error } = await supabase
+  // The write goes through the service role: ordinary sessions can no longer
+  // update order rows directly (only the assigned runner's GPS columns), so
+  // every state change has to pass the checks above. Ownership was verified
+  // against the RLS-filtered read.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  const { error } = await admin
     .from("festdash_orders")
     .update(patch)
     .eq("id", id);
@@ -91,11 +99,6 @@ export async function PATCH(
   // Best-effort and never reverses the delivery/decline that already happened —
   // a Stripe hiccup is recorded as *_failed for the owner to settle manually.
   if (status === "delivered" || status === "declined") {
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
     const { data: full } = await admin
       .from("festdash_orders")
       .select("stripe_payment_intent, payment_status")

@@ -45,6 +45,15 @@ export type UserProfile = {
   hide_shows?: boolean;
 };
 
+/**
+ * Every column of user_profiles an ordinary session may read. The personal
+ * columns (full_name, phone, address, pending email) are grant-protected in
+ * the database — `select("*")` fails for everyone but the service role — and
+ * reach their owner only through the `my_private_profile()` RPC.
+ */
+export const PROFILE_COLUMNS =
+  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, artisan_status, artisan_applied_at, stage_name, artisan_craft, artisan_statement, pronouns, website, socials, is_vendor, vendor_id, is_marketplace, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, username";
+
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the
 // user chose to hide from the forum (they always show on their own profile).
 export function profileTags(
@@ -110,7 +119,7 @@ export async function getUserProfile(
 ): Promise<UserProfile | null> {
   const { data } = await supabase
     .from("user_profiles")
-    .select("*")
+    .select(PROFILE_COLUMNS)
     .eq("id", userId)
     .single();
   return data as UserProfile | null;
@@ -123,7 +132,7 @@ export async function getUserProfileMap(
   if (userIds.length === 0) return {};
   const { data } = await supabase
     .from("user_profiles")
-    .select("*")
+    .select(PROFILE_COLUMNS)
     .in("id", userIds);
   const map: Record<string, UserProfile> = {};
   for (const row of (data ?? []) as UserProfile[]) {

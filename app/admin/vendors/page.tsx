@@ -52,7 +52,14 @@ export default async function AdminVendorsPage() {
 
   if (!isAdmin) redirect("/");
 
-  const { data, error } = await supabase
+  // Service role: this list needs every column, including the personal
+  // contact ones that are grant-protected for ordinary sessions (admins' too).
+  const svc = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+  const { data, error } = await svc
     .from("vendors")
     .select("*")
     .order("created_at", { ascending: false });
@@ -64,11 +71,6 @@ export default async function AdminVendorsPage() {
   const linkedIds = [...new Set(raw.map((v) => v.user_id).filter(Boolean))] as string[];
   const emailById = new Map<string, string | null>();
   if (linkedIds.length) {
-    const svc = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
     const found = await Promise.all(
       linkedIds.map(async (id) => {
         const { data: u } = await svc.auth.admin.getUserById(id);

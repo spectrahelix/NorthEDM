@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { clientIp, clientContradictsItself, overRateLimit, recordAttempt } from "@/utils/botSignals";
 
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 // Per-IP throttle. This was an in-memory Map, which on serverless is close to
 // useless — it dies on every cold start and each instance keeps its own copy,
 // so a caller spread across instances is never counted. It now shares the
@@ -100,7 +101,15 @@ export async function POST(req: Request) {
     // that isn't the caller's own.
     const { data: { user: applicant } } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("vendors").insert([
+    // Written with the service role: direct inserts into `vendors` are closed
+    // in the database, so an application can only arrive through this route
+    // and the bot checks above.
+    const svc = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const { error } = await svc.from("vendors").insert([
       {
         name,
         email,

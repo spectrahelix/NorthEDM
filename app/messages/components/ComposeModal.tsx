@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
-import type { UserProfile } from "@/utils/supabase/user-profiles";
+import { PROFILE_COLUMNS, type UserProfile } from "@/utils/supabase/user-profiles";
 
 export function ComposeModal({
   userId,
@@ -29,7 +29,7 @@ export function ComposeModal({
     const supabase = createClient();
     supabase
       .from("user_profiles")
-      .select("*")
+      .select(PROFILE_COLUMNS)
       .eq("id", prefilledTo)
       .single()
       .then(({ data }) => {
@@ -45,7 +45,7 @@ export function ComposeModal({
     const supabase = createClient();
     const { data } = await supabase
       .from("user_profiles")
-      .select("*")
+      .select(PROFILE_COLUMNS)
       .ilike("display_name", `%${q.trim()}%`)
       .neq("id", userId)
       .limit(6);

@@ -6,13 +6,14 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { SocialAuth } from "@/app/components/SocialAuth";
 
+import { safeNext } from "@/utils/safeRedirect";
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/feed";
+  const next = safeNext(searchParams.get("next"));
 
   // A failed auth link redirects here with ?error=... and nothing read it, so
   // someone whose confirmation or reset link didn't work landed on a clean

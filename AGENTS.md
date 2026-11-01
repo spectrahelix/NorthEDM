@@ -227,6 +227,61 @@ Suspension is enforced in RLS (`vendor_is_suspended()`), but anything read
 with the service role skips RLS and must filter `suspended_at` itself — the
 `/festdash` vendor list once leaked a hidden vendor this way.
 
+**Private columns are grant-protected (2026-11-01 audit).** Two tables hide
+columns from `anon` and `authenticated` at the database level, so a
+`select("*")` on them fails with "permission denied" for every ordinary
+session (admins' sessions included) and the page renders empty:
+
+- `user_profiles`: `full_name, phone, address_line1/2, city, region,
+  postal_code, pending_email, email_change_*`. Read `PROFILE_COLUMNS` from
+  `utils/supabase/user-profiles.ts`; the owner gets their own private fields
+  from the `my_private_profile()` RPC (jsonb).
+- `vendors`: `email` (personal), `first_name`, `last_name`. Read
+  `VENDOR_PUBLIC_COLUMNS` from `utils/vendorColumns.ts`; the vendor and admins
+  get the private three from `vendor_private_contact(p_vendor_id)`. The
+  public contact address is `business_email`. The old `vendors_public` view
+  still selects `email` and is unusable — it was already unused.
+
+The service role reads everything. `npm run check` (section 5) fails on a
+`select("*")` against either table unless the receiver is a service-role
+client. Direct inserts into `vendors` are closed too: applications arrive only
+through `/api/vendors`, which writes with the service role after its bot
+checks.
+
+**FestDash orders are written only by the server.** Ordinary sessions can no
+longer insert or update `festdash_orders`; `/api/festdash/orders` prices every
+line and `/api/festdash/orders/[id]` runs the state machine, the delivery code
+and the Stripe capture, all with the service role. The one end-user write left
+is the assigned runner's `driver_lat/lng/location_updated_at`. The runner pool
+API never returns the customer's phone (the delivery code is its last four
+digits), email, or payment fields.
+
+**Runners need activation.** Anyone can register at `/festdash/driver`, but
+they land `is_active = false` and see a "waiting" screen. The owner gets an
+in-app / push / email alert and switches them on under **Runners** in
+`/admin/festdash`. The `protect_runner_activation` trigger ignores `is_active`
+on every non-service-role write, so a direct API call can't self-activate.
+An active runner sees every open order's campsite details — treat it as a
+decision about a person, not a default.
+
+**Permissions-Policy must keep `geolocation=(self)`.** An empty allowlist
+(`geolocation=()`) disables location for our own pages too; that is why the
+runner's live ping never worked before 2026-11-01.
+
+**Post-sign-in redirects go through `safeNext()`** (`utils/safeRedirect.ts`):
+only a same-site path is accepted as a `next` value.
+
+**Dependencies:** `npm audit` runs at session start. Next.js must stay at
+16.4.1 or newer (two remote-code-execution advisories cover every 16.x up to
+16.4.0). Moderate findings left in `eslint`/`@capacitor/cli` are lint tooling,
+not runtime.
+
+**Mapbox:** the one map component is `app/components/festdash/LiveMap.tsx`
+(track page, runner console, campsite pin picker). It renders only when
+`NEXT_PUBLIC_MAPBOX_TOKEN` is set — a *public* token, URL-restricted in the
+Mapbox dashboard to the site's domains — and every caller falls back to text
+without it.
+
 Currently lights out (update this list when it changes):
 - **The Obsidian Cloak** — vendor 22, store `theobsidiancloak`, Travis
   (tzaminski@gmail.com). Since 2026-10-10.

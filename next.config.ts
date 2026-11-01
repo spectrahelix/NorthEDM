@@ -6,7 +6,10 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    // geolocation=(self): our own pages may ask for location (FestDash
+    // runner GPS and campsite pin). An empty allowlist disables it even for
+    // the page itself, which is how the runner's live ping never worked.
+    value: "camera=(), microphone=(), geolocation=(self)",
   },
 ];
 
@@ -18,6 +21,7 @@ const SW_VERSION =
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || `build-${Date.now()}`;
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   env: {
     NEXT_PUBLIC_SW_VERSION: SW_VERSION,
   },
