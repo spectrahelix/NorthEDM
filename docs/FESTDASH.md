@@ -192,6 +192,16 @@ shop's queue. Cash orders go to the queue at once and settle when the runner
 enters the delivery code. A shop with no current fee period is hidden from the
 FestDash list and refused by the order API.
 
+**Shop onboarding.** A shop owner scans the flyer's QR to `/festdash/shop-setup`,
+creates their own account (the page passes `?next=` through signup so they come
+back), and sends one application: what they sell, area, WhatsApp, the wallet
+they want paid to (Wave / QMoney / Afrimoney, or cash), the coordinator's code,
+and acceptance of the fee and split. The owner's Approve in /admin/vendors links
+the account and enrols the shop on FestDash; the coordinator's first logged fee
+makes it visible. The shop owner keeps control of their own account and wallet
+and can change the wallet on the same page. Transfer-time notes for each app
+are shown at checkout, on the pay screen and in setup (`utils/paymentNotes.ts`).
+
 **Stage two.** Wave publishes a Business/Checkout API (requires a Wave Business
 account in The Gambia); Afrimoney follows the GSMA merchant API (onboarding via
 Africell); QMoney integrates by partnership. Gambian aggregators (Modem Pay,

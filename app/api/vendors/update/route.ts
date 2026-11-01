@@ -100,6 +100,21 @@ async function grantVendorAccess(
   };
 }
 
+// A shop that came in through a coordinator (the /festdash/shop-setup
+// walkthrough) is enrolled on FestDash in the same click as approval, so the
+// owner has one switch instead of two. It goes live once its coordinator logs
+// the first month's fee.
+async function enrollCoordinatorShop(admin: SupabaseClient, vendorId: number): Promise<boolean> {
+  const { data: v } = await admin.from("vendors").select("id, user_id, coordinator_user_id").eq("id", vendorId).maybeSingle();
+  if (!v?.coordinator_user_id) return false;
+  const { error } = await admin
+    .from("festdash_vendors")
+    .upsert({ vendor_id: v.id, user_id: v.user_id, is_active: true }, { onConflict: "vendor_id" });
+  if (error) { console.error("coordinator shop enrol failed:", error.message); return false; }
+  if (v.user_id) await admin.from("user_profiles").update({ is_festdash_vendor: true }).eq("id", v.user_id as string);
+  return true;
+}
+
 export async function POST(req: Request) {
   const g = await adminGuard();
   if (!g.ok) return NextResponse.json({ success: false, error: g.error }, { status: g.status });
@@ -171,7 +186,11 @@ export async function POST(req: Request) {
   // Approving is the moment access is granted. Rejecting takes it away.
   if (data.status === "approved") {
     const grant = await grantVendorAccess(g.admin, data.id);
-    return NextResponse.json({ success: true, linked: grant.linked, note: grant.note });
+    const enrolled = await enrollCoordinatorShop(g.admin, data.id);
+    return NextResponse.json({
+      success: true, linked: grant.linked, enrolled,
+      note: grant.note + (enrolled ? " Enrolled on FestDash — live once their coordinator logs the first month's fee." : ""),
+    });
   }
 
   const { data: vendorRow } = await g.admin

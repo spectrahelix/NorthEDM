@@ -10,7 +10,7 @@ import { notifyNewSignup } from "@/utils/alerts";
 //
 // Returns a path to redirect a brand-new user to (profile setup), or null to
 // send them to the default `next`.
-export async function finalizeAuthedUser(supabase: SupabaseClient): Promise<string | null> {
+export async function finalizeAuthedUser(supabase: SupabaseClient, next?: string | null): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -69,7 +69,9 @@ export async function finalizeAuthedUser(supabase: SupabaseClient): Promise<stri
     }
 
     await notifyNewSignup({ email: user.email ?? "", name: displayName });
-    return "/profile/edit?welcome=1";
+    // A caller that asked for a specific destination (the shop walkthrough)
+    // gets it; everyone else starts at profile setup.
+    return next && next !== "/feed" && !next.startsWith("/profile/edit") ? next : "/profile/edit?welcome=1";
   }
 
   // Existing profile (e.g. email/password confirming): alert once, claimed

@@ -19,7 +19,7 @@ export async function GET() {
 
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: vendors }, settings] = await Promise.all([
-    admin.from("vendors").select("id, name, category, currency, whatsapp_number, suspended_at").eq("coordinator_user_id", user.id).order("name"),
+    admin.from("vendors").select("id, name, category, currency, whatsapp_number, suspended_at, payout_wallets, area").eq("coordinator_user_id", user.id).order("name"),
     loadSplitSettings(admin),
   ]);
   const vendorIds = (vendors ?? []).map((v) => Number(v.id));
@@ -48,6 +48,7 @@ export async function GET() {
     const sub = latestSub.get(Number(v.id)) ?? null;
     return {
       id: Number(v.id), name: v.name, category: v.category, currency: v.currency, whatsapp_number: v.whatsapp_number,
+      payout_wallets: v.payout_wallets ?? null, area: v.area ?? null,
       suspended: !!v.suspended_at, festdash_active: fdActive.get(Number(v.id)) ?? false,
       paid_through: sub?.period_end ?? null, fee_current: !!sub && sub.period_end >= today,
     };

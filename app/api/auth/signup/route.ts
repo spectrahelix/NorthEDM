@@ -5,6 +5,7 @@ import { notifyFeedback } from "@/utils/alerts";
 import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 import { humaniseAuthError } from "@/utils/authErrors";
 import { firstPasswordProblem } from "@/utils/passwordRules";
+import { safeNext, safeOrigin } from "@/utils/safeRedirect";
 import {
   clientIp,
   clientContradictsItself,
@@ -16,12 +17,13 @@ import {
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
 export async function POST(req: NextRequest) {
-  const { email, password, username, origin, referralCode, website, elapsedMs } =
+  const { email, password, username, origin: rawOrigin, referralCode, website, elapsedMs, next: rawNext } =
     (await req.json()) as {
       email: string;
       password: string;
       username: string;
       origin: string;
+      next?: string;
       referralCode?: string;
       website?: string;
       elapsedMs?: number;
@@ -45,7 +47,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!email || !password || !username || !origin) {
+  // Links we email must point at us (safeOrigin) and land on a same-site
+  // path (safeNext) — a shop owner arriving from a QR code returns to the
+  // walkthrough; everyone else starts at profile setup.
+  const origin = safeOrigin(rawOrigin, req.url);
+  const next = safeNext(typeof rawNext === "string" ? rawNext : null, "/profile/edit");
+
+  if (!email || !password || !username || !rawOrigin) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
   if (!USERNAME_RE.test(username)) {
@@ -118,7 +126,7 @@ export async function POST(req: NextRequest) {
 
   const normalizedRef = referralCode ? String(referralCode).trim().toUpperCase() : null;
   const metadata = normalizedRef ? { username, referral_code: normalizedRef } : { username };
-  const redirectTo = `${origin}/auth/callback`;
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
   // ── Create the account and deliver the confirmation ourselves ─────────────
   //
@@ -174,7 +182,7 @@ export async function POST(req: NextRequest) {
         origin: String(origin).replace(/\/$/, ""),
         tokenHash,
         type: "signup",
-        next: "/profile/edit",
+        next,
       })
     );
     if (!sent.ok) {

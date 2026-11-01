@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     // anyone away — this only proceeds on a real authenticated session.
     const { data: { user: already } } = await supabase.auth.getUser();
     if (already) {
-      const seeded = await finalizeAuthedUser(supabase);
+      const seeded = await finalizeAuthedUser(supabase, next);
       return NextResponse.redirect(`${origin}${seeded ?? next}`);
     }
     // Genuinely spent (an external scanner has its own cookie jar) or invalid.
@@ -41,6 +41,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  const newUserRedirect = await finalizeAuthedUser(supabase);
+  const newUserRedirect = await finalizeAuthedUser(supabase, next);
   return NextResponse.redirect(`${origin}${newUserRedirect ?? next}`);
 }
