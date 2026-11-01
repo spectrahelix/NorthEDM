@@ -19,6 +19,8 @@ type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscrip
 type Shop = {
   id: number; name: string | null; category: string | null; currency: string | null; whatsapp_number: string | null;
   suspended: boolean; festdash_active: boolean; paid_through: string | null; fee_current: boolean;
+  payout_wallets: { wave: string | null; qmoney: string | null; afrimoney: string | null; preferred: string | null } | null;
+  area: string | null;
 };
 type Awaiting = {
   id: string; vendor_id: number; vendor_name: string; customer_name: string | null; total_cents: number; currency: string;
@@ -226,6 +228,11 @@ export default function PursePage() {
                     <p className="font-dm-mono text-[11px] text-neutral-500">
                       {v.fee_current ? `fee paid through ${v.paid_through}` : v.paid_through ? `lapsed ${v.paid_through}` : "no fee logged yet"}
                       {!v.festdash_active ? " · not enrolled on FestDash" : ""}{v.suspended ? " · lights out" : ""}
+                    </p>
+                    <p className="font-dm-mono text-[11px] text-neutral-400">
+                      Pay the shop: {v.payout_wallets && (v.payout_wallets.wave || v.payout_wallets.qmoney || v.payout_wallets.afrimoney)
+                        ? [v.payout_wallets.wave && `Wave ${v.payout_wallets.wave}`, v.payout_wallets.qmoney && `QMoney ${v.payout_wallets.qmoney}`, v.payout_wallets.afrimoney && `Afrimoney ${v.payout_wallets.afrimoney}`].filter(Boolean).join(" · ") + (v.payout_wallets.preferred ? ` (prefers ${v.payout_wallets.preferred})` : "")
+                        : "cash"}{v.whatsapp_number ? ` · WhatsApp ${v.whatsapp_number}` : ""}{v.area ? ` · ${v.area}` : ""}
                     </p>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${v.fee_current && v.festdash_active && !v.suspended ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>

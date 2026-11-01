@@ -147,6 +147,12 @@ export default async function FestDashPage() {
                 Join as Vendor
               </Link>
             ) : null}
+            <Link
+              href="/festdash/shop-setup"
+              className="rounded-2xl border border-orange-500/40 px-6 py-3 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/10"
+            >
+              Set up your shop →
+            </Link>
           </div>
         </div>
       </section>
@@ -204,6 +210,26 @@ export default async function FestDashPage() {
             From a muddy campground in the Poconos to a mountain village with no
             postal code — <span className="text-orange-300">if it&apos;s local, it&apos;s deliverable.</span>
           </p>
+        </div>
+      </section>
+
+      {/* Shop owners — the walkthrough (coordinator regions) */}
+      <section className="mx-auto max-w-5xl px-6 pb-4">
+        <div className="rounded-3xl border border-orange-500/25 bg-gradient-to-br from-orange-950/30 to-transparent p-8 md:flex md:items-center md:justify-between md:gap-8">
+          <div className="max-w-xl">
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-400">Own a shop?</p>
+            <h2 className="mt-1 font-bebas text-4xl tracking-wide text-white">Put your shop on FestDash</h2>
+            <p className="mt-2 text-neutral-400">
+              Create your account, tell us what you sell and where you want to be paid, and your local coordinator takes it from there.
+              Customers order on the site or WhatsApp and pay by Wave, QMoney, Afrimoney or cash on delivery. You keep 80% of every sale.
+            </p>
+          </div>
+          <Link
+            href="/festdash/shop-setup"
+            className="mt-6 inline-flex shrink-0 rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400 md:mt-0"
+          >
+            Start the walkthrough →
+          </Link>
         </div>
       </section>
 
@@ -341,6 +367,12 @@ export default async function FestDashPage() {
                   className="inline-flex rounded-2xl border border-orange-500/40 px-6 py-3 font-semibold text-orange-300 transition hover:bg-orange-500/10"
                 >
                   Become a Promoter →
+                </Link>
+                <Link
+                  href="/festdash/shop-setup"
+                  className="inline-flex rounded-2xl border border-white/10 px-6 py-3 font-semibold text-neutral-300 transition hover:bg-white/5"
+                >
+                  Shop owners: set up your shop →
                 </Link>
                 <Link
                   href="/promote/dashboard"

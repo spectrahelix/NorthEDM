@@ -7,6 +7,7 @@ import { use } from "react";
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, orderRef, isWalletMethod } from "@/utils/gambiaPay";
+import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Order = {
   id: string;
   vendor_id: number;
@@ -170,6 +171,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
             <p className="mt-3 font-dm-mono text-xs uppercase tracking-widest text-orange-400">Reference</p>
             <p className="mt-1 text-2xl font-semibold text-white">{ref}</p>
           </div>
+          <PaymentTimingNote method={methodKey} className="mb-4" />
           {order.payment_ref ? (
             <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-300">
               ✓ Reference <span className="font-dm-mono">{order.payment_ref}</span> received. The purse keeper confirms it from their wallet and this page updates on its own.

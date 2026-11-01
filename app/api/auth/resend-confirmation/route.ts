@@ -3,17 +3,19 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 
+import { safeOrigin } from "@/utils/safeRedirect";
 // Resend the signup confirmation. Same reasoning as signup and password reset:
 // supabase.auth.resend() hands the send to Supabase's SMTP, which is the path
 // that fails here, so we mint the link ourselves and deliver it over Brevo's
 // HTTP API instead.
 
 export async function POST(req: NextRequest) {
-  const { email, origin } = (await req.json().catch(() => ({}))) as {
+  const { email, origin: rawOrigin } = (await req.json().catch(() => ({}))) as {
     email?: string;
     origin?: string;
   };
-  if (!email || !origin) {
+  const origin = safeOrigin(rawOrigin, req.url);
+  if (!email || !rawOrigin) {
     return NextResponse.json({ error: "Missing email or origin." }, { status: 400 });
   }
 

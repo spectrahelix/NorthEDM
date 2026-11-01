@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/authEmail";
 
+import { safeOrigin } from "@/utils/safeRedirect";
 // Password reset. Server-side on purpose: supabase.auth.resetPasswordForEmail()
 // from the browser asks Supabase to send over SMTP, which is the broken path —
 // it returned 500 "Error sending recovery email" for every account, so anyone
@@ -14,12 +15,13 @@ import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/auth
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const { email, origin } = (await req.json().catch(() => ({}))) as {
+  const { email, origin: rawOrigin } = (await req.json().catch(() => ({}))) as {
     email?: string;
     origin?: string;
   };
 
-  if (!email || !origin) {
+  const origin = safeOrigin(rawOrigin, req.url);
+  if (!email || !rawOrigin) {
     return NextResponse.json({ error: "Please enter your email address." }, { status: 400 });
   }
 

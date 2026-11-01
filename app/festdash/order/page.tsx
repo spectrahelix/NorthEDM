@@ -8,6 +8,7 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, WALLET_METHODS, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
+import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
@@ -846,6 +847,7 @@ export default function OrderPage() {
                   </p>
                 )}
                 <p className="mt-3 text-xs text-neutral-600">On delivery, give your runner the last 4 digits of your phone to confirm.</p>
+                {paymentMethod && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
               </div>
               {whatsappTo && (
                 <a

@@ -316,6 +316,24 @@ through the site; it records what moved and who confirmed it.** Full design in
 - Stage two (not built): a Wave Business API or Gambian aggregator webhook
   auto-confirms wallet payments. It needs a Gambian business account only the
   coordinator can open; it changes nothing in the data model.
+- **Shop owners self-onboard at `/festdash/shop-setup`** (the QR on Gee's
+  flyer). One application creates the pending vendor with its payout wallets
+  (`vendors.payout_wallets`, private), WhatsApp, area, the coordinator code
+  that links it to its purse keeper, and `terms_accepted_at`. **Approving it in
+  /admin/vendors also enrols it on FestDash** (`enrollCoordinatorShop`); it
+  goes live when the coordinator logs the first fee. The page is state-aware:
+  account → application → coordinator/fee → add items.
+- **Signup carries `?next=`** end to end (signup page → `/api/auth/signup` →
+  confirm link → `finalizeAuthedUser(supabase, next)`), so a QR visitor lands
+  back on the walkthrough after verifying. New users without a `next` still
+  start at `/profile/edit?welcome=1`.
+- **Emailed links are built only from our own origin** (`safeOrigin()` in
+  `utils/safeRedirect.ts`). The three auth routes used to take `origin` from
+  the request body, which let a forged request send someone an official email
+  pointing elsewhere.
+- **Payment timing notes** live in `utils/paymentNotes.ts` and are deliberately
+  hedged ("usually", provider-set). Don't state a provider's SLA we haven't
+  measured.
 - **Runner pool now carries `payment_method`**: a cash order shows the runner
   "collect D… at handover". Keep that in any pool-column edit.
 - **Every `festdash_orders` write is the service role** except the runner's

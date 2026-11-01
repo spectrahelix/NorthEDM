@@ -5,11 +5,16 @@ import Link from "next/link";
 import { SocialAuth } from "@/app/components/SocialAuth";
 import { passwordRequirements, passwordIsValid, firstPasswordProblem } from "@/utils/passwordRules";
 
+import { safeNext } from "@/utils/safeRedirect";
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Where to land after the account exists (the shop walkthrough passes this).
+  const [next] = useState(() =>
+    typeof window === "undefined" ? "/profile/edit" : safeNext(new URLSearchParams(window.location.search).get("next"), "/profile/edit")
+  );
   const [referralCode, setReferralCode] = useState("");
   const [website, setWebsite] = useState(""); // honeypot, hidden from people
 
@@ -78,6 +83,7 @@ export default function SignupPage() {
         origin: window.location.origin,
         referralCode: referralCode || undefined,
         website,
+        next,
         elapsedMs: openedAt.current === null ? undefined : Date.now() - openedAt.current,
       }),
     });
@@ -167,7 +173,7 @@ export default function SignupPage() {
             </div>
           )}
 
-          <SocialAuth next="/profile/edit" />
+          <SocialAuth next={next} />
 
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/10" />

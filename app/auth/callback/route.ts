@@ -43,6 +43,6 @@ export async function GET(request: Request) {
   }
 
   // Seed profile (new users) + alert the owner, once. Shared with /auth/confirm.
-  const newUserRedirect = await finalizeAuthedUser(supabase);
+  const newUserRedirect = await finalizeAuthedUser(supabase, next);
   return NextResponse.redirect(`${origin}${newUserRedirect ?? next}`);
 }
