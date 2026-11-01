@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { RankBadge } from "@/app/components/RankBadge";
 import { profileTags } from "@/utils/supabase/user-profiles";
 import Link from "next/link";
+import { UsernameNudge } from "./UsernameNudge";
 
 type AdminUser = {
   id: string;
@@ -287,6 +288,7 @@ export default function AdminUsersPage() {
             </p>
           </div>
           <h1 className="mt-2 font-bebas text-4xl tracking-wide">All Users</h1>
+          <UsernameNudge />
         </div>
       </div>
 
