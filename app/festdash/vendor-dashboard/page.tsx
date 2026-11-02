@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 
 import { formatMoney } from "@/utils/money";
 import { DEFAULT_SPLITS, platformShareBps } from "@/utils/gambiaPay";
+import { BillingCard } from "@/app/components/BillingCard";
 type Order = {
   id: string;
   customer_name: string;
@@ -219,6 +220,9 @@ export default function VendorDashboard() {
             <span className="font-dm-mono text-xs text-green-400">Live</span>
           </div>
         </div>
+
+        {/* Monthly FestDash listing (card rail only; wallet-rail shops pay their coordinator) */}
+        <BillingCard kind="festdash" what="FestDash listing" />
 
         {/* Stripe payouts status */}
         {stripeStatus && !stripeStatus.onboarded && (

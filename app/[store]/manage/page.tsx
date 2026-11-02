@@ -8,6 +8,7 @@ import { storeTheme } from "@/utils/storeThemes";
 import { PillSwitch } from "@/app/components/PillSwitch";
 import { SHOP_FONT_CHOICES } from "@/utils/storeFonts";
 import { StoreLogoUpload } from "@/app/components/StoreLogoUpload";
+import { BillingCard } from "@/app/components/BillingCard";
 
 type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number; theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; theme_options: string[]; logo_url: string | null };
 type Member = { vendor_id: number; status: string; name: string; category: string | null };
@@ -63,8 +64,11 @@ export default function StoreManagePage() {
           <Link href={`/${slug}`} className="shrink-0 rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">View storefront →</Link>
         </div>
 
+        {/* Monthly store subscription — drives whether the store can take orders */}
+        <div className="mt-8"><BillingCard kind="store" storeSlug={slug} what="Store subscription" /></div>
+
         {/* Branding */}
-        <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-4 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Branding</p>
           <div className="space-y-3">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name"

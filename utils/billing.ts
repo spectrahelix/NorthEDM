@@ -1,0 +1,189 @@
+import type Stripe from "stripe";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getStripe } from "@/utils/stripe";
+import { recordCommission, commissionTerms } from "@/utils/commissions";
+
+/**
+ * Card-paid monthly subscriptions (owner's model, 2026-11-02):
+ *   festdash — a US vendor's FestDash listing. Listed and orderable only while
+ *              active; the wallet-rail (Gambia) shops pay their coordinator
+ *              instead and are not touched by this.
+ *   store    — an embedded store's monthly fee; drives stores.billing_status.
+ * Price: coordinator_program_settings.subscription_fee_cents ($30 by default).
+ * A shop that signed up with any promoter's code pays referral_fee_discount_bps
+ * less, and that promoter is booked subscription_coordinator_bps of every
+ * payment (paid out through Connect by the commissions cron). The rest is the
+ * owner's and simply stays on the platform balance. Stripe is the source of
+ * truth; the webhook mirrors status + period end into stripe_subscriptions.
+ */
+export type SubscriptionKind = "festdash" | "store";
+export const SUBSCRIPTION_LABEL: Record<SubscriptionKind, string> = {
+  festdash: "FestDash listing",
+  store: "Store subscription",
+};
+const ACTIVE = new Set(["active", "trialing"]);
+const GRACE_MS = 3 * 86400000; // a failed renewal retry gets a few days before the switch flips
+
+type Settings = { subscription_fee_cents: number; subscription_coordinator_bps: number; referral_fee_discount_bps: number };
+async function settings(admin: SupabaseClient): Promise<Settings> {
+  const { data } = await admin
+    .from("coordinator_program_settings")
+    .select("subscription_fee_cents, subscription_coordinator_bps, referral_fee_discount_bps")
+    .eq("id", 1)
+    .maybeSingle();
+  return { subscription_fee_cents: 3000, subscription_coordinator_bps: 1000, referral_fee_discount_bps: 1000, ...(data ?? {}) };
+}
+
+/** The promoter who referred this vendor (vendors.coordinator_user_id), if any. */
+async function promoterFor(admin: SupabaseClient, vendorId: number | null): Promise<string | null> {
+  if (!vendorId) return null;
+  const { data } = await admin.from("vendors").select("coordinator_user_id").eq("id", vendorId).maybeSingle();
+  return (data?.coordinator_user_id as string | null) ?? null;
+}
+
+export async function quote(admin: SupabaseClient, vendorId: number | null) {
+  const s = await settings(admin);
+  const promoter = await promoterFor(admin, vendorId);
+  const amount_cents = promoter
+    ? Math.round(s.subscription_fee_cents * (1 - s.referral_fee_discount_bps / 10000))
+    : s.subscription_fee_cents;
+  return { amount_cents, list_cents: s.subscription_fee_cents, promoter_user_id: promoter, discounted: !!promoter };
+}
+
+/** Start Stripe Checkout for a subscription. The webhook finishes the job. */
+export async function createSubscriptionCheckout(
+  admin: SupabaseClient,
+  args: { kind: SubscriptionKind; userId: string; email?: string | null; vendorId: number | null; storeId?: string | null; origin: string; returnPath: string }
+) {
+  const q = await quote(admin, args.vendorId);
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer_email: args.email ?? undefined,
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: "usd",
+        unit_amount: q.amount_cents,
+        recurring: { interval: "month" },
+        product_data: { name: `NorthEDM ${SUBSCRIPTION_LABEL[args.kind]}${q.discounted ? " (referral rate)" : ""}` },
+      },
+    }],
+    subscription_data: {
+      metadata: {
+        kind: args.kind, user_id: args.userId, vendor_id: args.vendorId ? String(args.vendorId) : "",
+        store_id: args.storeId ?? "", promoter_user_id: q.promoter_user_id ?? "",
+      },
+    },
+    metadata: { kind: `subscription_${args.kind}` },
+    success_url: `${args.origin}${args.returnPath}?billing=ok`,
+    cancel_url: `${args.origin}${args.returnPath}?billing=canceled`,
+  });
+  return { url: session.url, amount_cents: q.amount_cents };
+}
+
+export async function billingPortalUrl(customerId: string, returnUrl: string): Promise<string> {
+  const portal = await getStripe().billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+  return portal.url;
+}
+
+export function isActiveRow(row: { status: string; current_period_end: string | null } | null | undefined): boolean {
+  if (!row) return false;
+  if (!ACTIVE.has(row.status)) return false;
+  if (!row.current_period_end) return true;
+  return new Date(row.current_period_end).getTime() + GRACE_MS > Date.now();
+}
+
+/** Which of these (card-rail) vendors currently hold an active FestDash listing. */
+export async function festdashListingActive(admin: SupabaseClient, vendorIds: number[]): Promise<Set<number>> {
+  const out = new Set<number>();
+  if (!vendorIds.length) return out;
+  const { data } = await admin
+    .from("stripe_subscriptions")
+    .select("vendor_id, status, current_period_end")
+    .eq("kind", "festdash")
+    .in("vendor_id", vendorIds);
+  for (const r of data ?? []) if (isActiveRow(r) && r.vendor_id != null) out.add(Number(r.vendor_id));
+  return out;
+}
+
+// ── webhook side ─────────────────────────────────────────────────────────────
+type SubLike = Stripe.Subscription & { current_period_end?: number };
+function periodEnd(sub: SubLike): string | null {
+  const ts = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
+  return ts ? new Date(ts * 1000).toISOString() : null;
+}
+
+async function upsertFromSubscription(db: SupabaseClient, sub: SubLike) {
+  const m = sub.metadata ?? {};
+  const kind = m.kind === "store" ? "store" : m.kind === "festdash" ? "festdash" : null;
+  if (!kind) return null;
+  const row = {
+    kind,
+    vendor_id: m.vendor_id ? Number(m.vendor_id) : null,
+    store_id: m.store_id || null,
+    user_id: m.user_id || null,
+    promoter_user_id: m.promoter_user_id || null,
+    stripe_customer_id: typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null,
+    stripe_subscription_id: sub.id,
+    status: sub.status,
+    current_period_end: periodEnd(sub),
+    amount_cents: sub.items?.data?.[0]?.price?.unit_amount ?? null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await db.from("stripe_subscriptions").upsert(row, { onConflict: "stripe_subscription_id" });
+  if (error) console.error("stripe_subscriptions upsert failed:", error.message);
+  // A store's switch lives on the store row itself (checkout + storefront read it).
+  if (kind === "store" && row.store_id) {
+    const billing = ACTIVE.has(sub.status) ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
+    await db.from("stores").update({ billing_status: billing, stripe_subscription_id: sub.id }).eq("id", row.store_id);
+  }
+  return row;
+}
+
+/** Returns true when the event was a subscription event and has been handled. */
+export async function handleSubscriptionEvent(db: SupabaseClient, event: Stripe.Event): Promise<boolean> {
+  const stripe = getStripe();
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.mode !== "subscription" || !session.subscription) return false;
+    const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
+    const sub = (await stripe.subscriptions.retrieve(subId)) as SubLike;
+    await upsertFromSubscription(db, sub);
+    return true;
+  }
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    await upsertFromSubscription(db, event.data.object as SubLike);
+    return true;
+  }
+  if (event.type === "invoice.paid") {
+    const inv = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null };
+    const raw = inv.subscription ?? (inv as unknown as { parent?: { subscription_details?: { subscription?: string | { id: string } } } }).parent?.subscription_details?.subscription;
+    const subId = typeof raw === "string" ? raw : raw?.id;
+    if (!subId) return false;
+    const sub = (await stripe.subscriptions.retrieve(subId)) as SubLike;
+    const row = await upsertFromSubscription(db, sub);
+    if (!row) return false;
+    // The referring promoter's share of this payment — never when the promoter
+    // is the owner (an archon), who already keeps the rest.
+    const paid = Number(inv.amount_paid ?? 0);
+    if (row.promoter_user_id && paid > 0) {
+      const { data: prof } = await db.from("user_profiles").select("role").eq("id", row.promoter_user_id).maybeSingle();
+      if (prof?.role !== "archon") {
+        const s = await settings(db);
+        const { holdDays } = await commissionTerms(db, "vendor_listing");
+        await recordCommission(db, {
+          promoterUserId: row.promoter_user_id,
+          referredUserId: row.user_id,
+          source: "vendor_listing",
+          sourceId: inv.id,
+          baseCents: paid,
+          rateBps: s.subscription_coordinator_bps,
+          holdDays,
+        });
+      }
+    }
+    return true;
+  }
+  return false;
+}

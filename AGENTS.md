@@ -397,6 +397,19 @@ through the site; it records what moved and who confirmed it.** Full design in
   walkthrough and /vendors/apply → `vendors.coordinator_user_id/_code`); that
   promoter earns the coordinator share of each sale. A shop referred by the
   owner's own code pays 10% less on the listing fee.
+- **Monthly subscriptions by card (2026-11-02)** — `utils/billing.ts`. US
+  FestDash vendors pay a monthly **FestDash listing** and embedded stores a
+  monthly **store subscription**, both `subscription_fee_cents` ($30) via Stripe
+  Checkout subscriptions; the webhook mirrors them into `stripe_subscriptions`
+  and flips `stores.billing_status`. A card-rail vendor is listed/orderable only
+  while the listing is active (`festdashListingActive`, used by the vendor list,
+  the FestDash page and the order route); wallet-rail shops keep paying their
+  coordinator. A referral code takes `referral_fee_discount_bps` (10%) off and
+  the referring promoter is booked `subscription_coordinator_bps` (10%) of each
+  payment as a `vendor_listing` commission (not when the promoter is an archon).
+  Cards: `BillingCard` on /festdash/vendor-dashboard and /<slug>/manage.
+  Stripe endpoint must send `invoice.paid`, `customer.subscription.updated`,
+  `customer.subscription.deleted` in addition to the order events.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays

@@ -5,6 +5,7 @@ import { getStripe, platformFeeCents } from "@/utils/stripe";
 
 import { isLocalMethod, isLocalRail, isWalletMethod, minRunnerFeeCents, platformShareBps, walletNumberFor } from "@/utils/gambiaPay";
 import { activeSubscription, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
+import { festdashListingActive } from "@/utils/billing";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -70,8 +71,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `${paymentMethod} isn't set up for this shop yet — pick another way to pay.` }, { status: 400 });
       }
     }
-  } else if (paymentMethod && paymentMethod !== "card") {
-    return NextResponse.json({ error: "This vendor takes card payments only." }, { status: 400 });
+  } else {
+    if (paymentMethod && paymentMethod !== "card") {
+      return NextResponse.json({ error: "This vendor takes card payments only." }, { status: 400 });
+    }
+    // Card-rail vendors must hold an active monthly FestDash listing.
+    const listed = await festdashListingActive(admin, [vid]);
+    if (!listed.has(vid)) return NextResponse.json({ error: "This vendor's FestDash listing isn't active right now." }, { status: 403 });
   }
 
   // Re-price every line from the database. The browser's prices and total are
