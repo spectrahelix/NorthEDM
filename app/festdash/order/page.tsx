@@ -803,7 +803,7 @@ export default function OrderPage() {
               <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {[...walletOptions, "cash" as const].map((m) => (
+                  {walletOptions.map((m) => (
                     <button
                       key={m}
                       type="button"
@@ -812,7 +812,7 @@ export default function OrderPage() {
                     >
                       <span className="font-semibold">{METHOD_LABEL[m]}</span>
                       <span className="block text-xs text-neutral-500">
-                        {m === "cash" ? "Pay the runner when your order arrives" : `Send to ${walletNumberFor(selectedVendor?.payments, m)}, then enter your transaction reference`}
+                        {`Send to ${walletNumberFor(selectedVendor?.payments, m)}, then enter your transaction reference`}
                       </span>
                     </button>
                   ))}

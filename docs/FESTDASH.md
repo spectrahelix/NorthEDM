@@ -176,7 +176,8 @@ assigned to them there too (`vendors.coordinator_user_id`, `currency`,
 `whatsapp_number`).
 
 **Money.** Shops pay a flat fee ($30/month by default) to be listed; customers
-pay the coordinator's wallet or cash at handover; the coordinator keeps 10% of
+pay the coordinator's wallet (cash on delivery was removed 2026-11-02: payment
+is confirmed before the shop cooks); the coordinator keeps 10% of
 each sale and 10% of each fee, pays the shop its 80%, and sends the owner the
 rest by Remitly. The site never holds any of it — it books every confirmed sale,
 every fee and every remittance in `coordinator_ledger`, and the owner confirms
