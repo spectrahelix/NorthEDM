@@ -26,6 +26,14 @@ export type Vendor = {
   website: string | null;
   is_founder: boolean | null;
   status: string | null;
+  area?: string | null;
+  region?: string | null;
+  currency?: string | null;
+  whatsapp_number?: string | null;
+  coordinator_code?: string | null;
+  coordinator_user_id?: string | null;
+  payout_wallets?: { wave?: string | null; qmoney?: string | null; afrimoney?: string | null; preferred?: string | null } | null;
+  terms_accepted_at?: string | null;
 };
 
 type FilterKey = "pending" | "approved" | "rejected" | "all";
@@ -87,6 +95,23 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
       router.refresh();
     } catch (error) {
       setNote((error as Error).message);
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  // Re-sends the owner alert with the whole application — for one that was
+  // missed, or arrived before alerts carried the details.
+  async function resendAlert(id: number) {
+    setLoadingId(id);
+    try {
+      const res = await fetch("/api/vendors/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "resend_alert" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      setNote(res.ok && json.success ? json.note ?? "Sent." : json.error || "Couldn't send it.");
     } finally {
       setLoadingId(null);
     }
@@ -179,6 +204,7 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
             return (
               <div
                 key={v.id}
+                id={`vendor-${v.id}`}
                 className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
               >
                 {/* Collapsed header row */}
@@ -238,6 +264,14 @@ export default function VendorDashboard({ vendors }: { vendors: Vendor[] }) {
                         className="rounded-lg bg-red-500/20 px-2.5 py-1 text-xs text-red-300 disabled:opacity-50"
                       >
                         ✕ Deny
+                      </button>
+                      <button
+                        onClick={() => resendAlert(v.id)}
+                        disabled={busy}
+                        title="Email me the full application"
+                        className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-neutral-200 disabled:opacity-50"
+                      >
+                        ✉ Email me
                       </button>
                     </div>
                   )}
@@ -436,7 +470,19 @@ function ApplicationDetails({ vendor: v }: { vendor: Vendor }) {
     ["Website", v.website ? <a href={v.website} target="_blank" rel="noreferrer" className="break-all hover:text-white">{v.website}</a> : "—"],
     ["Category", v.category || "—"],
     ["Capacity", v.capacity || "—"],
+    ["Wants public listing", v.wants_public == null ? "—" : v.wants_public ? "yes" : "no"],
   ];
+  // Fields that only coordinator-region (shop-setup) applications carry.
+  const w = v.payout_wallets ?? null;
+  const walletParts = w ? [w.wave ? `Wave ${w.wave}` : null, w.qmoney ? `QMoney ${w.qmoney}` : null, w.afrimoney ? `Afrimoney ${w.afrimoney}` : null].filter(Boolean) : [];
+  const extra: [string, React.ReactNode][] = [];
+  if (v.whatsapp_number) extra.push(["WhatsApp", v.whatsapp_number]);
+  if (v.area) extra.push(["Area", v.area]);
+  if (v.region) extra.push(["Region", `${v.region}${v.currency ? ` · ${v.currency}` : ""}`]);
+  if (v.coordinator_code || v.coordinator_user_id) extra.push(["Coordinator", v.coordinator_code ? `code ${v.coordinator_code}` : "assigned"]);
+  if (walletParts.length) extra.push(["Payout wallets", `${walletParts.join(" · ")}${w?.preferred ? ` · preferred: ${w.preferred}` : ""}`]);
+  if (v.terms_accepted_at) extra.push(["Terms accepted", new Date(v.terms_accepted_at).toLocaleString()]);
+  rows.push(...extra);
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-4">
       <dl className="grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[9rem_1fr]">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/utils/admin";
+import { enrollCoordinatorShop } from "@/utils/coordinator";
 
 // Owner's controls for the coordinator model. GET returns everything the admin
 // page shows; PATCH applies one change at a time.
@@ -61,7 +62,11 @@ export async function PATCH(req: Request) {
       .update({ coordinator_user_id: coordinatorUserId, currency: coordinatorUserId ? currency : "USD", region: coordinatorUserId ? region : null, whatsapp_number: whatsapp })
       .eq("id", vendorId).select("id, coordinator_user_id, currency, region, whatsapp_number").single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ vendor: data });
+    // An already-approved vendor assigned to a coordinator used to stay off
+    // FestDash entirely — nothing enrolled it, so fees could be logged and the
+    // shop still never appeared. Enrol it here too (no-op unless approved).
+    const enrolled = coordinatorUserId ? await enrollCoordinatorShop(admin, vendorId) : false;
+    return NextResponse.json({ vendor: data, enrolled });
   }
 
   if (body.action === "confirm_remittance") {

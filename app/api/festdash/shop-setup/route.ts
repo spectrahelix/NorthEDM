@@ -4,6 +4,7 @@ import { requireVerifiedUser } from "@/utils/authGate";
 import { serviceClient, loadSplitSettings } from "@/utils/coordinator";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { notifyNewApplication } from "@/utils/alerts";
+import { vendorApplicationFields } from "@/utils/vendorApplication";
 
 // The shop owner's self-service path for a coordinator region. One
 // application creates the vendor record, links it to its coordinator by code,
@@ -145,12 +146,18 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await notifyNewApplication({
-    kind: "vendor",
+    kind: "shop",
     name,
-    email: user.email ?? "",
-    detail: `Shop setup (${coordinator?.region ?? DEFAULT_REGION}) · ${category} · ${area} · WhatsApp ${whatsapp}` +
-      (coordinator ? ` · coordinator: ${coordinator.display_name ?? coordinator.user_id}` : " · no coordinator code given") +
-      ` · payout: ${wallets.preferred ?? "cash only"}. Approve in /admin/vendors — approval also enrols them on FestDash.`,
+    email: user.email ?? "no email",
+    reviewPath: `/admin/vendors#vendor-${vendor.id}`,
+    fields: vendorApplicationFields({
+      id: vendor.id, name, category, description, email: user.email ?? null, business_email: user.email ?? null,
+      first_name: null, last_name: null, phone: null, website: null, capacity: null, wants_public: true,
+      area, region: coordinator?.region ?? DEFAULT_REGION, currency: DEFAULT_CURRENCY, whatsapp_number: whatsapp,
+      coordinator_code: coordinator?.referral_code ?? null, coordinator_user_id: coordinator?.user_id ?? null,
+      payout_wallets: wallets, terms_accepted_at: new Date().toISOString(), created_at: new Date().toISOString(),
+    }, coordinator?.display_name ?? null),
+    detail: "Approve in /admin/vendors — approval also enrols them on FestDash; they go live when their coordinator logs the first fee.",
   });
 
   return NextResponse.json({ vendor });

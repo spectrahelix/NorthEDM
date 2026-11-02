@@ -1,4 +1,5 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { brandedEmail, type EmailRow } from "@/utils/notifyEmail";
 
 // Owner alerting: in-app notifications + email (Brevo API) + phone push (ntfy).
 //
@@ -29,7 +30,7 @@ function admin() {
 }
 
 // Email via Brevo's transactional API. From address must be a verified Brevo sender.
-async function emailOwner(subject: string, text: string) {
+async function emailOwner(subject: string, text: string, html?: string) {
   const key = process.env.BREVO_API_KEY;
   if (!key) return;
   const senderEmail = process.env.BREVO_SENDER_EMAIL || "no-reply@northedm.com";
@@ -42,6 +43,7 @@ async function emailOwner(subject: string, text: string) {
         to: [{ email: OWNER_EMAIL }],
         subject,
         textContent: text,
+        ...(html ? { htmlContent: html } : {}),
       }),
     });
     if (!res.ok) console.error("owner email failed:", res.status, await res.text().catch(() => ""));
@@ -84,25 +86,52 @@ async function notifyAdminsInApp(type: string, message: string, link: string) {
   }
 }
 
-/** Fan out an alert to the owner across every configured channel. */
+const APPLICATION_KINDS = {
+  vendor: { label: "FestDash vendor", path: "/admin/festdash" },
+  promoter: { label: "FestDash promoter", path: "/admin/festdash/promoters" },
+  shop: { label: "FestDash shop", path: "/admin/vendors" },
+  marketplace: { label: "vendor", path: "/admin/vendors" },
+} as const;
+
+/**
+ * Fan out an application alert to the owner across every configured channel.
+ * The email carries the WHOLE application (`fields`), so it can be reviewed
+ * from the inbox: the one-line version sent before 2026-11-02 named the
+ * applicant and nothing else, and for shop applications linked to a page that
+ * couldn't approve them. `reviewPath` points at the exact card when known.
+ */
 export async function notifyNewApplication(opts: {
-  kind: "vendor" | "promoter";
+  kind: keyof typeof APPLICATION_KINDS;
   name: string;
   email: string;
   detail?: string;
+  fields?: EmailRow[];
+  reviewPath?: string;
 }) {
-  const label = opts.kind === "vendor" ? "FestDash vendor" : "FestDash promoter";
-  const path = opts.kind === "vendor" ? "/admin/festdash" : "/admin/festdash/promoters";
+  const { label, path: defaultPath } = APPLICATION_KINDS[opts.kind];
+  const path = opts.reviewPath ?? defaultPath;
   const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
 
   const message = `New ${label} application from ${opts.name} (${opts.email}).`;
   const subject = `🎪 New ${label} application — ${opts.name}`;
+  const rows = (opts.fields ?? []).filter(([, v]) => v != null && String(v).trim() !== "");
   const emailText =
-    `${message}\n${opts.detail ? `\n${opts.detail}\n` : ""}\nReview it here: ${reviewUrl}`;
+    `${message}\n` +
+    (rows.length ? `\n${rows.map(([l, v]) => `${l}: ${v}`).join("\n")}\n` : "") +
+    (opts.detail ? `\n${opts.detail}\n` : "") +
+    `\nReview it here: ${reviewUrl}`;
+  const { html } = brandedEmail({
+    heading: `New ${label} application`,
+    intro: message,
+    rows,
+    cta: { label: "Review and approve", path: reviewUrl },
+    outro: opts.detail,
+    footer: "Owner alert from your NorthEDM site.",
+  });
 
   await Promise.allSettled([
     notifyAdminsInApp(`festdash_${opts.kind}_application`, message, path),
-    emailOwner(subject, emailText),
+    emailOwner(subject, emailText, html),
     pushOwner(`New ${label} application`, `${opts.name} (${opts.email})`, reviewUrl),
   ]);
 }

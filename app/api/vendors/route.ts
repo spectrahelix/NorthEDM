@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { notifyNewApplication } from "@/utils/alerts";
+import { vendorApplicationFields } from "@/utils/vendorApplication";
 import { createClient } from "@/utils/supabase/server";
 import { clientIp, clientContradictsItself, overRateLimit, recordAttempt } from "@/utils/botSignals";
 
@@ -109,7 +111,7 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
-    const { error } = await svc.from("vendors").insert([
+    const { data: created, error } = await svc.from("vendors").insert([
       {
         name,
         email,
@@ -132,7 +134,7 @@ export async function POST(req: Request) {
         vendor_type: "listed",
         is_founder: false,
       },
-    ]);
+    ]).select("id").single();
 
     if (error) {
       console.error("VENDOR INSERT ERROR:", error);
@@ -141,6 +143,23 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    // Tell the owner, with the whole application in the email. Until 2026-11-02
+    // this route sent nothing: applications sat in /admin/vendors unannounced.
+    const wantsPublic = data.public === "true" || data.public === true;
+    await notifyNewApplication({
+      kind: "marketplace",
+      name,
+      email,
+      reviewPath: `/admin/vendors#vendor-${created.id}`,
+      fields: vendorApplicationFields({
+        id: created.id, name, category, description, email, business_email: businessEmail,
+        first_name: firstName, last_name: lastName, phone: null, website,
+        capacity: data.capacity ? String(data.capacity).trim().slice(0, 60) : null, wants_public: wantsPublic,
+        area: null, region: null, currency: null, whatsapp_number: null, coordinator_code: null, coordinator_user_id: null,
+        payout_wallets: null, terms_accepted_at: null, created_at: new Date().toISOString(),
+      }),
+    });
 
     // Only a stored application counts against the limit.
     await recordAttempt("vendor-apply", ip);

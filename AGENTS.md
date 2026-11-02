@@ -348,6 +348,18 @@ through the site; it records what moved and who confirmed it.** Full design in
   /admin/vendors also enrols it on FestDash** (`enrollCoordinatorShop`); it
   goes live when the coordinator logs the first fee. The page is state-aware:
   account → application → coordinator/fee → add items.
+- **Nobody waits in silence (2026-11-02).** Application alerts to the owner
+  carry the whole application (`utils/vendorApplication.ts`) and link to the
+  right admin card; **Email me this application** on /admin/vendors re-sends
+  one. Approve → applicant email with the next step (coordinator shops: fee +
+  the coordinator's wallets) and an email + in-app alert to the coordinator;
+  fee logged → "you're live" email to the shop; `/api/cron/subscription-reminders`
+  (daily, also the **Run fee reminders now** button) reminds shop + coordinator
+  a week before a period ends, on its last day and once after it lapses, stamped
+  on `vendor_subscriptions`. Assigning a coordinator to an already-approved
+  vendor enrols it (`enrollCoordinatorShop` in `utils/coordinator.ts`). Shop
+  and coordinator messages go through `utils/notifyEmail.ts`; owner alerts stay
+  in `utils/alerts.ts`.
 - **Signup carries `?next=`** end to end (signup page → `/api/auth/signup` →
   confirm link → `finalizeAuthedUser(supabase, next)`), so a QR visitor lands
   back on the walkthrough after verifying. New users without a `next` still

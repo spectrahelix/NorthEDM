@@ -40,6 +40,24 @@ export async function coordinatorFor(admin: SupabaseClient, userId: string) {
   return data;
 }
 
+/**
+ * Enrol a coordinator shop on FestDash (festdash_vendors + the profile tag).
+ * Used by approval AND by assigning a coordinator to an already-approved vendor;
+ * before 2026-11-02 the second path never enrolled, so the shop could pay fees
+ * and still never be listed. No-op unless the vendor is approved and has a
+ * coordinator. The public listing itself still waits for a current fee period.
+ */
+export async function enrollCoordinatorShop(admin: SupabaseClient, vendorId: number): Promise<boolean> {
+  const { data: v } = await admin.from("vendors").select("id, user_id, coordinator_user_id, status").eq("id", vendorId).maybeSingle();
+  if (!v?.coordinator_user_id || v.status !== "approved") return false;
+  const { error } = await admin
+    .from("festdash_vendors")
+    .upsert({ vendor_id: v.id, user_id: v.user_id, is_active: true }, { onConflict: "vendor_id" });
+  if (error) { console.error("coordinator shop enrol failed:", error.message); return false; }
+  if (v.user_id) await admin.from("user_profiles").update({ is_festdash_vendor: true }).eq("id", v.user_id as string);
+  return true;
+}
+
 /** A shop's current paid period, if any (period_end on or after today). */
 export async function activeSubscription(admin: SupabaseClient, vendorId: number) {
   const today = new Date().toISOString().slice(0, 10);
