@@ -50,12 +50,14 @@ export async function POST(req: Request) {
     kind: "promoter",
     name: displayName,
     email: String(email).toLowerCase().trim(),
-    detail: [
-      phone ? `Phone: ${phone}` : "",
-      audience ? `Audience: ${audience}` : "",
-      promoteVendor ? `Wants to promote: ${promoteVendor}` : "",
-      why ? `Why: ${why}` : "",
-    ].filter(Boolean).join("\n"),
+    fields: [
+      ["Name", displayName],
+      ["Email", String(email).toLowerCase().trim()],
+      ["Phone", phone || null],
+      ["Audience", audience || null],
+      ["Wants to promote", promoteVendor || null],
+      ["Why", why || null],
+    ],
   });
 
   return NextResponse.json({ success: true });

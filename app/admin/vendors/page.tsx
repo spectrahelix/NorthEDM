@@ -27,6 +27,14 @@ type Vendor = {
   website: string | null;
   is_founder: boolean | null;
   status: string | null;
+  area?: string | null;
+  region?: string | null;
+  currency?: string | null;
+  whatsapp_number?: string | null;
+  coordinator_code?: string | null;
+  coordinator_user_id?: string | null;
+  payout_wallets?: { wave?: string | null; qmoney?: string | null; afrimoney?: string | null; preferred?: string | null } | null;
+  terms_accepted_at?: string | null;
 };
 
 export default async function AdminVendorsPage() {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { serviceClient, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
 import { isLocalMethod, splitSubscription } from "@/utils/gambiaPay";
+import { emailUser, notifyUserInApp, userEmailById } from "@/utils/notifyEmail";
 
 // POST — the coordinator logs a monthly fee they collected from one of their
 // shops. Opens (or extends) the shop's paid period and books the fee split.
@@ -52,6 +53,29 @@ export async function POST(req: Request) {
     currency: "USD", gross_cents: feeCents, shop_cents: 0, owner_cents: split.owner, coordinator_cents: split.coordinator,
     method, reference, note: note ?? `${months} month${months === 1 ? "" : "s"} · ${start} → ${end}`, created_by: user.id,
   });
+
+  // Tell the shop. The first fee (or one after a lapse) is the moment they go
+  // live; a fee logged while still current just extends the paid-through date.
+  // Best-effort: the fee is booked either way.
+  const wasLive = !!last && last.period_end >= today;
+  const { data: shop } = await admin.from("vendors").select("id, name, email, business_email, user_id").eq("id", vendorId).maybeSingle();
+  if (shop) {
+    const to = shop.email || shop.business_email || (await userEmailById(admin, shop.user_id));
+    const by = me.display_name ?? "Your coordinator";
+    const shopName = shop.name ?? "Your shop";
+    await Promise.allSettled([
+      emailUser(to, wasLive ? `Listing fee received — on FestDash through ${end}` : `${shopName} is live on FestDash`, {
+        heading: wasLive ? "Fee received" : `${shopName} is live`,
+        intro: wasLive
+          ? `${by} logged your listing fee. Your shop stays on FestDash through ${end}.`
+          : `${by} logged your first listing fee. Your shop is now on FestDash and customers in your area can order, through ${end}.`,
+        rows: [["Paid through", end], ["Logged by", by]],
+        cta: { label: wasLive ? "Open your dashboard" : "Add your items", path: "/vendor/dashboard" },
+      }),
+      notifyUserInApp(admin, shop.user_id, "shop_fee_logged",
+        wasLive ? `Listing fee received — on FestDash through ${end}.` : `You're live on FestDash through ${end}. Add your items.`, "/vendor/dashboard"),
+    ]);
+  }
 
   return NextResponse.json({ subscription: sub });
 }

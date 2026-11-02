@@ -57,12 +57,16 @@ export async function POST(req: Request) {
     kind: "vendor",
     name: businessName,
     email: String(email).toLowerCase().trim(),
-    detail: [
-      `Contact: ${contactName}`,
-      `Products: ${productTypes}`,
-      phone ? `Phone: ${phone}` : "",
-      typicalEvents ? `Events: ${typicalEvents}` : "",
-    ].filter(Boolean).join("\n"),
+    fields: [
+      ["Business", businessName],
+      ["Contact", contactName],
+      ["Email", String(email).toLowerCase().trim()],
+      ["Phone", phone || null],
+      ["Products", productTypes],
+      ["Typical events", typicalEvents || null],
+      ["Has a tablet", hasTablet ? String(hasTablet) : null],
+      ["Notes", notes || null],
+    ],
   });
 
   return NextResponse.json({ success: true });

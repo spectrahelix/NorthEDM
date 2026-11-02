@@ -160,7 +160,21 @@ export default function CoordinatorsClient() {
 
         {/* Shops */}
         <section className={card}>
-          <p className={label}>Shops — assign to a coordinator, set currency &amp; WhatsApp</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={label}>Shops — assign to a coordinator, set currency &amp; WhatsApp</p>
+            <button
+              onClick={async () => {
+                setBusy("reminders");
+                const r = await fetch("/api/cron/subscription-reminders");
+                const j = await r.json().catch(() => ({}));
+                setBusy(null);
+                flash(r.ok ? `Fee reminders sent — due soon: ${j.week ?? 0}, last day: ${j.end ?? 0}, lapsed: ${j.lapsed ?? 0}` : j.error ?? "Failed.");
+              }}
+              disabled={busy === "reminders"}
+              title="Runs the daily fee-reminder job now (it also runs on its own every morning)"
+              className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/5 disabled:opacity-50"
+            >{busy === "reminders" ? "Running…" : "Run fee reminders now"}</button>
+          </div>
           <div className="space-y-2">
             {data.vendors.map((v) => {
               const a = assign[v.id] ?? { coordinator: "", currency: "USD", region: "", whatsapp: "" };

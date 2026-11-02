@@ -193,6 +193,19 @@ coordinator leaves that part with NorthEDM. Which rail an order takes is
 `isLocalRail()` in `utils/gambiaPay.ts`: a coordinator **and** a non-USD
 currency → wallets / cash and the monthly-fee gate; anything else → card.
 
+**Nobody waits in silence (2026-11-02).** Every application alert to the owner
+carries the whole application (`vendorApplicationFields`) and links to the
+right admin card; **Email me this application** on /admin/vendors re-sends it.
+Approve → the applicant gets an email with their next step (for a coordinator
+shop: the fee, the coordinator's wallets and WhatsApp) and the coordinator gets
+an email + in-app alert to collect the first fee. The coordinator logging a fee
+→ the shop gets a "you're live through <date>" email. The daily
+`/api/cron/subscription-reminders` job (also the **Run fee reminders now**
+button in /admin/festdash/coordinators) emails shop and coordinator a week
+before a period ends, on its last day, and once after it lapses, stamped per
+period on `vendor_subscriptions` so each goes once. Assigning a coordinator to
+an already-approved vendor now enrols it on FestDash (`enrollCoordinatorShop`).
+
 **Flow.** Checkout for a coordinator shop offers Wave / QMoney / Afrimoney /
 cash (and a prefilled "order on WhatsApp" link). A wallet order waits in
 `awaiting_confirmation`: the customer sees the wallet number and a short
