@@ -38,6 +38,11 @@ export async function GET() {
       : Promise.resolve({ data: [] }),
     admin.from("coordinator_ledger").select("*").eq("coordinator_user_id", user.id).order("created_at", { ascending: false }).limit(200),
   ]);
+  const { data: awaitingStore } = vendorIds.length
+    ? await admin.from("store_orders")
+        .select("id, vendor_id, email, total_cents, currency, payment_method, payment_ref, payment_to, created_at, items")
+        .in("vendor_id", vendorIds).eq("status", "awaiting_confirmation").order("created_at", { ascending: true })
+    : { data: [] as { id: string; vendor_id: number; email: string | null; total_cents: number; currency: string; payment_method: string; payment_ref: string | null; payment_to: string | null; created_at: string; items: unknown }[] };
 
   const latestSub = new Map<number, { period_start: string; period_end: string }>();
   for (const s of subs ?? []) if (!latestSub.has(Number(s.vendor_id))) latestSub.set(Number(s.vendor_id), s);
@@ -69,7 +74,10 @@ export async function GET() {
     coordinator: me,
     settings,
     shops,
-    awaiting: (awaiting ?? []).map((o) => ({ ...o, vendor_name: vendorName.get(Number(o.vendor_id)) ?? `Vendor #${o.vendor_id}` })),
+    awaiting: [
+      ...(awaiting ?? []).map((o) => ({ ...o, source: "festdash" as const, vendor_name: vendorName.get(Number(o.vendor_id)) ?? `Vendor #${o.vendor_id}` })),
+      ...(awaitingStore ?? []).map((o) => ({ ...o, source: "store" as const, customer_name: o.email, vendor_name: `${vendorName.get(Number(o.vendor_id)) ?? `Vendor #${o.vendor_id}`} (online store)` })),
+    ],
     ledger: (ledger ?? []).map((r) => ({ ...r, vendor_name: r.vendor_id ? vendorName.get(Number(r.vendor_id)) ?? null : null })),
     totals,
   });

@@ -23,7 +23,7 @@ type Shop = {
   area: string | null;
 };
 type Awaiting = {
-  id: string; vendor_id: number; vendor_name: string; customer_name: string | null; total_cents: number; currency: string;
+  id: string; source?: "festdash" | "store"; vendor_id: number; vendor_name: string; customer_name: string | null; total_cents: number; currency: string;
   payment_method: string; payment_ref: string | null; payment_to: string | null; created_at: string;
   items: { name: string; qty: number }[];
 };
@@ -91,10 +91,12 @@ export default function PursePage() {
     flash(r.ok ? "Wallets saved." : r.error ?? "Couldn't save.");
     if (r.ok) reload();
   }
-  async function decide(id: string, action: "confirm" | "reject") {
+  async function decide(id: string, action: "confirm" | "reject", source: "festdash" | "store" = "festdash") {
     if (action === "reject" && !confirm("Reject this payment? The order will be declined.")) return;
     setBusy(id);
-    const r = await post(`/api/festdash/orders/${id}/confirm-payment`, { action });
+    const r = source === "store"
+      ? await post(`/api/store/orders/${id}/confirm-payment`, { action })
+      : await post(`/api/festdash/orders/${id}/confirm-payment`, { action });
     setBusy(null);
     flash(r.ok ? (action === "confirm" ? "Payment confirmed — the shop has the order." : "Payment rejected.") : r.error ?? "Couldn't update.");
     if (r.ok) reload();
@@ -203,8 +205,8 @@ export default function PursePage() {
                       <p className="mt-1 text-xs text-neutral-500">{o.items.map((i) => `${i.qty}× ${i.name}`).join(" · ")}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => decide(o.id, "reject")} disabled={busy === o.id} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-neutral-300 hover:bg-white/5 disabled:opacity-50">Reject</button>
-                      <button onClick={() => decide(o.id, "confirm")} disabled={busy === o.id} className="rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-black hover:bg-green-400 disabled:opacity-50">{busy === o.id ? "…" : "Money arrived ✓"}</button>
+                      <button onClick={() => decide(o.id, "reject", o.source)} disabled={busy === o.id} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-neutral-300 hover:bg-white/5 disabled:opacity-50">Reject</button>
+                      <button onClick={() => decide(o.id, "confirm", o.source)} disabled={busy === o.id} className="rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-black hover:bg-green-400 disabled:opacity-50">{busy === o.id ? "…" : "Money arrived ✓"}</button>
                     </div>
                   </div>
                 </div>

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { storeAdminClient } from "@/utils/store";
+import { storeRail } from "@/utils/storeRail";
+import { isWalletMethod, orderRef, walletNumberFor } from "@/utils/gambiaPay";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -19,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const admin = storeAdminClient();
   const { data: store } = await admin
     .from("stores")
-    .select("id, slug, name, active, billing_status, operator_fee_bps, platform_fee_bps")
+    .select("id, slug, name, active, billing_status, operator_fee_bps, platform_fee_bps, owner_user_id")
     .eq("slug", slug)
     .maybeSingle();
   if (!store) return NextResponse.json({ error: "Store not found." }, { status: 404 });
@@ -95,6 +97,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Wallet rail: a store run by a coordinator shop sells for Wave / QMoney /
+  // Afrimoney paid to the coordinator, confirmed in the purse console before
+  // the order counts as paid — the same flow as a FestDash wallet order.
+  const rail = await storeRail(admin, (store.owner_user_id as string | null) ?? null);
+  if (rail) {
+    if (!user) return NextResponse.json({ error: "Sign in to pay by wallet, so we can match your payment to you." }, { status: 401 });
+    const method = body.paymentMethod;
+    if (!isWalletMethod(method)) return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney or Afrimoney." }, { status: 400 });
+    const payTo = walletNumberFor(rail.numbers, method);
+    if (!payTo) return NextResponse.json({ error: `${method} isn't set up for this store yet — pick another way to pay.` }, { status: 400 });
+    const { data: wo, error: woErr } = await admin.from("store_orders").insert({
+      store_id: store.id, customer_id: user.id, email: user.email ?? null, items: orderItems,
+      subtotal_cents: subtotal, platform_fee_cents: platformFee, operator_fee_cents: operatorFee, total_cents: subtotal,
+      status: "awaiting_confirmation", payment_method: method, payment_to: payTo, currency: rail.currency, vendor_id: rail.vendorId,
+    }).select("id").single();
+    if (woErr) return NextResponse.json({ error: woErr.message }, { status: 500 });
+    return NextResponse.json({ orderId: wo.id, payTo, method, reference: orderRef(wo.id), total_cents: subtotal, currency: rail.currency, coordinator: rail.coordinatorName });
+  }
 
   const { data: order, error: orderErr } = await admin.from("store_orders").insert({
     store_id: store.id,

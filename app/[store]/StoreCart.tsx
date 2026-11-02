@@ -3,22 +3,27 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProductThumb } from "@/app/components/ProductThumb";
+import { formatMoney } from "@/utils/money";
+import { METHOD_LABEL, WALLET_METHODS, type WalletMethod } from "@/utils/gambiaPay";
+import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
   image_url: string | null; href: string;
 };
 
-const money = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+type Wallet = { currency: string; numbers: { wave?: string | null; qmoney?: string | null; afrimoney?: string | null }; coordinator: string | null } | null;
 
 // Cart for an embedded store. Quantities live only in this component — the server
 // re-reads every price and stock count at checkout, so nothing here is trusted.
 export function StoreCart({
-  slug, products, accent, canOrder, closedReason, displayFont = null, cardBg,
+  slug, products, accent, canOrder, closedReason, displayFont = null, cardBg, wallet = null,
 }: {
   slug: string;
   products: StoreProduct[];
   accent: string;
+  /** Wallet-rail stores: the coordinator's wallet numbers and the shop's currency. */
+  wallet?: Wallet;
   /** The shop's display font for names and prices, or null for standard. */
   displayFont?: string | null;
   cardBg?: string;
@@ -29,6 +34,13 @@ export function StoreCart({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  const currency = wallet?.currency ?? "USD";
+  const money = (c: number) => formatMoney(c, currency);
+  const walletOptions = wallet ? WALLET_METHODS.filter((m) => !!wallet.numbers[m]) : [];
+  const [method, setMethod] = useState<WalletMethod | null>(null);
+  const [placed, setPlaced] = useState<{ orderId: string; payTo: string; method: WalletMethod; reference: string; total_cents: number; coordinator: string | null } | null>(null);
+  const [ref, setRef] = useState("");
+  const [refDone, setRefDone] = useState(false);
 
   const lines = products
     .map((p) => ({ p, n: qty[p.id] ?? 0 }))
@@ -49,14 +61,47 @@ export function StoreCart({
   }
 
   async function checkout() {
+    if (wallet && !method) { setOpen(true); setError("Choose how you'll pay first."); return; }
     setBusy(true); setError("");
     const res = await fetch(`/api/store/${slug}/checkout`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ items: lines.map((l) => ({ id: l.p.id, qty: l.n })) }),
+      body: JSON.stringify({ items: lines.map((l) => ({ id: l.p.id, qty: l.n })), paymentMethod: wallet ? method : undefined }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok || !j.url) { setError(j.error || "Couldn't start checkout."); setBusy(false); return; }
-    window.location.href = j.url;
+    if (res.status === 401) { window.location.href = `/login?next=${encodeURIComponent(`/${slug}`)}`; return; }
+    if (!res.ok) { setError(j.error || "Couldn't start checkout."); setBusy(false); return; }
+    if (j.url) { window.location.href = j.url; return; }
+    // Wallet order placed: show where to send the money and collect the reference.
+    setPlaced(j); setBusy(false); setQty({});
+  }
+  async function sendRef() {
+    if (!placed || !ref.trim()) return;
+    setBusy(true); setError("");
+    const res = await fetch(`/api/store/orders/${placed.orderId}/payment-ref`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ref }) });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) { setError(j.error || "Couldn't save that."); return; }
+    setRefDone(true);
+  }
+
+  if (placed) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <p className="font-dm-mono text-xs uppercase tracking-widest" style={{ color: accent }}>Order placed — pay now</p>
+        <p className="mt-2 text-white">Send <span className="font-semibold">{money(placed.total_cents)}</span> by {METHOD_LABEL[placed.method]} to <span className="font-dm-mono">{placed.payTo}</span></p>
+        <p className="mt-1 text-sm text-neutral-400">Put <span className="font-dm-mono text-white">{placed.reference}</span> in the transfer note. {placed.coordinator ?? "The coordinator"} confirms it in their wallet and the shop gets your order.</p>
+        <PaymentTimingNote method={placed.method} />
+        {refDone ? (
+          <p className="mt-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-300">Thanks — your transaction reference is in. You&apos;ll hear from the shop once the payment is confirmed.</p>
+        ) : (
+          <div className="mt-4 flex gap-2">
+            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Transaction reference from your wallet app" className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none" />
+            <button onClick={sendRef} disabled={busy || !ref.trim()} className="rounded-xl px-4 py-2 text-sm font-semibold text-black disabled:opacity-50" style={{ background: accent }}>{busy ? "Saving…" : "Done, I paid"}</button>
+          </div>
+        )}
+        {error && <p className="mt-2 text-sm text-[#FF5C3A]">{error}</p>}
+      </div>
+    );
   }
 
   return (
@@ -125,9 +170,23 @@ export function StoreCart({
               className="shrink-0 rounded-2xl px-6 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
               style={{ background: accent }}
             >
-              {busy ? "Starting…" : "Checkout"}
+              {busy ? "Starting…" : wallet ? "Place order" : "Checkout"}
             </button>
           </div>
+          {open && wallet && (
+            <div className="mx-auto mt-3 max-w-6xl border-t border-white/10 pt-3">
+              <p className="mb-2 font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">How will you pay?</p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {walletOptions.map((m) => (
+                  <button key={m} type="button" onClick={() => { setMethod(m); setError(""); }}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === m ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
+                    <span className="font-semibold">{METHOD_LABEL[m]}</span>
+                    <span className="block text-xs text-neutral-500">Send to {wallet.numbers[m]}, then enter your transaction reference</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {open && (
             <div className="mx-auto mt-3 max-w-6xl space-y-1 border-t border-white/10 pt-3">
               {lines.map((l) => (
