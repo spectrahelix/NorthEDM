@@ -12,7 +12,7 @@ import { getStripe } from "@/utils/stripe";
 // transfer is the fragile path — it can fail if the promoter already withdrew — so
 // it exists only as a backstop for the already-released case.
 
-export type CommissionSource = "service_quote" | "shop_order" | "vendor_listing" | "foraging_tour" | "festdash_order";
+export type CommissionSource = "service_quote" | "shop_order" | "vendor_listing" | "foraging_tour" | "festdash_order" | "store_order";
 
 export const DEFAULT_HOLD_DAYS = 30;
 

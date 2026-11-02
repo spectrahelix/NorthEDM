@@ -150,6 +150,27 @@ export async function POST(req: Request) {
               .eq("id", it.product_id);
           }
         }
+
+        // The promoter who signed the store's operator up earns the coordinator
+        // share of store sales too (owner's decision, 2026-11-02). Booked as a
+        // held commission; the cron pays it through Connect. Never to an archon.
+        const { data: st } = await db.from("stores").select("owner_user_id").eq("id", order.store_id).maybeSingle();
+        if (st?.owner_user_id) {
+          const { data: op } = await db.from("user_profiles").select("vendor_id").eq("id", st.owner_user_id).maybeSingle();
+          const { data: vend } = op?.vendor_id ? await db.from("vendors").select("coordinator_user_id").eq("id", op.vendor_id).maybeSingle() : { data: null };
+          const promoter = (vend?.coordinator_user_id as string | null) ?? null;
+          if (promoter) {
+            const { data: prof } = await db.from("user_profiles").select("role").eq("id", promoter).maybeSingle();
+            if (prof?.role !== "archon") {
+              const { data: split } = await db.from("coordinator_program_settings").select("sale_coordinator_bps").eq("id", 1).maybeSingle();
+              const { holdDays } = await commissionTerms(db, "store_order");
+              await recordCommission(db, {
+                promoterUserId: promoter, referredUserId: st.owner_user_id, source: "store_order", sourceId: String(order.id),
+                baseCents: Number(order.subtotal_cents ?? 0), rateBps: split?.sale_coordinator_bps ?? 1000, holdDays,
+              });
+            }
+          }
+        }
       }
     }
   } else if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
@@ -179,6 +200,10 @@ export async function POST(req: Request) {
       const { data: fdOrder } = await db
         .from("festdash_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
       if (fdOrder) await voidCommission(db, "festdash_order", String(fdOrder.id), reason);
+
+      const { data: stOrder } = await db
+        .from("store_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
+      if (stOrder) await voidCommission(db, "store_order", String(stOrder.id), reason);
     }
   } else if (
     event.type === "payment_intent.canceled" ||

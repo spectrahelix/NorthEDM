@@ -42,6 +42,7 @@ export async function runSubscriptionReminders(admin: SupabaseClient, today = ne
   const { data: subs } = await admin
     .from("vendor_subscriptions")
     .select("id, vendor_id, period_end, reminded_week_at, reminded_end_at, reminded_lapsed_at")
+    .eq("kind", "festdash")
     .in("vendor_id", local.map((v) => v.id))
     .order("period_end", { ascending: false });
   type Sub = NonNullable<typeof subs>[number];
@@ -114,6 +115,20 @@ export async function runSubscriptionReminders(admin: SupabaseClient, today = ne
     ]);
     await admin.from("vendor_subscriptions").update({ [STAMP[kind]]: new Date().toISOString() }).eq("id", s.id);
     counts[kind]++;
+  }
+  // Embedded-store fees logged through the purse: when the latest store period
+  // has lapsed, the shop's stores stop taking orders (billing_status past_due),
+  // exactly what a failed card renewal does for a US store.
+  const { data: storeSubs } = await admin
+    .from("vendor_subscriptions").select("vendor_id, period_end").eq("kind", "store")
+    .in("vendor_id", local.map((v) => v.id)).order("period_end", { ascending: false });
+  const latestStore = new Map<number, string>();
+  for (const s of storeSubs ?? []) if (!latestStore.has(Number(s.vendor_id))) latestStore.set(Number(s.vendor_id), s.period_end as string);
+  for (const [vendorId, end] of latestStore) {
+    if (daysUntil(today, end) >= 0) continue;
+    const { data: links } = await admin.from("store_vendors").select("store_id").eq("vendor_id", vendorId);
+    const ids = (links ?? []).map((l) => l.store_id as string);
+    if (ids.length) await admin.from("stores").update({ billing_status: "past_due" }).in("id", ids).eq("billing_status", "active");
   }
   return counts;
 }

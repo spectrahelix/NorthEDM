@@ -12,7 +12,7 @@ export async function GET() {
   const [{ data: promoters }, { data: vendors }, { data: subs }, { data: ledger }, { data: settings }] = await Promise.all([
     admin.from("festdash_promoters").select("id, user_id, display_name, is_active, is_coordinator, region, wave_number, qmoney_number, afrimoney_number, whatsapp_number, remitly_name").order("display_name"),
     admin.from("vendors").select("id, name, status, is_public, suspended_at, coordinator_user_id, region, currency, whatsapp_number").eq("status", "approved").order("name"),
-    admin.from("vendor_subscriptions").select("vendor_id, period_end").gte("period_end", today),
+    admin.from("vendor_subscriptions").select("vendor_id, period_end").eq("kind", "festdash").gte("period_end", today),
     admin.from("coordinator_ledger").select("*").order("created_at", { ascending: false }).limit(300),
     admin.from("coordinator_program_settings").select("*").eq("id", 1).maybeSingle(),
   ]);

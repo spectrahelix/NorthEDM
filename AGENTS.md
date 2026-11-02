@@ -410,6 +410,15 @@ through the site; it records what moved and who confirmed it.** Full design in
   Cards: `BillingCard` on /festdash/vendor-dashboard and /<slug>/manage.
   Stripe endpoint must send `invoice.paid`, `customer.subscription.updated`,
   `customer.subscription.deleted` in addition to the order events.
+- **Store fees and store sales for promoters (2026-11-02).** Promoters earn the
+  coordinator share on embedded-store sales too (`store_order` commission booked
+  in the webhook's store_order branch, voided on refund). A coordinator can log
+  a **store fee** as well as a listing fee in /festdash/purse
+  (`vendor_subscriptions.kind` = `store`); it sets the shop's stores
+  `billing_status = active`, and the daily reminders job sets `past_due` once
+  the period lapses. Every listing-period reader filters `kind = 'festdash'`.
+  Store *checkout* is still card-only, so Gambian customers can't buy from a
+  store yet — only the fee side exists for them.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays
