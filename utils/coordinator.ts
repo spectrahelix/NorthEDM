@@ -79,16 +79,19 @@ export async function activeSubscription(admin: SupabaseClient, vendorId: number
  */
 export async function recordSaleSplit(
   admin: SupabaseClient,
-  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null },
+  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null; source?: "festdash" | "store"; collected_by?: "coordinator" | "owner" },
   coordinatorUserId: string,
   settings: SplitSettings,
-  createdBy: string
+  createdBy: string | null
 ) {
+  // FestDash and store orders live in different tables; each has its own
+  // column (and unique index) so a store order id never lands in order_id.
+  const idCol = order.source === "store" ? "store_order_id" : "order_id";
   const { data: existing } = await admin
     .from("coordinator_ledger")
     .select("id")
     .eq("kind", "sale")
-    .eq("order_id", order.id)
+    .eq(idCol, order.id)
     .maybeSingle();
   if (existing) return existing;
 
@@ -101,7 +104,8 @@ export async function recordSaleSplit(
       kind: "sale",
       coordinator_user_id: coordinatorUserId,
       vendor_id: order.vendor_id,
-      order_id: order.id,
+      [idCol]: order.id,
+      collected_by: order.collected_by ?? "coordinator",
       currency: order.currency || "USD",
       gross_cents: order.total_cents,
       shop_cents: s.shop,

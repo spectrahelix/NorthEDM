@@ -6,7 +6,6 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, WALLET_METHODS, type WalletMethod } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
-import { WalletOnlyNote } from "@/app/components/festdash/PaymentPaths";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
@@ -38,7 +37,7 @@ export function StoreCart({
   const currency = wallet?.currency ?? "USD";
   const money = (c: number) => formatMoney(c, currency);
   const walletOptions = wallet ? WALLET_METHODS.filter((m) => !!wallet.numbers[m]) : [];
-  const [method, setMethod] = useState<WalletMethod | null>(null);
+  const [method, setMethod] = useState<WalletMethod | "card" | null>(null);
   const [placed, setPlaced] = useState<{ orderId: string; payTo: string; method: WalletMethod; reference: string; total_cents: number; coordinator: string | null } | null>(null);
   const [ref, setRef] = useState("");
   const [refDone, setRefDone] = useState(false);
@@ -171,14 +170,18 @@ export function StoreCart({
               className="shrink-0 rounded-2xl px-6 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
               style={{ background: accent }}
             >
-              {busy ? "Starting…" : wallet ? "Place order" : "Checkout"}
+              {busy ? "Starting…" : wallet && method !== "card" ? "Place order" : "Checkout"}
             </button>
           </div>
           {open && wallet && (
             <div className="mx-auto mt-3 max-w-6xl border-t border-white/10 pt-3">
               <p className="mb-2 font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">How will you pay?</p>
-              <WalletOnlyNote className="mb-2" />
               <div className="grid gap-2 sm:grid-cols-3">
+                <button type="button" onClick={() => { setMethod("card"); setError(""); }}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === "card" ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
+                  <span className="font-semibold">Card (any country)</span>
+                  <span className="block text-xs text-neutral-500">Secure checkout, charged in {currency}</span>
+                </button>
                 {walletOptions.map((m) => (
                   <button key={m} type="button" onClick={() => { setMethod(m); setError(""); }}
                     className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === m ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>

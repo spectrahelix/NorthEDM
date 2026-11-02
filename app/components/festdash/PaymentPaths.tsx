@@ -1,10 +1,10 @@
 /**
  * "Which way do you pay?" — the three situations a customer (or a shop's
- * customers) can be in, spelled out in the walkthroughs. The rail is a property
- * of the SHOP: a Gambian shop with a coordinator takes Wave / QMoney / Afrimoney
- * in dalasi; a US shop and NorthEDM's own shop take cards through Stripe. Keep
- * this honest — a wallet-rail shop cannot take a card today, and saying so here
- * beats a customer finding out at checkout.
+ * customers) can be in, spelled out in the walkthroughs. Since 2026-11-03 a
+ * Gambian shop takes BOTH: Wave / QMoney / Afrimoney in dalasi paid to its
+ * coordinator, and any card (charged in dalasi to NorthEDM, whose share of it
+ * the owner forwards to the coordinator). US shops and NorthEDM merch are
+ * card only.
  */
 const PATHS = [
   {
@@ -14,13 +14,13 @@ const PATHS = [
   },
   {
     have: "Both — a Gambian wallet and a US or international card",
-    customer: "Wallet at Gambian shops, card at US shops and NorthEDM merch. A Gambian shop can't take your card, so pick the wallet there.",
-    shop: "They buy from you by wallet, same as above. The card only matters elsewhere on the site.",
+    customer: "Your choice at a Gambian shop: wallet, or card charged in dalasi. Card at US shops and NorthEDM merch.",
+    shop: "They can pay you either way. A card sale is charged in dalasi and your share reaches you through your coordinator.",
   },
   {
     have: "Only a US or international card",
-    customer: "US shops and NorthEDM merch are open to you by card. Gambian shops can't take a card yet, so you can't order from them for now.",
-    shop: "They can't buy from you yet — tourists and visiting family included. Card payment to Gambian shops is on the list; ask your coordinator for news.",
+    customer: "Everything is open to you. At a Gambian shop pick Card; it's charged in dalasi and held until your order is delivered. Your bank may add a small foreign-currency fee.",
+    shop: "Tourists and visiting family can buy from you by card. The charge is in dalasi; your share reaches you through your coordinator.",
   },
 ];
 
@@ -32,8 +32,8 @@ export function PaymentPaths({ audience, className = "" }: { audience: "customer
       </p>
       <p className="mt-1 text-sm text-neutral-400">
         {audience === "customer"
-          ? "How you pay depends on the shop, not on you. Here's what each situation opens up."
-          : "A Gambian shop sells for Wave, QMoney and Afrimoney in dalasi. What that means for each kind of customer:"}
+          ? "How you pay depends on the shop. Here's what each situation opens up."
+          : "A Gambian shop sells for Wave, QMoney, Afrimoney and card, all in dalasi. What that means for each kind of customer:"}
       </p>
       <ul className="mt-4 space-y-3">
         {PATHS.map((p) => (
@@ -44,14 +44,5 @@ export function PaymentPaths({ audience, className = "" }: { audience: "customer
         ))}
       </ul>
     </div>
-  );
-}
-
-/** One line for the wallet picker itself, where a card-only visitor would otherwise hunt for a card option. */
-export function WalletOnlyNote({ className = "" }: { className?: string }) {
-  return (
-    <p className={`text-xs text-neutral-500 ${className}`}>
-      This shop takes Gambian wallets only. If you only have a US or international card, it can&apos;t take your order yet — US shops and NorthEDM merch can.
-    </p>
   );
 }

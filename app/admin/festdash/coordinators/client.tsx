@@ -13,7 +13,7 @@ type Vendor = {
 };
 type LedgerRow = {
   id: string; kind: string; coordinator_user_id: string; vendor_id: number | null; currency: string; gross_cents: number;
-  shop_cents: number; owner_cents: number; coordinator_cents: number; method: string | null; reference: string | null;
+  shop_cents: number; owner_cents: number; coordinator_cents: number; runner_cents?: number | null; collected_by?: string | null; method: string | null; reference: string | null;
   note: string | null; created_at: string; received_at: string | null; received_usd_cents: number | null;
 };
 type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number };
@@ -71,12 +71,29 @@ export default function CoordinatorsClient() {
   const vendorName = new Map(data.vendors.map((v) => [v.id, v.name ?? `Vendor #${v.id}`]));
   const pendingRemits = data.ledger.filter((r) => r.kind === "remittance" && !r.received_at);
 
-  // Per coordinator, per currency: owner share booked minus what they've sent.
+  // Two directions, per coordinator, per currency:
+  //  they owe you  — your share of what the coordinator collected, minus remittances
+  //  you owe them  — shop + coordinator + runner shares of card sales you collected
+  //                  (collected_by = 'owner'), minus payouts you've logged
   const owed: Record<string, Record<string, { share: number; sent: number }>> = {};
+  const youOwe: Record<string, Record<string, { due: number; paid: number }>> = {};
   for (const r of data.ledger) {
+    if (r.collected_by === "owner") {
+      const byCur = (youOwe[r.coordinator_user_id] ??= {});
+      const t = (byCur[r.currency] ??= { due: 0, paid: 0 });
+      if (r.kind === "payout") t.paid += Number(r.gross_cents);
+      else t.due += Number(r.shop_cents) + Number(r.coordinator_cents) + Number(r.runner_cents ?? 0);
+      continue;
+    }
     const byCur = (owed[r.coordinator_user_id] ??= {});
     const t = (byCur[r.currency] ??= { share: 0, sent: 0 });
     if (r.kind === "remittance") t.sent += Number(r.gross_cents); else t.share += Number(r.owner_cents);
+  }
+  async function logPayout(coordinatorUserId: string, currency: string, suggested: number) {
+    const amt = prompt(`Amount in ${currency} you sent by Remitly (what landed in their wallet):`, (suggested / 100).toFixed(2));
+    if (amt === null) return;
+    const reference = prompt("Remitly reference (optional):") ?? "";
+    await run(coordinatorUserId, { action: "log_payout", coordinatorUserId, currency, amount: Number(amt), reference }, "Payout logged.");
   }
 
   return (
@@ -140,9 +157,17 @@ export default function CoordinatorsClient() {
                   )}
                   {p.is_coordinator && owed[p.user_id] && (
                     <p className="font-dm-mono text-[11px] text-neutral-400">
-                      {Object.entries(owed[p.user_id]).map(([cur, t]) => `${cur}: share ${formatMoney(t.share, cur)} · sent ${formatMoney(t.sent, cur)} · owed ${formatMoney(t.share - t.sent, cur)}`).join("  |  ")}
+                      They owe you · {Object.entries(owed[p.user_id]).map(([cur, t]) => `${cur}: share ${formatMoney(t.share, cur)} · sent ${formatMoney(t.sent, cur)} · owed ${formatMoney(t.share - t.sent, cur)}`).join("  |  ")}
                     </p>
                   )}
+                  {p.is_coordinator && youOwe[p.user_id] && Object.entries(youOwe[p.user_id]).map(([cur, t]) => (
+                    <p key={cur} className="font-dm-mono text-[11px] text-orange-300">
+                      You owe them (card sales) · {cur}: due {formatMoney(t.due, cur)} · sent {formatMoney(t.paid, cur)} · <span className="font-semibold">owed {formatMoney(t.due - t.paid, cur)}</span>
+                      {t.due - t.paid > 0 && (
+                        <button onClick={() => logPayout(p.user_id, cur, t.due - t.paid)} className="ml-2 rounded-lg border border-orange-400/40 px-2 py-0.5 text-[11px] text-orange-200 hover:bg-orange-500/10">Sent by Remitly</button>
+                      )}
+                    </p>
+                  ))}
                 </div>
                 <div className="flex items-center gap-2">
                   {!p.is_coordinator && <input className={input + " w-28"} placeholder="region (gambia)" value={regionDraft[p.id] ?? ""} onChange={(e) => setRegionDraft({ ...regionDraft, [p.id]: e.target.value })} />}

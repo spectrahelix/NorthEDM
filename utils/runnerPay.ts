@@ -23,6 +23,11 @@ export async function payRunnerFee(admin: SupabaseClient, orderId: string): Prom
   if (fee <= 0) return { ok: false, reason: "no fee" };
   if (o.runner_fee_transfer_id) return { ok: true };
   if (o.payment_method !== "card") return { ok: false, reason: "wallet order — paid by the coordinator" };
+  // A card order on a Gambian shop is in the shop's currency and its runner is
+  // paid by the coordinator out of the owner's Remitly; a USD transfer here
+  // would be the wrong amount to the wrong place.
+  const { data: ledger } = await admin.from("coordinator_ledger").select("id").eq("kind", "sale").eq("order_id", o.id).eq("collected_by", "owner").maybeSingle();
+  if (ledger) return { ok: false, reason: "local-rail card order — runner paid by the coordinator" };
   if (o.status !== "delivered" || o.payment_status !== "released") return { ok: false, reason: "not delivered and captured yet" };
   if (!o.driver_id) return { ok: false, reason: "no runner on the order" };
 

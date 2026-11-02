@@ -80,6 +80,22 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ remittance: data });
   }
 
+  // Owner → coordinator, for card sales on Gambian shops (collected_by = 'owner'):
+  // the owner sent the shop/coordinator/runner shares by Remitly and records it.
+  if (body.action === "log_payout") {
+    const coordinatorUserId = String(body.coordinatorUserId ?? "");
+    const currency = String(body.currency ?? "GMD").toUpperCase().slice(0, 3);
+    const amount = Number(body.amount);
+    if (!coordinatorUserId || !Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "coordinatorUserId and amount required" }, { status: 400 });
+    const { data, error } = await admin.from("coordinator_ledger").insert({
+      kind: "payout", coordinator_user_id: coordinatorUserId, collected_by: "owner", currency,
+      gross_cents: Math.round(amount * 100), method: "remitly", reference: body.reference ? String(body.reference).slice(0, 80) : null,
+      note: body.note ? String(body.note).slice(0, 300) : null, created_by: g.userId,
+    }).select("id").single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ payout: data });
+  }
+
   if (body.action === "set_settings") {
     const n = (v: unknown, lo: number, hi: number) => { const x = Math.round(Number(v)); return Number.isFinite(x) && x >= lo && x <= hi ? x : null; };
     const patch: Record<string, number> = {};

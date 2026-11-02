@@ -7,7 +7,6 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
-import { WalletOnlyNote } from "@/app/components/festdash/PaymentPaths";
 import { METHOD_LABEL, RUNNER_FEE_CHOICES_BPS, WALLET_METHODS, isLocalRail, minRunnerFeeCents, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
@@ -80,7 +79,7 @@ export default function OrderPage() {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
-  const [paymentMethod, setPaymentMethod] = useState<LocalMethod | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<LocalMethod | "card" | null>(null);
   // Runner fee: the customer's pick for the runner, 10% of the items minimum.
   const [runnerPctBps, setRunnerPctBps] = useState<number>(1000);
   const [runnerCustom, setRunnerCustom] = useState<string>("");
@@ -833,8 +832,15 @@ export default function OrderPage() {
             <>
               <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
-                <WalletOnlyNote className="mb-3" />
                 <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("card")}
+                    className={`rounded-xl border px-4 py-3 text-left text-sm transition ${paymentMethod === "card" ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}
+                  >
+                    <span className="font-semibold">Card (any country)</span>
+                    <span className="block text-xs text-neutral-500">Visa / Mastercard, charged in {selectedVendor?.currency ?? "the shop's currency"}; held until delivery</span>
+                  </button>
                   {walletOptions.map((m) => (
                     <button
                       key={m}
@@ -849,14 +855,17 @@ export default function OrderPage() {
                     </button>
                   ))}
                 </div>
-                {paymentMethod && paymentMethod !== "cash" && (
+                {paymentMethod === "card" && (
+                  <p className="mt-3 text-xs text-neutral-500">🔒 Secure checkout; your card is authorized now and only charged when your order is delivered.</p>
+                )}
+                {paymentMethod && paymentMethod !== "cash" && paymentMethod !== "card" && (
                   <p className="mt-3 text-xs text-neutral-500">
                     After you place the order you&apos;ll get a short reference to put in the {METHOD_LABEL[paymentMethod]} transfer note.
                     The shop&apos;s purse keeper confirms it, then the shop starts on your order.
                   </p>
                 )}
                 <p className="mt-3 text-xs text-neutral-600">On delivery, give your runner the last 4 digits of your phone to confirm.</p>
-                {paymentMethod && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
+                {paymentMethod && paymentMethod !== "card" && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
               </div>
               {whatsappTo && (
                 <a
@@ -885,7 +894,7 @@ export default function OrderPage() {
             disabled={submitting}
             className="w-full rounded-2xl bg-orange-500 py-4 text-lg font-semibold text-white transition hover:bg-orange-400 disabled:opacity-50"
           >
-            {submitting ? (local ? "Placing order…" : "Starting secure checkout…") : local ? "Place order" : "Continue to Payment 🔒"}
+            {submitting ? (local && paymentMethod !== "card" ? "Placing order…" : "Starting secure checkout…") : local && paymentMethod !== "card" ? "Place order" : "Continue to Payment 🔒"}
           </button>
         </div>
       </div>

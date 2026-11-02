@@ -53,7 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const settings = await loadSplitSettings(admin);
     await recordSaleSplit(admin, {
       id: order.id, vendor_id: Number(order.vendor_id), total_cents: Number(order.subtotal_cents ?? order.total_cents), runner_fee_cents: 0,
-      currency: String(order.currency || "GMD"), payment_method: String(order.payment_method), payment_ref: order.payment_ref ?? null,
+      currency: String(order.currency || "GMD"), payment_method: String(order.payment_method), payment_ref: order.payment_ref ?? null, source: "store",
     }, coordinatorId, settings, user.id);
   }
   return NextResponse.json({ ok: true, status: "paid" });

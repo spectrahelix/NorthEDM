@@ -54,13 +54,19 @@ export async function POST(req: Request) {
   // that was current when they ordered.
   const local = isLocalRail(vendorRow);
   const currency = String(vendorRow.currency || "USD");
+  // A card on a local-rail shop (2026-11-03): charged in the shop's currency
+  // to NorthEDM's Stripe, held until delivery like any card order. Stripe can't
+  // pay a Gambian shop or runner, so at delivery the shop's share, the
+  // coordinator's share and the runner fee are booked as owed BY the owner and
+  // sent to the coordinator to disburse (collected_by = 'owner').
+  const localCard = local && paymentMethod === "card";
   let payTo: string | null = null;
   if (local) {
     // Cash on delivery was removed on 2026-11-02 (owner's decision): an order
     // reaches the shop only after its payment is confirmed, and cash skipped
     // that gate. Old cash orders keep their status values for history.
-    if (!isWalletMethod(paymentMethod)) {
-      return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney or Afrimoney." }, { status: 400 });
+    if (!isWalletMethod(paymentMethod) && !localCard) {
+      return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney, Afrimoney or card." }, { status: 400 });
     }
     const sub = await activeSubscription(admin, vid);
     if (!sub) return NextResponse.json({ error: "This shop's FestDash listing isn't active right now." }, { status: 403 });
@@ -207,10 +213,10 @@ export async function POST(req: Request) {
       promo_code_id: promoCodeId,
       // Hold new orders out of the vendor queue until the card is authorized.
       // The webhook / confirm step promotes them to "pending" once escrowed.
-      status: local ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
-      payment_status: local ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : "unpaid",
+      status: local && !localCard ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
+      payment_status: local && !localCard ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : "unpaid",
       paid: false,
-      payment_method: local ? paymentMethod : "card",
+      payment_method: local && !localCard ? paymentMethod : "card",
       payment_to: payTo,
       currency,
     }])
@@ -241,7 +247,7 @@ export async function POST(req: Request) {
   // Local-rail orders stop here: no card, no escrow. A wallet order waits for
   // the purse keeper's confirmation (/festdash/purse); a cash order goes
   // straight into the shop's queue and settles at handover.
-  if (local) {
+  if (local && !localCard) {
     return NextResponse.json({ order: data });
   }
 
@@ -261,11 +267,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ order: data });
   }
 
-  if (dueCents < STRIPE_MIN_CENTS) {
+  // Stripe's floor is about US$0.50 in any currency; non-USD uses a generous
+  // 50.00 in the shop's currency so a tiny GMD order can't fail at Stripe.
+  const minCents = currency === "USD" ? STRIPE_MIN_CENTS : 5000;
+  if (dueCents < minCents) {
     // Can't run a sub-$0.50 card. Roll back the order so it isn't orphaned.
     await admin.from("festdash_orders").delete().eq("id", data.id);
     return NextResponse.json(
-      { error: `Card orders must be at least $${(STRIPE_MIN_CENTS / 100).toFixed(2)}.` },
+      { error: `Card orders must be at least ${currency === "USD" ? "$" : currency + " "}${(minCents / 100).toFixed(2)}.` },
       { status: 400 }
     );
   }
@@ -284,7 +293,9 @@ export async function POST(req: Request) {
     .select("stripe_account_id")
     .eq("vendor_id", Number(vendorId))
     .maybeSingle();
-  const vendorAccount = (fv?.stripe_account_id as string | null) || null;
+  // Never a destination transfer on the local rail: the funds stay with
+  // NorthEDM and are disbursed through the coordinator (see localCard above).
+  const vendorAccount = localCard ? null : (fv?.stripe_account_id as string | null) || null;
 
   const itemSummary = lines
     .map((i) => `${i.qty}× ${i.name}`)
@@ -293,7 +304,7 @@ export async function POST(req: Request) {
 
   const paymentIntentData: Record<string, unknown> = {
     capture_method: "manual",
-    metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id },
+    metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id, rail: localCard ? "local_card" : "card" },
   };
   if (vendorAccount) {
     // Platform share of the ITEMS, plus the whole runner fee: the fee is
@@ -312,7 +323,7 @@ export async function POST(req: Request) {
         {
           quantity: 1,
           price_data: {
-            currency: "usd",
+            currency: currency.toLowerCase(),
             unit_amount: dueCents,
             product_data: {
               name: `FestDash order — ${eventName}`,
