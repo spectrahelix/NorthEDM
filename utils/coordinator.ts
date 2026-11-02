@@ -78,7 +78,7 @@ export async function activeSubscription(admin: SupabaseClient, vendorId: number
  */
 export async function recordSaleSplit(
   admin: SupabaseClient,
-  order: { id: string; vendor_id: number; total_cents: number; currency: string; payment_method: string; payment_ref: string | null },
+  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null },
   coordinatorUserId: string,
   settings: SplitSettings,
   createdBy: string
@@ -91,7 +91,9 @@ export async function recordSaleSplit(
     .maybeSingle();
   if (existing) return existing;
 
-  const s = splitSale(order.total_cents, settings);
+  // The runner's fee is the runner's; the 80/10/10 is on the items only.
+  const runner = Math.max(0, Math.min(Number(order.runner_fee_cents ?? 0), order.total_cents));
+  const s = splitSale(order.total_cents - runner, settings);
   const { data, error } = await admin
     .from("coordinator_ledger")
     .insert({
@@ -104,6 +106,7 @@ export async function recordSaleSplit(
       shop_cents: s.shop,
       owner_cents: s.owner,
       coordinator_cents: s.coordinator,
+      runner_cents: runner,
       method: order.payment_method,
       reference: order.payment_ref,
       created_by: createdBy,

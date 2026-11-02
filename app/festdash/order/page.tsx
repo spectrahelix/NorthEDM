@@ -7,7 +7,7 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
-import { METHOD_LABEL, WALLET_METHODS, isLocalRail, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
+import { METHOD_LABEL, RUNNER_FEE_CHOICES_BPS, WALLET_METHODS, isLocalRail, minRunnerFeeCents, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
   id: number; name: string; category: string; description: string;
@@ -80,6 +80,9 @@ export default function OrderPage() {
   const [locError, setLocError] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState<LocalMethod | null>(null);
+  // Runner fee: the customer's pick for the runner, 10% of the items minimum.
+  const [runnerPctBps, setRunnerPctBps] = useState<number>(1000);
+  const [runnerCustom, setRunnerCustom] = useState<string>("");
 
   // Promo / commission code
   const [promoInput, setPromoInput] = useState("");
@@ -147,6 +150,11 @@ export default function OrderPage() {
   // Store credit is not accepted on FestDash orders (it is NorthEDM's liability,
   // and a vendor would never be paid for the credit-covered part).
   const netTotalCents = discountedCents;
+  const runnerMinCents = minRunnerFeeCents(discountedCents);
+  const runnerCustomCents = runnerCustom.trim() ? Math.round(Number(runnerCustom) * 100) : NaN;
+  const runnerFeeCents = Number.isFinite(runnerCustomCents)
+    ? Math.max(runnerMinCents, runnerCustomCents)
+    : Math.max(runnerMinCents, Math.round((discountedCents * runnerPctBps) / 10000));
 
   // Coordinator-region shops: local rails, local currency.
   const local = isLocalRail(selectedVendor);
@@ -154,7 +162,7 @@ export default function OrderPage() {
   const money = (cents: number) => formatMoney(cents, currency);
   const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
   const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
-  const payableCents = local ? discountedCents : netTotalCents;
+  const payableCents = (local ? discountedCents : netTotalCents) + runnerFeeCents;
 
   async function applyPromo() {
     if (!promoInput.trim() || !selectedVendor) return;
@@ -281,6 +289,7 @@ export default function OrderPage() {
         deliveryWindow,
         items: cart.map((c) => ({ product_id: c.id, name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
+        runnerFeeCents,
         promoCode: promo?.code,
         customerName,
         paymentMethod: local ? paymentMethod : undefined,
@@ -769,6 +778,27 @@ export default function OrderPage() {
                 </div>
               )}
               {promoError && <p className="text-xs text-[#FF5C3A]">{promoError}</p>}
+
+              {/* Runner fee — all of it goes to the person who brings the order */}
+              <div className="pt-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-400">Runner fee <span className="text-neutral-600">(goes to your runner, 10% min)</span></span>
+                  <span className="text-neutral-300">{money(runnerFeeCents)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {RUNNER_FEE_CHOICES_BPS.map((bps) => (
+                    <button key={bps} type="button" onClick={() => { setRunnerPctBps(bps); setRunnerCustom(""); }}
+                      className={`rounded-lg border px-3 py-1 font-dm-mono text-xs transition ${!runnerCustom.trim() && runnerPctBps === bps ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-400 hover:bg-white/5"}`}>
+                      {bps / 100}%
+                    </button>
+                  ))}
+                  <input inputMode="decimal" value={runnerCustom} onChange={(e) => setRunnerCustom(e.target.value)} placeholder="Custom"
+                    className="w-24 rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-dm-mono text-xs text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-orange-500/50" />
+                </div>
+                {runnerCustom.trim() && Number.isFinite(runnerCustomCents) && runnerCustomCents < runnerMinCents && (
+                  <p className="mt-1 text-xs text-neutral-500">The minimum runner fee is {money(runnerMinCents)}; that&apos;s what will be charged.</p>
+                )}
+              </div>
 
               <div className="flex justify-between font-semibold">
                 <span className="text-white">Total</span>

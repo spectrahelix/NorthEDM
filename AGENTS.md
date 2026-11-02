@@ -385,6 +385,18 @@ through the site; it records what moved and who confirmed it.** Full design in
   measured.
 - **Runner pool now carries `payment_method`**: a cash order shows the runner
   "collect D… at handover". Keep that in any pool-column edit.
+- **Runner fee + promoter attribution (2026-11-02).** Every order carries a
+  **runner fee** the customer picks at checkout (10% of items minimum, 15/20/25/
+  custom; `minRunnerFeeCents`), on top of the items; all of it goes to the
+  runner. Card rail: collected inside the Stripe application fee and transferred
+  to the runner's Connect account at the delivery code (`utils/runnerPay.ts`;
+  runners set payouts up on /festdash/driver; the commissions cron sweeps fees
+  owed to runners who connected later). Wallet rail: `runner_cents` on the
+  ledger `sale` row, paid by the coordinator. The 80/10/10 is on the items only.
+  **Any active promoter's code** now attaches a promoter to a shop (shop-setup
+  walkthrough and /vendors/apply → `vendors.coordinator_user_id/_code`); that
+  promoter earns the coordinator share of each sale. A shop referred by the
+  owner's own code pays 10% less on the listing fee.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays

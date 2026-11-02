@@ -6,6 +6,7 @@ import { checkWrite } from "@/utils/dbWrite";
 
 import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
+import { payRunnerFee } from "@/utils/runnerPay";
 // Allowed status transitions — orders can't skip steps or move backwards.
 const TRANSITIONS: Record<string, string[]> = {
   awaiting_confirmation: ["declined"],
@@ -35,7 +36,7 @@ export async function PATCH(
   // Load the order (RLS lets the owning vendor / assigned driver read it)
   const { data: order } = await supabase
     .from("festdash_orders")
-    .select("id, vendor_id, driver_id, status, confirmation_code, payment_method, total_cents, currency, payment_ref")
+    .select("id, vendor_id, driver_id, status, confirmation_code, payment_method, total_cents, runner_fee_cents, currency, payment_ref")
     .eq("id", id)
     .single();
 
@@ -106,8 +107,8 @@ export async function PATCH(
     if (v?.coordinator_user_id) {
       const settings = await loadSplitSettings(admin);
       await recordSaleSplit(admin, {
-        id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), currency: String(order.currency || "USD"),
-        payment_method: "cash", payment_ref: order.payment_ref ?? null,
+        id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0),
+        currency: String(order.currency || "USD"), payment_method: "cash", payment_ref: order.payment_ref ?? null,
       }, v.coordinator_user_id as string, settings, user.id);
     }
   }
@@ -143,6 +144,9 @@ export async function PATCH(
               .eq("id", id),
             { critical: true }
           );
+          // The runner's fee, in full, to the runner's payout account (or the
+          // daily cron pays it once they set payouts up).
+          await payRunnerFee(admin, id);
           // The coordinator's share of a card sale (sale_coordinator_bps of the
           // amount charged) is owed to them out of the platform fee just taken.
           // It is booked as a held commission and paid by the daily release
@@ -159,7 +163,7 @@ export async function PATCH(
               referredUserId: (vend.user_id as string | null) ?? null,
               source: "festdash_order",
               sourceId: id,
-              baseCents: Number(order.total_cents),
+              baseCents: Number(order.total_cents) - Number(order.runner_fee_cents ?? 0),
               rateBps: splits.sale_coordinator_bps,
               holdDays,
             });
