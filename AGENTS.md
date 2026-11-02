@@ -417,8 +417,13 @@ through the site; it records what moved and who confirmed it.** Full design in
   (`vendor_subscriptions.kind` = `store`); it sets the shop's stores
   `billing_status = active`, and the daily reminders job sets `past_due` once
   the period lapses. Every listing-period reader filters `kind = 'festdash'`.
-  Store *checkout* is still card-only, so Gambian customers can't buy from a
-  store yet — only the fee side exists for them.
+  **Store checkout follows the shop's rail** (`utils/storeRail.ts`): a store
+  whose operator is a wallet-rail vendor sells for Wave / QMoney / Afrimoney in
+  the shop's currency, paid to the coordinator; the order waits in
+  `awaiting_confirmation` (`/api/store/orders/[id]/payment-ref` for the
+  customer's reference, `…/confirm-payment` for the coordinator, who sees it in
+  /festdash/purse next to FestDash orders). Confirming marks it paid, takes
+  stock down and books the 80/10/10 sale split. Card stores are unchanged.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays

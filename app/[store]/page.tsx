@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
+import { storeRail } from "@/utils/storeRail";
 import { storeAdminClient, viewerCanPreviewStore, viewerIsSiteAdmin } from "@/utils/store";
 import { cookies } from "next/headers";
 import { AdminLookPill } from "@/app/components/AdminLookPill";
@@ -58,6 +59,8 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
       : Promise.resolve({ data: [] as Product[] }),
   ]);
   const vendors = (vendorsData ?? []) as Vendor[];
+  // Wallet-rail stores (operator is a coordinator shop) take wallet payments in the shop's currency.
+  const rail = await storeRail(admin, (storeData.owner_user_id as string | null) ?? null);
   const products = (productsData ?? []) as Product[];
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
   // The shop's identity on its own page: theme background + display font,
@@ -182,6 +185,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             cardBg={brand.theme.card}
             canOrder={canOrder}
             closedReason={closedReason}
+            wallet={rail ? { currency: rail.currency, numbers: rail.numbers, coordinator: rail.coordinatorName } : null}
           />
         )}
       </div>
