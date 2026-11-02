@@ -2,30 +2,29 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-10-26 15:09 UTC
-**Health:** 🔴 1 critical vulnerability · 🟠 1 high vulnerability
+**Last run:** 2026-11-02 18:17 UTC
+**Health:** 🟢 All clear
 
 | Area | Result |
 | :-- | :-- |
-| Features (pages) | **79** routes (10 dynamic) |
-| API endpoints | **90** |
-| Users | **28** total · 1 new (7d) · 4 new (30d) |
-| Latest signup | 2026-10-25 (1d ago) |
+| Features (pages) | **83** routes (10 dynamic) |
+| API endpoints | **102** |
+| Users | **29** total · 1 new (7d) · 5 new (30d) |
+| Latest signup | 2026-11-01 (0d ago) |
 | Open bug/feedback reports | 0 of 13 total |
-| Security (npm audit) | 1 critical · 1 high · 0 moderate · 0 low |
+| Security (npm audit) | 0 critical · 0 high · 19 moderate · 0 low |
 | Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
-| Migrations | 62 (latest: `20261021100000_lights_out_side_tables.sql`) |
-| Env vars referenced | 23 |
+| Migrations | 66 (latest: `20261102120000_subscription_reminders.sql`) |
+| Env vars referenced | 24 |
 | TODO/FIXME | 0 |
 
-**High/critical advisories:** next (critical), zod (high)
 
-<sub>FYI (not a problem): 21 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
+<sub>FYI (not a problem): 22 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
 ---
 
-## Feature inventory (79 pages)
+## Feature inventory (83 pages)
 
 - `/[store]`
 - `/[store]/manage`
@@ -39,6 +38,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/admin/create-user`
 - `/admin/events`
 - `/admin/festdash`
+- `/admin/festdash/coordinators`
 - `/admin/festdash/promoters`
 - `/admin/hoodies`
 - `/admin/marketplace`
@@ -54,6 +54,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/admin/users`
 - `/admin/vendors`
 - `/artisans`
+- `/auth/finish`
 - `/avatar/builder`
 - `/crowdwave`
 - `/crowdwave/festival/[id]`
@@ -67,6 +68,8 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/festdash/driver`
 - `/festdash/order`
 - `/festdash/orders`
+- `/festdash/purse`
+- `/festdash/shop-setup`
 - `/festdash/track/[id]`
 - `/festdash/vendor-dashboard`
 - `/festdash/vendor-signup`
@@ -107,7 +110,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (90)
+## API endpoints (102)
 
 - `/api/admin/artisan`
 - `/api/admin/blocks`
@@ -132,7 +135,9 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/admin/social`
 - `/api/admin/stores`
 - `/api/admin/update-report`
+- `/api/admin/user-details`
 - `/api/admin/user-tags`
+- `/api/admin/username-nudge`
 - `/api/auth/forgot-password`
 - `/api/auth/resend-confirmation`
 - `/api/auth/signup`
@@ -140,9 +145,12 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/booking`
 - `/api/cron/local-events`
 - `/api/cron/release-commissions`
+- `/api/cron/subscription-reminders`
 - `/api/feedback`
 - `/api/festdash/admin/applications`
 - `/api/festdash/admin/applications/[id]`
+- `/api/festdash/admin/coordinator`
+- `/api/festdash/admin/drivers`
 - `/api/festdash/admin/promoter-applications`
 - `/api/festdash/admin/promoter-applications/[id]`
 - `/api/festdash/admin/vendors`
@@ -152,13 +160,19 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/festdash/orders`
 - `/api/festdash/orders/[id]`
 - `/api/festdash/orders/[id]/claim`
+- `/api/festdash/orders/[id]/confirm-payment`
 - `/api/festdash/orders/[id]/location`
+- `/api/festdash/orders/[id]/payment-ref`
 - `/api/festdash/promo-codes`
 - `/api/festdash/promo-codes/validate`
 - `/api/festdash/promoter/hoodies`
 - `/api/festdash/promoter/referral-code`
 - `/api/festdash/promoter/stripe/connect`
 - `/api/festdash/promoter/stripe/status`
+- `/api/festdash/purse`
+- `/api/festdash/purse/remittance`
+- `/api/festdash/purse/subscription`
+- `/api/festdash/shop-setup`
 - `/api/festdash/stripe/confirm`
 - `/api/festdash/stripe/connect`
 - `/api/festdash/stripe/status`
@@ -168,6 +182,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/hoodie`
 - `/api/marketplace/apply`
 - `/api/moderate`
+- `/api/profile/username`
 - `/api/promote`
 - `/api/promote/validate-code`
 - `/api/quote/[token]/pay`
@@ -200,7 +215,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/auth/confirm`
 - `/h/[code]`
 
-## Environment variables (23 referenced)
+## Environment variables (24 referenced)
 
 | Variable | Scope | CI status |
 | :-- | :-- | :-- |
@@ -214,6 +229,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | ❌ missing |
 | `NEXT_PUBLIC_SUPABASE_URL` | public | ✅ set |
 | `NEXT_PUBLIC_SW_VERSION` | public | ❌ missing |
+| `NODE_ENV` | server | ❌ missing |
 | `NTFY_SERVER` | server | ❌ missing |
 | `NTFY_TOPIC` | server | ❌ missing |
 | `OWNER_ALERT_EMAIL` | server | ❌ missing |
