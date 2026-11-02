@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/utils/admin";
+import { grantPromoter, revokePromoter } from "@/utils/promoters";
 
 // Admin-only: grant/revoke a role tag flag on a user's profile. Primarily for
 // the admin-grantable "Founder" tag; the others are normally set by their own
@@ -27,6 +28,17 @@ export async function POST(req: Request) {
   const value = !!body.value;
   if (!userId || !ALLOWED.has(flag)) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  }
+
+  // Promoter is more than a badge: it needs a promoter row and a referral code
+  // (or, when revoked, a paused row). Same path as approving an application.
+  if (flag === "is_promoter") {
+    if (value) {
+      const { referral_code } = await grantPromoter(g.admin, userId);
+      return NextResponse.json({ ok: true, flag, value, referral_code });
+    }
+    await revokePromoter(g.admin, userId);
+    return NextResponse.json({ ok: true, flag, value });
   }
 
   const { error } = await g.admin

@@ -281,6 +281,17 @@ runner's live ping never worked before 2026-11-01.
 **Post-sign-in redirects go through `safeNext()`** (`utils/safeRedirect.ts`):
 only a same-site path is accepted as a `next` value.
 
+**Admin account editor (2026-11-02).** /admin/users → Edit is the one place
+to see and change an account: login facts (confirmed, provider, last sign-in),
+email change, display name + username, the **private personal details from
+signup** (full name, phone, address — read via `/api/admin/user-details`,
+written via `/api/admin/edit-user`, both service role), public profile, rank
+and every tag. Ranks are `drifter, wanderer, merchant, promoter, warden,
+archon` in both dropdowns. The **Promoter** tag goes through
+`utils/promoters.ts` (`grantPromoter` / `revokePromoter`): it creates the
+promoter row and referral code, the same path as approving an application, so
+a tag never exists without a code behind it.
+
 **Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
 `usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`
 marks that the person picked or kept their name: the email signup form stamps

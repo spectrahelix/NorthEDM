@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureReferralCode } from "@/utils/promoters";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
@@ -15,33 +16,6 @@ function getAdminClient() {
 const SENIOR_ROLES = ["archon", "warden", "merchant"];
 
 // Short, unguessable, human-friendly referral code.
-function makeReferralCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
-  let out = "";
-  for (let i = 0; i < 7; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return out;
-}
-
-async function ensureReferralCode(
-  adminClient: ReturnType<typeof getAdminClient>,
-  promoterUserId: string
-) {
-  const { data: row } = await adminClient
-    .from("festdash_promoters")
-    .select("id, referral_code")
-    .eq("user_id", promoterUserId)
-    .single();
-  if (!row || row.referral_code) return;
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = makeReferralCode();
-    const { error } = await adminClient
-      .from("festdash_promoters")
-      .update({ referral_code: code })
-      .eq("id", row.id);
-    if (!error) return; // unique violation → retry with a new code
-  }
-}
 
 export async function PATCH(
   req: Request,

@@ -13,6 +13,7 @@ type AdminUser = {
   avatar_url: string | null;
   role: string;
   email: string;
+  username?: string | null;
   created_at: string;
   is_founder?: boolean;
   is_vendor?: boolean;
@@ -25,7 +26,25 @@ type AdminUser = {
   is_verified?: boolean;
 };
 
-const ROLES = ["drifter", "wanderer", "merchant", "warden", "archon"] as const;
+// Ranks, in order. "promoter" is a real rank (set when a promoter application is
+// approved); it used to be missing from the table's dropdown but present in the
+// editor's, so the two disagreed.
+const ROLES = ["drifter", "wanderer", "merchant", "promoter", "warden", "archon"] as const;
+
+type UserDetails = {
+  account: { email: string | null; email_confirmed_at: string | null; last_sign_in_at: string | null; created_at: string | null; providers: string[]; auth_phone: string | null };
+  profile: Record<string, string | boolean | null>;
+  vendor: { id: number; name: string | null; status: string | null } | null;
+  promoter: { referral_code: string | null; is_active: boolean; is_coordinator: boolean; region: string | null; payout_method: string | null } | null;
+};
+type EditKey = "display_name" | "username" | "role" | "home_city" | "pronouns" | "website" | "bio" | "email" | "full_name" | "phone" | "address_line1" | "address_line2" | "city" | "region" | "postal_code";
+const EMPTY_FORM: Record<EditKey, string> = { display_name: "", username: "", role: "drifter", home_city: "", pronouns: "", website: "", bio: "", email: "", full_name: "", phone: "", address_line1: "", address_line2: "", city: "", region: "", postal_code: "" };
+type TagFlag = "is_verified" | "is_driver" | "is_forager" | "is_artisan" | "is_promoter" | "is_founder" | "is_marketplace";
+
+function whenish(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
 
 function memberSince(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -48,15 +67,8 @@ export default function AdminUsersPage() {
   const [myId, setMyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState({
-    display_name: "",
-    role: "drifter",
-    home_city: "",
-    pronouns: "",
-    website: "",
-    bio: "",
-    email: "",
-  });
+  const [editForm, setEditForm] = useState<Record<EditKey, string>>(EMPTY_FORM);
+  const [editDetails, setEditDetails] = useState<UserDetails | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
 
@@ -146,7 +158,7 @@ export default function AdminUsersPage() {
     );
   }
 
-  async function toggleEditingTag(flag: "is_driver" | "is_forager" | "is_verified" | "is_artisan") {
+  async function toggleEditingTag(flag: TagFlag) {
     if (!editing) return;
     const value = !editing[flag];
     const res = await fetch("/api/admin/user-tags", {
@@ -154,29 +166,47 @@ export default function AdminUsersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: editing.id, flag, value }),
     });
-    if (!res.ok) { const j = await res.json().catch(() => ({})); setEditMsg(j.error || "Failed"); return; }
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { setEditMsg(j.error || "Failed"); return; }
     setEditing({ ...editing, [flag]: value });
     setUsers((prev) => prev.map((u) => (u.id === editing.id ? { ...u, [flag]: value } : u)));
+    if (flag === "is_promoter") {
+      // Granting Promoter also creates their promoter record and referral code.
+      setEditDetails((d) => d ? { ...d, promoter: value ? { referral_code: j.referral_code ?? d.promoter?.referral_code ?? null, is_active: true, is_coordinator: d.promoter?.is_coordinator ?? false, region: d.promoter?.region ?? null, payout_method: d.promoter?.payout_method ?? null } : d.promoter ? { ...d.promoter, is_active: false } : null } : d);
+      setEditMsg(value ? `Promoter granted${j.referral_code ? ` — their code is ${j.referral_code}` : ""}.` : "Promoter paused. Their code is kept.");
+    }
   }
 
   async function openEdit(u: AdminUser) {
     setEditMsg("");
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("user_profiles")
-      .select("home_city, bio, pronouns, website")
-      .eq("id", u.id)
-      .single();
-    setEditForm({
-      display_name: u.display_name || "",
-      role: u.role,
-      home_city: data?.home_city || "",
-      pronouns: data?.pronouns || "",
-      website: data?.website || "",
-      bio: data?.bio || "",
-      email: u.email || "",
-    });
+    setEditDetails(null);
+    setEditForm({ ...EMPTY_FORM, display_name: u.display_name || "", role: u.role, email: u.email || "" });
     setEditing(u);
+    // Everything about the account in one read — including the private personal
+    // details from signup, which an admin's own session is not allowed to select.
+    const res = await fetch("/api/admin/user-details?id=" + u.id);
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { setEditMsg(j.error || "Couldn't load this account."); return; }
+    const d = j as UserDetails;
+    const pr = d.profile as Record<string, string | null>;
+    setEditDetails(d);
+    setEditForm({
+      display_name: pr.display_name || u.display_name || "",
+      username: pr.username || "",
+      role: (pr.role as string) || u.role,
+      home_city: pr.home_city || "",
+      pronouns: pr.pronouns || "",
+      website: pr.website || "",
+      bio: pr.bio || "",
+      email: d.account.email || u.email || "",
+      full_name: pr.full_name || "",
+      phone: pr.phone || "",
+      address_line1: pr.address_line1 || "",
+      address_line2: pr.address_line2 || "",
+      city: pr.city || "",
+      region: pr.region || "",
+      postal_code: pr.postal_code || "",
+    });
   }
 
   async function saveEdit() {
@@ -192,11 +222,19 @@ export default function AdminUsersPage() {
         userId: editing.id,
         patch: {
           display_name: editForm.display_name.trim(),
+          username: editForm.username.trim(),
           role: editForm.role,
           home_city: editForm.home_city.trim(),
           pronouns: editForm.pronouns.trim() || null,
           website: editForm.website.trim() || null,
           bio: editForm.bio,
+          full_name: editForm.full_name.trim() || null,
+          phone: editForm.phone.trim() || null,
+          address_line1: editForm.address_line1.trim() || null,
+          address_line2: editForm.address_line2.trim() || null,
+          city: editForm.city.trim() || null,
+          region: editForm.region.trim() || null,
+          postal_code: editForm.postal_code.trim() || null,
         },
         newEmail: emailChanged ? editForm.email.trim() : undefined,
       }),
@@ -210,7 +248,7 @@ export default function AdminUsersPage() {
     setUsers((prev) =>
       prev.map((x) =>
         x.id === editing.id
-          ? { ...x, display_name: editForm.display_name.trim(), role: editForm.role }
+          ? { ...x, display_name: editForm.display_name.trim(), role: editForm.role, username: editForm.username.trim() || x.username }
           : x
       )
     );
@@ -364,6 +402,7 @@ export default function AdminUsersPage() {
                         >
                           <RankBadge role={u.role} name={u.display_name} tags={profileTags(u)} />
                         </Link>
+                        {u.username && <span className="font-dm-mono text-[10px] text-neutral-600">@{u.username}</span>}
                       </div>
                     </td>
                     <td className="px-5 py-4 font-dm-mono text-xs text-neutral-500">
@@ -457,7 +496,7 @@ export default function AdminUsersPage() {
           onClick={() => !editSaving && setEditing(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-white/10 bg-neutral-950 p-6"
+            className="my-4 w-full max-w-2xl rounded-2xl border border-white/10 bg-neutral-950 p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -470,100 +509,107 @@ export default function AdminUsersPage() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              {(
-                [
-                  ["display_name", "Display name", "text"],
-                  ["home_city", "Home city", "text"],
-                  ["pronouns", "Pronouns", "text"],
-                  ["website", "Website", "url"],
-                ] as const
-              ).map(([key, label, type]) => (
+            {(() => {
+              const label = "mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500";
+              const input = "w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none";
+              const section = "font-dm-mono text-[10px] uppercase tracking-[0.2em] text-[#3AFFD4]/80";
+              const field = (key: EditKey, text: string, type = "text") => (
                 <div key={key}>
-                  <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
-                    {label}
-                  </label>
-                  <input
-                    type={type}
-                    value={editForm[key]}
-                    onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none"
-                  />
+                  <label className={label}>{text}</label>
+                  <input type={type} value={editForm[key]} onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))} className={input} />
                 </div>
-              ))}
+              );
+              const a = editDetails?.account;
+              const facts: [string, string][] = [
+                ["Confirmed", whenish(a?.email_confirmed_at) ?? (editDetails ? "not yet" : "…")],
+                ["Signs in with", a ? (a.providers.length ? a.providers.join(", ") : "email") : "…"],
+                ["Last sign-in", a ? whenish(a.last_sign_in_at) ?? "never" : "…"],
+                ["Joined", whenish(a?.created_at ?? editing.created_at) ?? "—"],
+                ["Vendor", editDetails?.vendor ? `${editDetails.vendor.name ?? "Vendor"} · #${editDetails.vendor.id} · ${editDetails.vendor.status ?? ""}` : "—"],
+                ["Promoter code", editDetails?.promoter?.referral_code ? `${editDetails.promoter.referral_code}${editDetails.promoter.is_active ? "" : " (paused)"}${editDetails.promoter.is_coordinator ? " · coordinator" : ""}` : "—"],
+              ];
+              if (typeof editDetails?.profile.pending_email === "string" && editDetails.profile.pending_email) facts.push(["Pending email", editDetails.profile.pending_email]);
+              const tags: [TagFlag, string][] = [
+                ["is_verified", "✔ Verified"],
+                ["is_driver", "⬗ Driver"],
+                ["is_forager", "❦ Forager"],
+                ["is_artisan", "◈ Artisan"],
+                ["is_promoter", "✦ Promoter"],
+                ...(editing.is_vendor ? ([["is_founder", "♛ Founder"], ["is_marketplace", "▣ Marketplace"]] as [TagFlag, string][]) : []),
+              ];
+              return (
+                <div className="space-y-5">
+                  <section className="space-y-3">
+                    <p className={section}>Account</p>
+                    <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-1 text-xs">
+                      {facts.map(([k, v]) => (<div key={k} className="contents"><dt className="text-neutral-600">{k}</dt><dd className="min-w-0 break-words text-neutral-300">{v}</dd></div>))}
+                    </dl>
+                    <div>
+                      <label className={label}>Email</label>
+                      <input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={input} />
+                      <p className="mt-1 font-dm-mono text-[10px] text-neutral-600">Changing the email sends a verification link to the new address — it only switches once they confirm.</p>
+                    </div>
+                  </section>
 
-              <div>
-                <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
-                  Role
-                </label>
-                <select
-                  value={editForm.role}
-                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none"
-                >
-                  {[...ROLES, "promoter"].map((r) => (
-                    <option key={r} value={r}>
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <section className="space-y-3">
+                    <p className={section}>Identity</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {field("display_name", "Display name")}
+                      {field("username", "Username")}
+                    </div>
+                  </section>
 
-              <div>
-                <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
-                  Bio
-                </label>
-                <textarea
-                  value={editForm.bio}
-                  onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none"
-                />
-              </div>
+                  <section className="space-y-3">
+                    <p className={section}>Personal details (from signup)</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {field("full_name", "Full name")}
+                      {field("phone", "Phone", "tel")}
+                      {field("address_line1", "Address line 1")}
+                      {field("address_line2", "Address line 2")}
+                      {field("city", "City")}
+                      {field("region", "State / region")}
+                      {field("postal_code", "Postal code")}
+                    </div>
+                    <p className="font-dm-mono text-[10px] text-neutral-600">Private to the person and to admins. Never shown on a public profile.</p>
+                  </section>
 
-              <div>
-                <label className="mb-1 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 focus:outline-none"
-                />
-                <p className="mt-1 font-dm-mono text-[10px] text-neutral-600">
-                  Changing the email sends a verification link to the new address — it only
-                  switches once they confirm.
-                </p>
-              </div>
+                  <section className="space-y-3">
+                    <p className={section}>Public profile</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {field("home_city", "Home city")}
+                      {field("pronouns", "Pronouns")}
+                    </div>
+                    {field("website", "Website", "url")}
+                    <div>
+                      <label className={label}>Bio</label>
+                      <textarea value={editForm.bio} onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))} rows={3} className={input + " resize-none"} />
+                    </div>
+                  </section>
 
-              <div>
-                <label className="mb-1.5 block font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">
-                  Grantable Tags
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {([
-                    ["is_verified", "✔ Verified"],
-                    ["is_driver", "⬗ Driver"],
-                    ["is_forager", "❦ Forager"],
-                    ["is_artisan", "◈ Artisan"],
-                  ] as const).map(([flag, label]) => (
-                    <button
-                      key={flag}
-                      type="button"
-                      onClick={() => toggleEditingTag(flag)}
-                      className={`rounded-lg border px-3 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition ${
-                        editing[flag]
-                          ? "border-[#3AFFD4] bg-[#3AFFD4]/10 text-[#3AFFD4]"
-                          : "border-white/12 text-neutral-400 hover:bg-white/5"
-                      }`}
-                    >
-                      {label} {editing[flag] ? "✓" : ""}
-                    </button>
-                  ))}
+                  <section className="space-y-3">
+                    <p className={section}>Rank &amp; tags</p>
+                    <div>
+                      <label className={label}>Rank</label>
+                      <select value={editForm.role} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none">
+                        {availableRoles.map((r) => (<option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={label}>Tags (saved as you tap)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map(([flag, text]) => (
+                          <button key={flag} type="button" onClick={() => toggleEditingTag(flag)}
+                            className={`rounded-lg border px-3 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition ${editing[flag] ? "border-[#3AFFD4] bg-[#3AFFD4]/10 text-[#3AFFD4]" : "border-white/12 text-neutral-400 hover:bg-white/5"}`}>
+                            {text} {editing[flag] ? "✓" : ""}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1 font-dm-mono text-[10px] text-neutral-600">Promoter creates their promoter record and referral code; Founder and Marketplace apply to vendor accounts.</p>
+                    </div>
+                  </section>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {editMsg && <p className="mt-4 text-sm text-[#3AFFD4]">{editMsg}</p>}
 
