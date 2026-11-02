@@ -31,7 +31,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error && !(await alreadySignedIn())) {
       console.error(`[auth/callback] code exchange failed: ${error.message}`);
-      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
+      // A spent code usually means another load of this same URL (a browser
+      // preload, a second tab) already redeemed it and set the session in a
+      // response we cannot see from here. Let the browser decide: /auth/finish
+      // continues if the session is there and explains if it is not.
+      return NextResponse.redirect(`${origin}/auth/finish?next=${encodeURIComponent(next)}`);
     }
   } else {
     // No code and no token_hash. Historically this meant the tokens arrived in
