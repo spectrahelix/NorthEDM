@@ -22,6 +22,8 @@ export default function LoginPage() {
   const linkError = searchParams.get("error");
   const linkMessage = !linkError
     ? ""
+    : linkError === "oauth_incomplete"
+      ? "Google sign-in didn't complete in this window. Tap Continue with Google once more, or sign in with your email and password."
     : /expired|invalid|not found|already|missing_token/i.test(linkError)
       ? "That link has already been used or has expired — they only work once. Request a fresh one below and open it straight from your email."
       : `We couldn't complete that link: ${linkError}. Request a fresh one below, or use “Trouble signing in?”.`;
