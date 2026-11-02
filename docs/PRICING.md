@@ -23,6 +23,13 @@ they can be **bundled** for a client, but each has its own value.
 
 ## 1. FestDash — vendor side (what Frank pays)
 
+> **Superseded 2026-11-02 — FestDash vendor orders split 80 / 10 / 10.** The
+> vendor keeps 80% of what the customer paid; NorthEDM 10%; the vendor's
+> coordinator 10% (NorthEDM keeps it when there is none). It is taken as the
+> Stripe platform fee at delivery and the percentages live in
+> `coordinator_program_settings` (edit them in /admin/festdash/coordinators).
+> The 5%-on-top service fee in §1–§3 below was never built; it is kept as history.
+
 **Two-part pricing: a monthly subscription (access) + 5% per order (usage).** This
 is the standard marketplace shape — the sub covers "being on the network," the %
 scales with the vendor's own success.
@@ -56,6 +63,9 @@ scales with the vendor's own success.
 ---
 
 ## 3. The 5% cut — OVER list price (customer-paid service fee) ✅
+
+> **Superseded 2026-11-02** — see the note under §1. The live split is 80 / 10 / 10
+> out of the price paid, not 5% on top.
 
 **Decision: the 5% is added on top as a customer "FestDash service fee." The vendor
 keeps 100% of their list price.**

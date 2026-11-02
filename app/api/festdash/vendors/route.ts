@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { serviceClient } from "@/utils/coordinator";
+import { isLocalRail } from "@/utils/gambiaPay";
 
 type V = {
   id: number; name: string; category: string; description: string;
@@ -9,9 +10,10 @@ type V = {
 
 // Public list of vendors taking FestDash orders. RLS on festdash_vendors and
 // vendors keeps hidden ("lights out") vendors out — that read stays on the
-// visitor's own client on purpose. Shops in a coordinator region are listed only
-// while their monthly fee is current, and carry their purse keeper's wallet
-// numbers so checkout can say where to pay.
+// visitor's own client on purpose. Shops on the local rail (a coordinator AND a
+// non-USD currency — isLocalRail) are listed only while their monthly fee is
+// current, and carry their purse keeper's wallet numbers so checkout can say
+// where to pay. A USD vendor with a coordinator is an ordinary card vendor here.
 export async function GET() {
   const supabase = await createClient();
   const { data: fdVendors, error } = await supabase
@@ -24,7 +26,7 @@ export async function GET() {
     .map((r) => (r as { vendors: unknown }).vendors as V | null)
     .filter((v): v is V => !!v);
 
-  const local = base.filter((v) => v.coordinator_user_id);
+  const local = base.filter((v) => isLocalRail(v));
   if (local.length === 0) return NextResponse.json({ vendors: base, fallback: false });
 
   const admin = serviceClient();
@@ -40,9 +42,9 @@ export async function GET() {
   const purseBy = new Map((purses ?? []).map((p) => [p.user_id as string, p]));
 
   const vendors = base
-    .filter((v) => !v.coordinator_user_id || paid.has(v.id))
+    .filter((v) => !isLocalRail(v) || paid.has(v.id))
     .map((v) => {
-      if (!v.coordinator_user_id) return v;
+      if (!isLocalRail(v) || !v.coordinator_user_id) return v;
       const p = purseBy.get(v.coordinator_user_id);
       return {
         ...v,

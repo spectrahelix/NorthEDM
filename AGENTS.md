@@ -325,6 +325,12 @@ through the site; it records what moved and who confirmed it.** Full design in
 - **Splits are settings, not code**: `coordinator_program_settings` (sale
   shop 80 / owner 10 / coordinator 10; fee $30 of which coordinator 10%).
   Change them in the admin page, never by editing percentages in a route.
+  The same two sale percentages are the **platform fee on US card orders**
+  (owner + coordinator, 20% by default, vendor keeps 80%); the coordinator's
+  part is booked as a `festdash_order` commission at delivery and paid through
+  Stripe Connect by the commissions cron. The rail is `isLocalRail()` in
+  `utils/gambiaPay.ts`: coordinator **and** non-USD currency → wallets/cash and
+  the fee gate; a USD vendor with a coordinator stays on card checkout.
 - The coordinator's book: `coordinator_ledger` (`sale` | `subscription` |
   `remittance`). Sales are in the shop's currency; fees in USD; a remittance
   is whatever the coordinator sent, and the **owner confirms the USD that

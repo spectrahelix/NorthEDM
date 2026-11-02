@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
+import { loadSplitSettings } from "@/utils/coordinator";
+import { platformShareBps } from "@/utils/gambiaPay";
 
 function getAdminClient() {
   return createAdminClient(
@@ -35,8 +37,11 @@ export async function GET() {
     return NextResponse.json({ error: "Not a FestDash vendor" }, { status: 404 });
   }
 
+  // The platform's share, so the dashboard quotes the live number, not a constant.
+  const platform_bps = platformShareBps(await loadSplitSettings(admin));
+
   if (!vendor.stripe_account_id) {
-    return NextResponse.json({ connected: false, onboarded: false });
+    return NextResponse.json({ connected: false, onboarded: false, platform_bps });
   }
 
   const stripe = getStripe();
@@ -48,5 +53,6 @@ export async function GET() {
     payouts_enabled: !!acct.payouts_enabled,
     charges_enabled: !!acct.charges_enabled,
     details_submitted: !!acct.details_submitted,
+    platform_bps,
   });
 }

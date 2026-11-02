@@ -92,14 +92,14 @@ export default function CoordinatorsClient() {
         {/* Settings */}
         {settings && (
           <section className={card}>
-            <p className={label}>Splits &amp; fee (one setting, applies to new bookings)</p>
+            <p className={label}>Splits &amp; fee — one setting for every FestDash sale, card or wallet</p>
             <div className="grid gap-3 sm:grid-cols-4">
               <div><span className={label}>NorthEDM % of sale</span><input className={input + " w-full"} value={settings.sale_owner_bps / 100} onChange={(e) => setSettings({ ...settings, sale_owner_bps: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Coordinator % of sale</span><input className={input + " w-full"} value={settings.sale_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, sale_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Shop fee $/month</span><input className={input + " w-full"} value={settings.subscription_fee_cents / 100} onChange={(e) => setSettings({ ...settings, subscription_fee_cents: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Coordinator % of fee</span><input className={input + " w-full"} value={settings.subscription_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, subscription_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
             </div>
-            <p className="mt-2 text-xs text-neutral-500">Shop keeps {100 - (settings.sale_owner_bps + settings.sale_coordinator_bps) / 100}% of each sale. Of each {formatMoney(settings.subscription_fee_cents, "USD")} fee you get {formatMoney(settings.subscription_fee_cents - Math.round(settings.subscription_fee_cents * settings.subscription_coordinator_bps / 10000), "USD")}.</p>
+            <p className="mt-2 text-xs text-neutral-500">Shop keeps {100 - (settings.sale_owner_bps + settings.sale_coordinator_bps) / 100}% of each sale. On card orders the two percentages together are taken as the Stripe platform fee when the order is delivered; the coordinator&apos;s part is paid to them through Stripe after the hold window, or stays with NorthEDM when the vendor has no coordinator. On wallet sales the coordinator keeps it from what they collected. Of each {formatMoney(settings.subscription_fee_cents, "USD")} fee you get {formatMoney(settings.subscription_fee_cents - Math.round(settings.subscription_fee_cents * settings.subscription_coordinator_bps / 10000), "USD")}.</p>
             <button onClick={() => run("settings", { action: "set_settings", ...settings }, "Settings saved.")} disabled={busy === "settings"} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-400 disabled:opacity-50">Save settings</button>
           </section>
         )}
@@ -173,11 +173,18 @@ export default function CoordinatorsClient() {
                     )}
                   </div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-5">
-                    <select className={input} value={a.coordinator} onChange={(e) => setAssign({ ...assign, [v.id]: { ...a, coordinator: e.target.value } })}>
-                      <option value="">no coordinator (card checkout)</option>
+                    <select className={input} value={a.coordinator} onChange={(e) => {
+                      // Picking a Gambian coordinator switches a still-USD shop to GMD, which is what
+                      // puts it on the wallet/cash rail; a USD shop with a coordinator keeps card checkout.
+                      const cid = e.target.value;
+                      const c = coordinators.find((x) => x.user_id === cid);
+                      const currency = cid && a.currency === "USD" && c?.region === "gambia" ? "GMD" : a.currency;
+                      setAssign({ ...assign, [v.id]: { ...a, coordinator: cid, currency } });
+                    }}>
+                      <option value="">no coordinator</option>
                       {coordinators.map((c) => <option key={c.user_id} value={c.user_id}>{c.display_name ?? c.user_id.slice(0, 8)}</option>)}
                     </select>
-                    <select className={input} value={a.currency} onChange={(e) => setAssign({ ...assign, [v.id]: { ...a, currency: e.target.value } })}><option value="USD">USD</option><option value="GMD">GMD</option></select>
+                    <select className={input} value={a.currency} onChange={(e) => setAssign({ ...assign, [v.id]: { ...a, currency: e.target.value } })}><option value="USD">USD · card checkout; coordinator paid their % via Stripe</option><option value="GMD">GMD · Wave / QMoney / Afrimoney / cash via coordinator</option></select>
                     <input className={input} placeholder="region" value={a.region} onChange={(e) => setAssign({ ...assign, [v.id]: { ...a, region: e.target.value } })} />
                     <input className={input} placeholder="shop WhatsApp" value={a.whatsapp} onChange={(e) => setAssign({ ...assign, [v.id]: { ...a, whatsapp: e.target.value } })} />
                     <button onClick={() => run(`v${v.id}`, { action: "assign_vendor", vendorId: v.id, coordinatorUserId: a.coordinator || null, currency: a.currency, region: a.region, whatsapp: a.whatsapp }, "Shop updated.")} disabled={busy === `v${v.id}`} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-neutral-200 hover:bg-white/5 disabled:opacity-50">Save</button>

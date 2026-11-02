@@ -5,6 +5,7 @@ import { getStripe } from "@/utils/stripe";
 import { checkWrite } from "@/utils/dbWrite";
 
 import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
+import { recordCommission, commissionTerms } from "@/utils/commissions";
 // Allowed status transitions — orders can't skip steps or move backwards.
 const TRANSITIONS: Record<string, string[]> = {
   awaiting_confirmation: ["declined"],
@@ -113,7 +114,8 @@ export async function PATCH(
 
   // Escrow settlement, tied to the new state:
   //   delivered → CAPTURE the authorized hold (funds move to the vendor, minus
-  //               the 5% fee if a Connect account is attached).
+  //               FestDash's share if a Connect account is attached), then book
+  //               the coordinator's part of that share as a held commission.
   //   declined  → CANCEL the authorization (releases the hold; card untouched).
   // Best-effort and never reverses the delivery/decline that already happened —
   // a Stripe hiccup is recorded as *_failed for the owner to settle manually.
@@ -141,6 +143,27 @@ export async function PATCH(
               .eq("id", id),
             { critical: true }
           );
+          // The coordinator's share of a card sale (sale_coordinator_bps of the
+          // amount charged) is owed to them out of the platform fee just taken.
+          // It is booked as a held commission and paid by the daily release
+          // cron through Stripe Connect once the refund window closes — the
+          // same path promoter commissions take, idempotent per order. A vendor
+          // with no coordinator leaves that share with NorthEDM.
+          const { data: vend } = await admin
+            .from("vendors").select("coordinator_user_id, user_id").eq("id", order.vendor_id).maybeSingle();
+          if (vend?.coordinator_user_id) {
+            const splits = await loadSplitSettings(admin);
+            const { holdDays } = await commissionTerms(admin, "festdash_order");
+            await recordCommission(admin, {
+              promoterUserId: vend.coordinator_user_id as string,
+              referredUserId: (vend.user_id as string | null) ?? null,
+              source: "festdash_order",
+              sourceId: id,
+              baseCents: Number(order.total_cents),
+              rateBps: splits.sale_coordinator_bps,
+              holdDays,
+            });
+          }
         } else {
           await stripe.paymentIntents.cancel(full.stripe_payment_intent);
           await admin

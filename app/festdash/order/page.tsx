@@ -7,7 +7,7 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
-import { METHOD_LABEL, WALLET_METHODS, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
+import { METHOD_LABEL, WALLET_METHODS, isLocalRail, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
   id: number; name: string; category: string; description: string;
@@ -155,7 +155,7 @@ export default function OrderPage() {
   const netTotalCents = discountedCents - appliedCreditCents;
 
   // Coordinator-region shops: local rails, local currency, no store credit.
-  const local = !!selectedVendor?.coordinator_user_id;
+  const local = isLocalRail(selectedVendor);
   const currency = selectedVendor?.currency ?? "USD";
   const money = (cents: number) => formatMoney(cents, currency);
   const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
