@@ -55,8 +55,11 @@ export async function POST(req: Request) {
   const currency = String(vendorRow.currency || "USD");
   let payTo: string | null = null;
   if (local) {
-    if (!isLocalMethod(paymentMethod)) {
-      return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney, Afrimoney or cash on delivery." }, { status: 400 });
+    // Cash on delivery was removed on 2026-11-02 (owner's decision): an order
+    // reaches the shop only after its payment is confirmed, and cash skipped
+    // that gate. Old cash orders keep their status values for history.
+    if (!isWalletMethod(paymentMethod)) {
+      return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney or Afrimoney." }, { status: 400 });
     }
     const sub = await activeSubscription(admin, vid);
     if (!sub) return NextResponse.json({ error: "This shop's FestDash listing isn't active right now." }, { status: 403 });

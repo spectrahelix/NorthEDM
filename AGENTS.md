@@ -325,7 +325,8 @@ through the site; it records what moved and who confirmed it.** Full design in
   the shop's WhatsApp). Such a shop is listed on FestDash **only while a
   `vendor_subscriptions` period is current** (both `/api/festdash/vendors` and
   the `/festdash` page apply this), and its checkout offers **Wave / QMoney /
-  Afrimoney / cash on delivery** instead of Stripe. Never a card.
+  Afrimoney** instead of Stripe. Never a card, and since 2026-11-02 no cash on
+  delivery either: an order reaches the shop only after its payment is confirmed.
 - Wallet order → `status = awaiting_confirmation`, `payment_to` snapshots the
   purse keeper's wallet number, the customer submits their transaction ref
   (`/api/festdash/orders/[id]/payment-ref`), the coordinator confirms in

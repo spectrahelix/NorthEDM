@@ -146,7 +146,7 @@ export default function ShopSetupPage() {
           <div className="grid gap-3 sm:grid-cols-3 text-sm">
             <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Listing fee</p><p className="mt-1 text-white"><span className="font-semibold">{formatMoney(s.subscription_fee_cents, "USD")}</span> a month, paid in dalasi to your coordinator</p></div>
             <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Each sale</p><p className="mt-1 text-white">You keep <span className="font-semibold">{shopPct}%</span> · coordinator {s.sale_coordinator_bps / 100}% · NorthEDM {s.sale_owner_bps / 100}%</p></div>
-            <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Customers pay by</p><p className="mt-1 text-white">Wave · QMoney · Afrimoney · cash on delivery</p></div>
+            <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Customers pay by</p><p className="mt-1 text-white">Wave · QMoney · Afrimoney</p></div>
           </div>
           <PaymentTimingNote all className="mt-4" />
         </div>
@@ -247,7 +247,7 @@ export default function ShopSetupPage() {
               <Link href={v.store_slug ? `/${v.store_slug}` : `/marketplace/${v.id}`} className="rounded-2xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-white/5">Your shop page</Link>
             </div>
           ) : (
-            <p className="text-sm text-neutral-500">Once approved you add items with a photo and a price in dalasi. Customers order, pay your coordinator&apos;s wallet or cash on delivery, and a runner delivers. You hand over with a 4-digit code.</p>
+            <p className="text-sm text-neutral-500">Once approved you add items with a photo and a price in dalasi. Customers order and pay your coordinator&apos;s wallet; once the payment is confirmed, a runner delivers. You hand over with a 4-digit code.</p>
           )}
         </div>
 
