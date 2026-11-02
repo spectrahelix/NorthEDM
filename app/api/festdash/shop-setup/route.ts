@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { requireVerifiedUser } from "@/utils/authGate";
 import { serviceClient, loadSplitSettings } from "@/utils/coordinator";
+import { isLocalRail } from "@/utils/gambiaPay";
 import { notifyNewApplication } from "@/utils/alerts";
 
 // The shop owner's self-service path for a coordinator region. One
@@ -84,7 +85,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     user: { email: user.email ?? null, verified: !!user.email_confirmed_at },
-    vendor: vendor ? { ...vendor, enrolled, fee_current: feeCurrent, paid_through: paidThrough, store_slug: storeSlug, live: vendor.status === "approved" && !!vendor.is_public && !vendor.suspended_at && enrolled && feeCurrent } : null,
+    vendor: vendor ? { ...vendor, enrolled, fee_current: feeCurrent, paid_through: paidThrough, store_slug: storeSlug, live: vendor.status === "approved" && !!vendor.is_public && !vendor.suspended_at && enrolled && (isLocalRail(vendor) ? feeCurrent : true) } : null,
     coordinator,
     settings,
     refCoordinator: refCoordinator ? { display_name: refCoordinator.display_name, region: refCoordinator.region } : null,

@@ -12,9 +12,11 @@ export function getStripe(): Stripe {
   return _stripe;
 }
 
-// FestDash platform fee, in basis points (500 = 5%). Easy to change.
-export const PLATFORM_FEE_BPS = 500;
-
-export function platformFeeCents(totalCents: number): number {
-  return Math.round((totalCents * PLATFORM_FEE_BPS) / 10000);
+// FestDash's share of a card order, taken as the Stripe application fee on the
+// destination charge. The percentage is deliberately NOT a constant here: it is
+// the owner's share plus the coordinator's share from
+// `coordinator_program_settings` (platformShareBps in utils/gambiaPay.ts) —
+// the same two numbers that split a wallet sale, 80 / 10 / 10 by default.
+export function platformFeeCents(totalCents: number, bps: number): number {
+  return Math.round((totalCents * bps) / 10000);
 }

@@ -169,6 +169,10 @@ export async function POST(req: Request) {
       const { data: order } = await db
         .from("shop_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
       if (order) await voidCommission(db, "shop_order", String(order.id), reason);
+
+      const { data: fdOrder } = await db
+        .from("festdash_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
+      if (fdOrder) await voidCommission(db, "festdash_order", String(fdOrder.id), reason);
     }
   } else if (
     event.type === "payment_intent.canceled" ||

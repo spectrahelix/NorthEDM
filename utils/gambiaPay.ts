@@ -74,6 +74,25 @@ export function splitSale(totalCents: number, s: SplitSettings) {
   const coordinator = Math.round((totalCents * s.sale_coordinator_bps) / 10000);
   return { owner, coordinator, shop: totalCents - owner - coordinator };
 }
+/** The platform's total share of a sale — owner + coordinator — in basis points.
+ *  On a card order this is the Stripe application fee; on a wallet sale it is
+ *  what the purse keeper holds back. Same two settings on both rails. */
+export function platformShareBps(s: SplitSettings): number {
+  return s.sale_owner_bps + s.sale_coordinator_bps;
+}
+
+/**
+ * Which rail a vendor's orders take. A shop assigned to a coordinator AND
+ * priced in a non-USD currency is paid through the coordinator's wallets or
+ * cash on delivery and is listed only while its monthly fee is current.
+ * Everything else — including a US vendor whose coordinator earns a share of
+ * each sale — stays on Stripe card checkout. One rule, used by the order API,
+ * the vendor list, the FestDash page and the order page.
+ */
+export function isLocalRail(v: { coordinator_user_id?: string | null; currency?: string | null } | null | undefined): boolean {
+  return !!v?.coordinator_user_id && String(v.currency ?? "USD").toUpperCase() !== "USD";
+}
+
 /** A monthly shop fee: the coordinator's cut, the owner gets the rest. */
 export function splitSubscription(feeCents: number, s: SplitSettings) {
   const coordinator = Math.round((feeCents * s.subscription_coordinator_bps) / 10000);

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 import { formatMoney } from "@/utils/money";
+import { DEFAULT_SPLITS, platformShareBps } from "@/utils/gambiaPay";
 type Order = {
   id: string;
   customer_name: string;
@@ -47,7 +48,7 @@ export default function VendorDashboard() {
   const [deliverFor, setDeliverFor] = useState<string | null>(null);
   const [deliverCode, setDeliverCode] = useState("");
   const [deliverError, setDeliverError] = useState("");
-  const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; onboarded: boolean } | null>(null);
+  const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; onboarded: boolean; platformPct: number } | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const prevPendingCount = useRef(0);
   const supabase = createClient();
@@ -55,7 +56,7 @@ export default function VendorDashboard() {
   useEffect(() => {
     fetch("/api/festdash/stripe/status")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setStripeStatus({ connected: !!d.connected, onboarded: !!d.onboarded }); })
+      .then((d) => { if (d) setStripeStatus({ connected: !!d.connected, onboarded: !!d.onboarded, platformPct: (typeof d.platform_bps === "number" ? d.platform_bps : platformShareBps(DEFAULT_SPLITS)) / 100 }); })
       .catch(() => {});
   }, []);
 
@@ -224,7 +225,7 @@ export default function VendorDashboard() {
           <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-orange-950/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold text-orange-300">💳 Set up payouts</p>
-              <p className="text-sm text-neutral-400">Connect a Stripe account to receive your earnings — funds are held in escrow until each order is delivered, then paid out (minus a 5% FestDash fee).</p>
+              <p className="text-sm text-neutral-400">Connect a Stripe account to receive your earnings — funds are held in escrow until each order is delivered, then paid out to you minus FestDash&apos;s {stripeStatus.platformPct}% share.</p>
             </div>
             <button
               onClick={connectStripe}

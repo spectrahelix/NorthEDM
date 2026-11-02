@@ -183,6 +183,16 @@ every fee and every remittance in `coordinator_ledger`, and the owner confirms
 the dollars that actually land. Percentages and the fee live in
 `coordinator_program_settings`.
 
+The same two percentages govern **US card orders** (2026-11-02). Stripe takes
+owner % + coordinator % (20% by default) as the platform fee on the destination
+charge when the order is delivered, the vendor's Connect account receives the
+rest (80%), and the coordinator's part is booked as a held commission at
+delivery (`commissions`, source `festdash_order`) and paid through Connect by
+the daily release cron once the refund window closes. A vendor with no
+coordinator leaves that part with NorthEDM. Which rail an order takes is
+`isLocalRail()` in `utils/gambiaPay.ts`: a coordinator **and** a non-USD
+currency → wallets / cash and the monthly-fee gate; anything else → card.
+
 **Flow.** Checkout for a coordinator shop offers Wave / QMoney / Afrimoney /
 cash (and a prefilled "order on WhatsApp" link). A wallet order waits in
 `awaiting_confirmation`: the customer sees the wallet number and a short

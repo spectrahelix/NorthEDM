@@ -3,8 +3,8 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe, platformFeeCents } from "@/utils/stripe";
 
-import { isLocalMethod, isWalletMethod, walletNumberFor } from "@/utils/gambiaPay";
-import { activeSubscription, coordinatorFor } from "@/utils/coordinator";
+import { isLocalMethod, isLocalRail, isWalletMethod, platformShareBps, walletNumberFor } from "@/utils/gambiaPay";
+import { activeSubscription, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -45,11 +45,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This vendor isn't taking FestDash orders right now." }, { status: 403 });
   }
 
-  // A shop in a coordinator region is paid through its purse keeper's mobile
-  // wallet or in cash on delivery — never a card — and is open only while its
-  // monthly fee is current. The wallet number is snapshotted onto the order so
-  // the customer always sees the number that was current when they ordered.
-  const local = !!vendorRow.coordinator_user_id;
+  // A shop on the local rail (a coordinator AND a non-USD currency — see
+  // isLocalRail) is paid through its purse keeper's mobile wallet or in cash on
+  // delivery — never a card — and is open only while its monthly fee is
+  // current. A USD vendor with a coordinator stays on card checkout. The wallet
+  // number is snapshotted onto the order so the customer always sees the number
+  // that was current when they ordered.
+  const local = isLocalRail(vendorRow);
   const currency = String(vendorRow.currency || "USD");
   let payTo: string | null = null;
   if (local) {
@@ -278,8 +280,12 @@ export async function POST(req: Request) {
   // Escrow via Stripe Checkout with MANUAL CAPTURE: the customer's card is
   // authorized (held) now, and only captured when the driver confirms delivery.
   // If the vendor has an onboarded Connect account, the charge is a destination
-  // transfer minus the 5% FestDash fee, so capture pays the vendor directly. If
-  // not, funds are held on the platform and settled to the vendor manually.
+  // transfer minus FestDash's share — owner % + coordinator % from
+  // coordinator_program_settings, 20% by default, so the vendor keeps 80% — and
+  // capture pays the vendor directly. The coordinator's part of that share is
+  // booked to them at delivery (orders/[id]) and paid out by the commissions
+  // cron after the hold window. If the vendor has no Connect account, funds are
+  // held on the platform and settled to the vendor manually.
   const { data: fv } = await admin
     .from("festdash_vendors")
     .select("stripe_account_id")
@@ -297,7 +303,8 @@ export async function POST(req: Request) {
     metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id },
   };
   if (vendorAccount) {
-    paymentIntentData.application_fee_amount = platformFeeCents(dueCents);
+    const splits = await loadSplitSettings(admin);
+    paymentIntentData.application_fee_amount = platformFeeCents(dueCents, platformShareBps(splits));
     paymentIntentData.transfer_data = { destination: vendorAccount };
   }
 
