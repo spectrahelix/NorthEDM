@@ -365,8 +365,10 @@ export default function AdminUsersPage() {
         </p>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-white/10">
-          <table className="w-full text-sm">
+        {/* overflow-x-auto, not hidden: on a phone the Actions column was clipped
+            off the right edge with no way to reach Edit or Delete. */}
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-white/10 bg-white/[0.03]">
                 <th className="px-5 py-3 text-left font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
