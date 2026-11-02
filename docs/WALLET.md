@@ -31,7 +31,10 @@ other people's funds** (a held, withdrawable balance). We avoid it entirely:
   would be stored value → licensing).
 - **Store credit** (the existing `$1` referral perk, `store_credit_ledger`) stays as
   a **spend-on-site-only** credit — not withdrawable cash — so it is not money
-  transmission and is unaffected by this.
+  transmission and is unaffected by this. Since 2026-11-02 it is spendable only
+  on NorthEDM's own shop and avatar items, **not on FestDash vendor orders**: the
+  credit is NorthEDM's liability, and a vendor would never have been paid for the
+  credit-covered part of an order.
 
 _Not legal advice. The Stripe Connect pass-through pattern is the standard way
 platforms stay out of money-transmitter territory; confirm against Stripe's Connect

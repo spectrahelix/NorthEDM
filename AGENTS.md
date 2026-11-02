@@ -373,6 +373,10 @@ through the site; it records what moved and who confirmed it.** Full design in
   measured.
 - **Runner pool now carries `payment_method`**: a cash order shows the runner
   "collect D… at handover". Keep that in any pool-column edit.
+- **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
+  liability and the vendor would never be paid for the credit-covered part. The
+  order route ignores `useCredit`; the order page doesn't offer it. Credit stays
+  spendable on NorthEDM's shop and avatar items.
 - **Every `festdash_orders` write is the service role** except the runner's
   GPS columns. The 2026-11-01 lockdown closed end-user inserts, and the order
   route's insert was still on the customer's session — it broke under the

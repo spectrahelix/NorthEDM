@@ -79,9 +79,6 @@ export default function OrderPage() {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
-  // Store credit
-  const [creditBalanceCents, setCreditBalanceCents] = useState(0);
-  const [useCredit, setUseCredit] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<LocalMethod | null>(null);
 
   // Promo / commission code
@@ -115,10 +112,6 @@ export default function OrderPage() {
         if (match) selectVendor(match);
       }
 
-      fetch("/api/store-credit")
-        .then((r) => r.json())
-        .then((j) => setCreditBalanceCents(j.balanceCents ?? 0))
-        .catch(() => {});
     })();
   }, [supabase]);
 
@@ -151,10 +144,11 @@ export default function OrderPage() {
   const cartTotalCents = Math.round(cartTotal * 100);
   const promoDiscountCents = promo ? Math.min(promo.discountCents, cartTotalCents) : 0;
   const discountedCents = cartTotalCents - promoDiscountCents;
-  const appliedCreditCents = useCredit ? Math.min(creditBalanceCents, discountedCents) : 0;
-  const netTotalCents = discountedCents - appliedCreditCents;
+  // Store credit is not accepted on FestDash orders (it is NorthEDM's liability,
+  // and a vendor would never be paid for the credit-covered part).
+  const netTotalCents = discountedCents;
 
-  // Coordinator-region shops: local rails, local currency, no store credit.
+  // Coordinator-region shops: local rails, local currency.
   const local = isLocalRail(selectedVendor);
   const currency = selectedVendor?.currency ?? "USD";
   const money = (cents: number) => formatMoney(cents, currency);
@@ -287,7 +281,6 @@ export default function OrderPage() {
         deliveryWindow,
         items: cart.map((c) => ({ product_id: c.id, name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
-        useCredit,
         promoCode: promo?.code,
         customerName,
         paymentMethod: local ? paymentMethod : undefined,
@@ -302,7 +295,7 @@ export default function OrderPage() {
     }
 
     // If there's a balance to charge, go to Stripe's secure checkout to
-    // authorize (hold) the card. Fully credit-covered orders skip straight to
+    // authorize (hold) the card. A fully discounted order skips straight to
     // tracking.
     if (json.checkoutUrl) {
       window.location.href = json.checkoutUrl;
@@ -777,22 +770,6 @@ export default function OrderPage() {
               )}
               {promoError && <p className="text-xs text-[#FF5C3A]">{promoError}</p>}
 
-              {!local && creditBalanceCents > 0 && (
-                <label className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-neutral-300">
-                    <input
-                      type="checkbox"
-                      checked={useCredit}
-                      onChange={(e) => setUseCredit(e.target.checked)}
-                      className="h-4 w-4 accent-orange-500"
-                    />
-                    Use store credit (${(creditBalanceCents / 100).toFixed(2)} available)
-                  </span>
-                  {appliedCreditCents > 0 && (
-                    <span className="text-[#39FF14]">−${(appliedCreditCents / 100).toFixed(2)}</span>
-                  )}
-                </label>
-              )}
               <div className="flex justify-between font-semibold">
                 <span className="text-white">Total</span>
                 <span className="text-orange-400">{money(payableCents)}</span>
