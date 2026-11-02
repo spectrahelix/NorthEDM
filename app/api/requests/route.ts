@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { requireVerifiedUser } from "@/utils/authGate";
@@ -15,6 +16,8 @@ export async function POST(req: Request) {
     }
 
     const data = await req.json();
+    const shield = await shieldForm(req, data, "requests");
+    if (shield.verdict !== "ok") return shield.response;
 
     if (!data.name || !data.email || !data.serviceType || !data.description) {
       return NextResponse.json(
@@ -43,6 +46,7 @@ export async function POST(req: Request) {
       );
     }
 
+    await shield.record();
     return NextResponse.json({
       success: true,
       message: "Request submitted successfully.",

@@ -215,3 +215,53 @@ export function implausibleGmailDots(email: string): boolean {
   const base = local.split("+")[0] ?? local;
   return (base.match(/\./g) ?? []).length >= 4;
 }
+
+/**
+ * One shield for every form (2026-11-02). Honeypot, time-to-submit, the
+ * client-hints contradiction and the per-IP success throttle, in that order —
+ * the same four checks /api/vendors has had since 2026-10, now callable from
+ * one place so no route grows its own copy.
+ *
+ * Verdicts: `silent` returns a success-shaped 200 (the bot learns nothing and
+ * does not retry); `throttled` returns a 429 the person can read; `ok` hands
+ * back `record()`, to be called only once the work actually succeeded, so a
+ * caller being refused by a bug of ours is never locked out for retrying.
+ *
+ * Honeypot and timing are judged only when the client sent them — an absent
+ * value never rejects, or a page cached from before the field existed would
+ * turn away a real person.
+ */
+export type Shield =
+  | { verdict: "silent" | "throttled"; response: Response }
+  | { verdict: "ok"; record: () => Promise<void> };
+
+export async function shieldForm(
+  req: Request,
+  data: Record<string, unknown> | null | undefined,
+  bucket: string,
+  opts: { max?: number; windowMs?: number } = {}
+): Promise<Shield> {
+  const { NextResponse } = await import("next/server");
+  const silent = () => NextResponse.json({ success: true, ok: true });
+  const d = data ?? {};
+  if (typeof d.company_website === "string" && d.company_website.trim() !== "") {
+    return { verdict: "silent", response: silent() };
+  }
+  const elapsed = typeof d.elapsedMs === "number" ? d.elapsedMs : Number(d.elapsedMs);
+  if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed < MIN_ELAPSED_MS) {
+    return { verdict: "silent", response: silent() };
+  }
+  if (clientContradictsItself(req.headers)) {
+    return { verdict: "silent", response: silent() };
+  }
+  const ip = clientIp(req.headers);
+  const max = opts.max ?? 5;
+  const windowMs = opts.windowMs ?? 60 * 60 * 1000;
+  if (await overRateLimit(bucket, ip, { max, windowMs })) {
+    return {
+      verdict: "throttled",
+      response: NextResponse.json({ success: false, error: "Too many submissions from this connection. Please try again later." }, { status: 429 }),
+    };
+  }
+  return { verdict: "ok", record: () => recordAttempt(bucket, ip) };
+}

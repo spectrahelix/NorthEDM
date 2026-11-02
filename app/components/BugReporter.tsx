@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 // Rolling buffer of real JS errors on the page (attached once), so a report can
 // include the actual crash even if it happened before the user opened the form.
@@ -29,6 +30,7 @@ const Req = () => <span className="text-[#FF5C3A]" aria-hidden="true"> *</span>;
 
 export function BugReporter() {
   const [open, setOpen] = useState(false);
+  const { shield, honeypot } = useFormShield();
   const [form, setForm] = useState({
     title: "", pageManual: "", description: "", doingWhat: "",
     reporterName: "", contactEmail: "", contactPhone: "",
@@ -85,6 +87,9 @@ export function BugReporter() {
 
     setBusy(true);
     const fd = new FormData();
+    const sh = shield();
+    fd.set("company_website", sh.company_website);
+    fd.set("elapsedMs", String(sh.elapsedMs));
     fd.set("title", form.title);
     fd.set("pageManual", form.pageManual);
     fd.set("description", form.description);
@@ -229,6 +234,7 @@ export function BugReporter() {
 
                 <div className="mt-5 flex justify-end gap-2">
                   <button onClick={reset} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-400 hover:text-white">Cancel</button>
+                  <Honeypot {...honeypot} />
                   <button onClick={submit} disabled={busy} className="rounded-xl bg-[#FF5C3A] px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
                     {busy ? "Sending…" : "Send report"}
                   </button>

@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
   const body = await req.json().catch(() => ({}));
+  const shield = await shieldForm(req, body, "feedback");
+  if (shield.verdict !== "ok") return shield.response;
   const message = String(body.message || "").trim();
   const category = String(body.category || "").trim().slice(0, 40);
   const email = String(body.email || "").trim().slice(0, 200);
@@ -53,5 +56,6 @@ export async function POST(req: Request) {
   }
 
   await notifyFeedback({ message, category, email });
-  return NextResponse.json({ ok: true });
+await shield.record();
+    return NextResponse.json({ ok: true });
 }

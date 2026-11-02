@@ -5,6 +5,7 @@ import { BackBar } from "@/app/components/BackBar";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 type Order = {
   id: string;
   customer_name: string | null;
@@ -32,6 +33,7 @@ type Driver = { id: string; display_name: string; phone: string | null; vehicle:
 export default function DriverPage() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
+  const { shield, honeypot } = useFormShield();
   const [needAuth, setNeedAuth] = useState(false);
   const [driver, setDriver] = useState<Driver | null>(null);
 
@@ -141,7 +143,7 @@ export default function DriverPage() {
     const res = await fetch("/api/festdash/driver", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, phone, vehicle }),
+      body: JSON.stringify({ displayName, phone, vehicle, ...shield() }),
     });
     const j = await res.json();
     if (res.ok) {
@@ -225,6 +227,7 @@ export default function DriverPage() {
           <p className="mb-8 text-neutral-500">Register once, then claim deliveries at any festival.</p>
 
           <form onSubmit={register} className="space-y-5">
+<Honeypot {...honeypot} />
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Name *</label>
               <input

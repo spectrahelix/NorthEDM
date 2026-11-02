@@ -52,10 +52,15 @@ export default function PromoterPayoutsPage() {
   }
   useEffect(() => { load(); }, []);
 
-  async function release(id: string) {
+  async function release(id: string, action?: "mark_paid") {
+    let note: string | null = null;
+    if (action === "mark_paid") {
+      note = prompt("Mark this commission as paid outside Stripe (e.g. sent by Remitly). Reference or note:");
+      if (note === null) return;
+    }
     setBusy(id); setError("");
     const res = await fetch("/api/admin/commissions", {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }),
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, action, note }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(null);
@@ -155,6 +160,16 @@ export default function PromoterPayoutsPage() {
                         className="rounded-lg bg-[#39FF14] px-3 py-1.5 text-xs font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
                       >
                         {busy === r.id ? "Paying…" : "Pay now"}
+                      </button>
+                    )}
+                    {ready && (
+                      <button
+                        onClick={() => release(r.id, "mark_paid")}
+                        disabled={busy === r.id}
+                        title="You sent this yourself (Remitly, cash). Records it as paid without moving money."
+                        className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-neutral-200 transition hover:bg-white/5 disabled:opacity-50"
+                      >
+                        Paid by Remitly
                       </button>
                     )}
                   </div>

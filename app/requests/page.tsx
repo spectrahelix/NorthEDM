@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 export default function RequestsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { shield, honeypot } = useFormShield();
   const [message, setMessage] = useState("");
 
   return (
@@ -31,6 +33,7 @@ export default function RequestsPage() {
             const formData = new FormData(form);
 
             const data = {
+              ...shield(),
               name: formData.get("name"),
               email: formData.get("email"),
               serviceType: formData.get("serviceType"),
@@ -66,6 +69,7 @@ export default function RequestsPage() {
           }}
           className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 space-y-4"
         >
+<Honeypot {...honeypot} />
           <div>
             <label className="mb-2 block text-sm text-neutral-300">
               Full Name

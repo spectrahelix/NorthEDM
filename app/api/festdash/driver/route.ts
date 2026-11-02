@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
@@ -23,7 +24,10 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { displayName, phone, vehicle } = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const { displayName, phone, vehicle } = body;
+  const shield = await shieldForm(req, body, "driver-register");
+  if (shield.verdict !== "ok") return shield.response;
   if (!displayName?.trim()) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
@@ -56,5 +60,6 @@ export async function POST(req: Request) {
   if (!existing) {
     await notifyNewRunner({ name: data.display_name, email: user.email ?? null, vehicle: data.vehicle ?? null });
   }
+  await shield.record();
   return NextResponse.json({ driver: data });
 }

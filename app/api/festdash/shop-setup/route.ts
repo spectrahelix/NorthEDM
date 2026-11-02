@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { requireVerifiedUser } from "@/utils/authGate";
@@ -104,6 +105,8 @@ export async function POST(req: Request) {
   if (existing) return NextResponse.json({ error: "You already have a shop on file.", vendorId: existing.id }, { status: 409 });
 
   const body = await req.json().catch(() => ({}));
+  const shield = await shieldForm(req, body, "shop-setup");
+  if (shield.verdict !== "ok") return shield.response;
   const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
   const name = str(body.shopName, 80);
   const category = str(body.category, 40);
@@ -159,6 +162,7 @@ export async function POST(req: Request) {
     detail: "Approve in /admin/vendors — approval also enrols them on FestDash; they go live when their coordinator logs the first fee.",
   });
 
+  await shield.record();
   return NextResponse.json({ vendor });
 }
 

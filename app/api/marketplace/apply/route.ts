@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { notifyMarketplaceApplication } from "@/utils/alerts";
@@ -10,6 +11,8 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
+  const shield = await shieldForm(req, body, "marketplace-apply");
+  if (shield.verdict !== "ok") return shield.response;
   const businessName = String(body.businessName || "").trim();
   if (businessName.length < 2) {
     return NextResponse.json({ error: "Please enter your business name." }, { status: 400 });
@@ -27,5 +30,6 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await notifyMarketplaceApplication({ businessName, email: user.email ?? undefined });
-  return NextResponse.json({ ok: true });
+await shield.record();
+    return NextResponse.json({ ok: true });
 }

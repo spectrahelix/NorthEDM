@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -26,6 +27,8 @@ export async function POST(req: Request) {
 
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  const shield = await shieldForm(req, { company_website: form.get("company_website"), elapsedMs: Number(form.get("elapsedMs")) }, "bug-report");
+  if (shield.verdict !== "ok") return shield.response;
 
   const title = String(form.get("title") || "").trim().slice(0, 200);
   const pageManual = String(form.get("pageManual") || "").trim().slice(0, 300);
@@ -176,5 +179,6 @@ export async function POST(req: Request) {
     email: email || undefined,
   });
 
+  await shield.record();
   return NextResponse.json({ ok: true, githubIssueUrl });
 }
