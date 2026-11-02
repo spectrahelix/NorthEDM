@@ -54,8 +54,8 @@ export default function PursePage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [wallets, setWallets] = useState<WalletForm>({ wave_number: "", qmoney_number: "", afrimoney_number: "", whatsapp_number: "", remitly_name: "" });
-  const [fee, setFee] = useState<{ vendorId: string; months: number; collectedAmount: string; collectedCurrency: string; method: LocalMethod; reference: string }>(
-    { vendorId: "", months: 1, collectedAmount: "", collectedCurrency: "GMD", method: "wave", reference: "" }
+  const [fee, setFee] = useState<{ vendorId: string; kind: "festdash" | "store"; months: number; collectedAmount: string; collectedCurrency: string; method: LocalMethod; reference: string }>(
+    { vendorId: "", kind: "festdash", months: 1, collectedAmount: "", collectedCurrency: "GMD", method: "wave", reference: "" }
   );
   const [send, setSend] = useState({ amount: "", currency: "GMD", method: "remitly", reference: "", note: "" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -252,6 +252,13 @@ export default function PursePage() {
                   {shops.map((v) => <option key={v.id} value={v.id}>{v.name ?? `Shop #${v.id}`}</option>)}
                 </select>
               </div>
+              <div className="sm:col-span-2">
+                <span className={label}>What for</span>
+                <select value={fee.kind} onChange={(e) => setFee({ ...fee, kind: e.target.value as "festdash" | "store" })} className={input}>
+                  <option value="festdash">FestDash listing (monthly)</option>
+                  <option value="store">Embedded online store (monthly)</option>
+                </select>
+              </div>
               <div>
                 <span className={label}>Months</span>
                 <input type="number" min={1} max={12} value={fee.months} onChange={(e) => setFee({ ...fee, months: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} className={input} />
@@ -277,7 +284,7 @@ export default function PursePage() {
                 <input value={fee.reference} onChange={(e) => setFee({ ...fee, reference: e.target.value })} placeholder="wallet transaction ID or receipt no." className={input} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-neutral-500">Books {formatMoney(feeCents, "USD")} ({feeMonths} month{feeMonths === 1 ? "" : "s"}) and extends the shop&apos;s listing.</p>
+            <p className="mt-2 text-xs text-neutral-500">Books {formatMoney(feeCents, "USD")} ({feeMonths} month{feeMonths === 1 ? "" : "s"}) and {fee.kind === "store" ? "switches the shop&apos;s online store on" : "extends the shop&apos;s listing"}.</p>
             <button onClick={logFee} disabled={busy === "fee"} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400 disabled:opacity-50">{busy === "fee" ? "Logging…" : "Log fee"}</button>
           </div>
         </div>

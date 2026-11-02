@@ -17,6 +17,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const vendorId = Number(body.vendorId);
   const months = Math.min(Math.max(Math.floor(Number(body.months) || 1), 1), 12);
+  // What the fee is for: the FestDash listing (default) or the shop's embedded store.
+  const kind: "festdash" | "store" = body.kind === "store" ? "store" : "festdash";
   const method = isLocalMethod(body.method) ? body.method : "cash";
   const collectedAmount = Number(body.collectedAmount);
   const collectedCurrency = typeof body.collectedCurrency === "string" ? body.collectedCurrency.toUpperCase().slice(0, 3) : null;
@@ -32,7 +34,7 @@ export async function POST(req: Request) {
   // The new period starts the day after the current paid-through date, or
   // today if the shop has lapsed / is new. Months are calendar months.
   const today = new Date().toISOString().slice(0, 10);
-  const { data: last } = await admin.from("vendor_subscriptions").select("period_end").eq("vendor_id", vendorId).order("period_end", { ascending: false }).limit(1).maybeSingle();
+  const { data: last } = await admin.from("vendor_subscriptions").select("period_end").eq("kind", kind).eq("vendor_id", vendorId).order("period_end", { ascending: false }).limit(1).maybeSingle();
   const startFrom = last && last.period_end >= today ? addDays(last.period_end, 1) : today;
   const start = typeof body.periodStart === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.periodStart) ? body.periodStart : startFrom;
   const end = addDays(addMonths(start, months), -1);
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
   const split = splitSubscription(feeCents, settings);
 
   const { data: sub, error } = await admin.from("vendor_subscriptions").insert({
-    vendor_id: vendorId, coordinator_user_id: user.id, period_start: start, period_end: end,
+    kind, vendor_id: vendorId, coordinator_user_id: user.id, period_start: start, period_end: end,
     fee_cents: feeCents, collected_amount: Number.isFinite(collectedAmount) ? collectedAmount : null,
     collected_currency: collectedCurrency, method, reference, note,
   }).select("id, period_start, period_end, fee_cents").single();
@@ -55,8 +57,16 @@ export async function POST(req: Request) {
   await admin.from("coordinator_ledger").insert({
     kind: "subscription", coordinator_user_id: user.id, vendor_id: vendorId, subscription_id: sub.id,
     currency: "USD", gross_cents: feeCents, shop_cents: 0, owner_cents: split.owner, coordinator_cents: split.coordinator,
-    method, reference, note: note ?? `${months} month${months === 1 ? "" : "s"} · ${start} → ${end}`, created_by: user.id,
+    method, reference, note: note ?? `${kind === "store" ? "store fee · " : ""}${months} month${months === 1 ? "" : "s"} · ${start} → ${end}`, created_by: user.id,
   });
+
+  // A store fee switches the shop's embedded store(s) on; the daily job pauses
+  // them again when the period lapses.
+  if (kind === "store") {
+    const { data: links } = await admin.from("store_vendors").select("store_id").eq("vendor_id", vendorId);
+    const ids = (links ?? []).map((l) => l.store_id as string);
+    if (ids.length) await admin.from("stores").update({ billing_status: "active" }).in("id", ids);
+  }
 
   // Tell the shop. The first fee (or one after a lapse) is the moment they go
   // live; a fee logged while still current just extends the paid-through date.
@@ -68,9 +78,13 @@ export async function POST(req: Request) {
     const by = me.display_name ?? "Your coordinator";
     const shopName = shop.name ?? "Your shop";
     await Promise.allSettled([
-      emailUser(to, wasLive ? `Listing fee received — on FestDash through ${end}` : `${shopName} is live on FestDash`, {
-        heading: wasLive ? "Fee received" : `${shopName} is live`,
-        intro: wasLive
+      emailUser(to, kind === "store"
+        ? `Store subscription received — your online store is on through ${end}`
+        : wasLive ? `Listing fee received — on FestDash through ${end}` : `${shopName} is live on FestDash`, {
+        heading: kind === "store" ? "Online store active" : wasLive ? "Fee received" : `${shopName} is live`,
+        intro: kind === "store"
+          ? `${by} logged your store subscription. Your embedded online store can take orders through ${end}.`
+          : wasLive
           ? `${by} logged your listing fee. Your shop stays on FestDash through ${end}.`
           : `${by} logged your first listing fee. Your shop is now on FestDash and customers in your area can order, through ${end}.`,
         rows: [["Paid through", end], ["Logged by", by]],

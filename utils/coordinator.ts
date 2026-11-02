@@ -64,6 +64,7 @@ export async function activeSubscription(admin: SupabaseClient, vendorId: number
   const { data } = await admin
     .from("vendor_subscriptions")
     .select("id, period_start, period_end")
+    .eq("kind", "festdash")
     .eq("vendor_id", vendorId)
     .gte("period_end", today)
     .order("period_end", { ascending: false })

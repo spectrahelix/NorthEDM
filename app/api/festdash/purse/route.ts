@@ -26,7 +26,7 @@ export async function GET() {
 
   const [{ data: subs }, { data: fd }, { data: awaiting }, { data: ledger }] = await Promise.all([
     vendorIds.length
-      ? admin.from("vendor_subscriptions").select("vendor_id, period_start, period_end, created_at").in("vendor_id", vendorIds).order("period_end", { ascending: false })
+      ? admin.from("vendor_subscriptions").select("vendor_id, period_start, period_end, created_at").eq("kind", "festdash").in("vendor_id", vendorIds).order("period_end", { ascending: false })
       : Promise.resolve({ data: [] as { vendor_id: number; period_start: string; period_end: string; created_at: string }[] }),
     vendorIds.length
       ? admin.from("festdash_vendors").select("vendor_id, is_active").in("vendor_id", vendorIds)

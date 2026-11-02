@@ -71,7 +71,7 @@ export async function GET(req: Request) {
       vendor.coordinator_user_id
         ? admin.from("festdash_promoters").select("display_name, region, whatsapp_number").eq("user_id", vendor.coordinator_user_id).maybeSingle()
         : Promise.resolve({ data: null }),
-      admin.from("vendor_subscriptions").select("period_end").eq("vendor_id", vendor.id).order("period_end", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("vendor_subscriptions").select("period_end").eq("kind", "festdash").eq("vendor_id", vendor.id).order("period_end", { ascending: false }).limit(1).maybeSingle(),
       admin.from("festdash_vendors").select("is_active").eq("vendor_id", vendor.id).maybeSingle(),
       admin.from("store_vendors").select("stores(slug, active)").eq("vendor_id", vendor.id).limit(1).maybeSingle(),
     ]);
