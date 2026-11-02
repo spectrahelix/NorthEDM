@@ -6,6 +6,7 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, WALLET_METHODS, type WalletMethod } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
+import { WalletOnlyNote } from "@/app/components/festdash/PaymentPaths";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
@@ -176,6 +177,7 @@ export function StoreCart({
           {open && wallet && (
             <div className="mx-auto mt-3 max-w-6xl border-t border-white/10 pt-3">
               <p className="mb-2 font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">How will you pay?</p>
+              <WalletOnlyNote className="mb-2" />
               <div className="grid gap-2 sm:grid-cols-3">
                 {walletOptions.map((m) => (
                   <button key={m} type="button" onClick={() => { setMethod(m); setError(""); }}

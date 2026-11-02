@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { currentShow, type VendorShow } from "@/utils/supabase/user-profiles";
+import { PaymentPaths } from "@/app/components/festdash/PaymentPaths";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { festdashListingActive } from "@/utils/billing";
 
@@ -286,6 +287,7 @@ export default async function FestDashPage() {
             </div>
           ))}
         </div>
+        <PaymentPaths audience="customer" className="mt-10" />
       </section>
 
       {/* Active FestDash vendors. The section and its button stay even when

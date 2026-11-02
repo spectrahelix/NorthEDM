@@ -7,6 +7,7 @@ import { ProductThumb } from "@/app/components/ProductThumb";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
+import { WalletOnlyNote } from "@/app/components/festdash/PaymentPaths";
 import { METHOD_LABEL, RUNNER_FEE_CHOICES_BPS, WALLET_METHODS, isLocalRail, minRunnerFeeCents, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
@@ -832,6 +833,7 @@ export default function OrderPage() {
             <>
               <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
+                <WalletOnlyNote className="mb-3" />
                 <div className="grid gap-2 sm:grid-cols-2">
                   {walletOptions.map((m) => (
                     <button

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BackBar } from "@/app/components/BackBar";
 import { formatMoney } from "@/utils/money";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
+import { PaymentPaths } from "@/app/components/festdash/PaymentPaths";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 // The shop owner's walkthrough for a coordinator region (The Gambia). One page
@@ -152,6 +153,7 @@ export default function ShopSetupPage() {
           </div>
           <PaymentTimingNote all className="mt-4" />
         </div>
+        <PaymentPaths audience="shop" className="mt-4" />
 
         {/* Step 1 — account */}
         <div className={card}>
