@@ -179,8 +179,8 @@ export function StoreCart({
               <div className="grid gap-2 sm:grid-cols-3">
                 <button type="button" onClick={() => { setMethod("card"); setError(""); }}
                   className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === "card" ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
-                  <span className="font-semibold">Card (any country)</span>
-                  <span className="block text-xs text-neutral-500">Secure checkout, charged in {currency}</span>
+                  <span className="font-semibold">Card · Google Pay · Apple Pay</span>
+                  <span className="block text-xs text-neutral-500">Any card, or Google Pay / Apple Pay; secure checkout, charged in {currency}</span>
                 </button>
                 {walletOptions.map((m) => (
                   <button key={m} type="button" onClick={() => { setMethod(m); setError(""); }}

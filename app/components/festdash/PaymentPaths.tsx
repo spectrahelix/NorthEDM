@@ -13,13 +13,13 @@ const PATHS = [
     shop: "Your natural customers. They pay your coordinator by wallet; you're paid your share in dalasi.",
   },
   {
-    have: "Both — a Gambian wallet and a US or international card",
+    have: "Both — a Gambian wallet and a card (or Google Pay / Apple Pay)",
     customer: "Your choice at a Gambian shop: wallet, or card charged in dalasi. Card at US shops and NorthEDM merch.",
     shop: "They can pay you either way. A card sale is charged in dalasi and your share reaches you through your coordinator.",
   },
   {
-    have: "Only a US or international card",
-    customer: "Everything is open to you. At a Gambian shop pick Card; it's charged in dalasi and held until your order is delivered. Your bank may add a small foreign-currency fee.",
+    have: "Only a card, Google Pay or Apple Pay",
+    customer: "Everything is open to you. At a Gambian shop pick Card, Google Pay or Apple Pay; it's charged in dalasi and held until your order is delivered. Your bank may add a small foreign-currency fee.",
     shop: "Tourists and visiting family can buy from you by card. The charge is in dalasi; your share reaches you through your coordinator.",
   },
 ];
@@ -33,7 +33,7 @@ export function PaymentPaths({ audience, className = "" }: { audience: "customer
       <p className="mt-1 text-sm text-neutral-400">
         {audience === "customer"
           ? "How you pay depends on the shop. Here's what each situation opens up."
-          : "A Gambian shop sells for Wave, QMoney, Afrimoney and card, all in dalasi. What that means for each kind of customer:"}
+          : "A Gambian shop sells for Wave, QMoney, Afrimoney and card (Google Pay / Apple Pay too), all in dalasi. What that means for each kind of customer:"}
       </p>
       <ul className="mt-4 space-y-3">
         {PATHS.map((p) => (
