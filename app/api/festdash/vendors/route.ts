@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { serviceClient } from "@/utils/coordinator";
 import { isLocalRail } from "@/utils/gambiaPay";
+import { festdashListingActive } from "@/utils/billing";
 
 type V = {
   id: number; name: string; category: string; description: string;
@@ -27,9 +28,13 @@ export async function GET() {
     .filter((v): v is V => !!v);
 
   const local = base.filter((v) => isLocalRail(v));
-  if (local.length === 0) return NextResponse.json({ vendors: base, fallback: false });
-
   const admin = serviceClient();
+  // Card-rail vendors are listed only while their monthly FestDash listing
+  // (Stripe subscription) is active — the US counterpart of the wallet-rail fee gate.
+  const cardIds = base.filter((v) => !isLocalRail(v)).map((v) => v.id);
+  const listed = await festdashListingActive(admin, cardIds);
+  if (local.length === 0) return NextResponse.json({ vendors: base.filter((v) => listed.has(v.id)), fallback: false });
+
   const today = new Date().toISOString().slice(0, 10);
   const coordIds = [...new Set(local.map((v) => v.coordinator_user_id as string))];
   const [{ data: subs }, { data: purses }] = await Promise.all([
@@ -42,7 +47,7 @@ export async function GET() {
   const purseBy = new Map((purses ?? []).map((p) => [p.user_id as string, p]));
 
   const vendors = base
-    .filter((v) => !isLocalRail(v) || paid.has(v.id))
+    .filter((v) => (isLocalRail(v) ? paid.has(v.id) : listed.has(v.id)))
     .map((v) => {
       if (!isLocalRail(v) || !v.coordinator_user_id) return v;
       const p = purseBy.get(v.coordinator_user_id);

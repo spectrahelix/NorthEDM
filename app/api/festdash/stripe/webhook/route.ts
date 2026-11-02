@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
+import { handleSubscriptionEvent } from "@/utils/billing";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
 // completed Checkout means the card is AUTHORIZED (funds held in escrow), not
@@ -41,6 +42,10 @@ export async function POST(req: Request) {
   }
 
   const db = admin();
+
+  // Monthly subscriptions (FestDash listing, store fee): mirrored into
+  // stripe_subscriptions, store billing_status flipped, promoter share booked.
+  if (await handleSubscriptionEvent(db, event)) return NextResponse.json({ received: true });
 
   if (event.type === "checkout.session.completed" && event.data.object &&
       (event.data.object as Stripe.Checkout.Session).metadata?.kind === "service_quote") {

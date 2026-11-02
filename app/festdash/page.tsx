@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { currentShow, type VendorShow } from "@/utils/supabase/user-profiles";
 import { isLocalRail } from "@/utils/gambiaPay";
+import { festdashListingActive } from "@/utils/billing";
 
 export const metadata = {
   title: "FestDash / FestEats — Go-Anywhere Local Delivery Network",
@@ -79,6 +80,12 @@ export default async function FestDashPage() {
     const { data: subs } = await admin.from("vendor_subscriptions").select("vendor_id").in("vendor_id", coordVendorIds).gte("period_end", today);
     const paid = new Set((subs ?? []).map((s) => Number(s.vendor_id)));
     for (const vid of coordVendorIds) if (!paid.has(vid)) visible.delete(vid);
+  }
+  // Card-rail vendors need an active monthly FestDash listing (Stripe subscription).
+  const cardIds = (vRows.data ?? []).filter((v) => !isLocalRail(v)).map((v) => v.id);
+  if (cardIds.length) {
+    const listed = await festdashListingActive(admin, cardIds);
+    for (const vid of cardIds) if (!listed.has(vid)) visible.delete(vid);
   }
   const activeVendors = (fdVendors ?? []).filter((v) => visible.has(v.vendor_id)).map((v) => {
     const shows = hideById.get(v.user_id) ? [] : (showsByUser.get(v.user_id) ?? []);
