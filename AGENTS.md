@@ -432,6 +432,17 @@ through the site; it records what moved and who confirmed it.** Full design in
   (`vendor_subscriptions.kind` = `store`); it sets the shop's stores
   `billing_status = active`, and the daily reminders job sets `past_due` once
   the period lapses. Every listing-period reader filters `kind = 'festdash'`.
+  **Card on a Gambian shop (2026-11-03).** A wallet-rail shop also takes any
+  card, on FestDash and in its store, charged in the shop's currency to
+  NorthEDM's Stripe with no destination transfer (Stripe can't reach a Gambian
+  shop or runner). At delivery (FestDash) or on the paid webhook (store) the
+  80/10/10 plus the runner fee is booked on `coordinator_ledger` with
+  `collected_by = 'owner'`: the owner owes shop + coordinator + runner shares
+  to the coordinator, who disburses locally. The owner records each Remitly
+  payment with **Sent by Remitly** in /admin/festdash/coordinators (`kind =
+  'payout'`); the page shows both directions. `payRunnerFee` and the Connect
+  commission are skipped for these orders. Store sale rows use
+  `store_order_id`, never `order_id` (which is a FestDash FK).
   **Store checkout follows the shop's rail** (`utils/storeRail.ts`): a store
   whose operator is a wallet-rail vendor sells for Wave / QMoney / Afrimoney in
   the shop's currency, paid to the coordinator; the order waits in

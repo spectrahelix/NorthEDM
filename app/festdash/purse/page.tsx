@@ -29,7 +29,7 @@ type Awaiting = {
 };
 type LedgerRow = {
   id: string; kind: string; vendor_name: string | null; currency: string; gross_cents: number; shop_cents: number;
-  owner_cents: number; coordinator_cents: number; method: string | null; reference: string | null; note: string | null;
+  owner_cents: number; coordinator_cents: number; runner_cents?: number | null; collected_by?: string | null; method: string | null; reference: string | null; note: string | null;
   created_at: string; received_at: string | null; received_usd_cents: number | null;
 };
 type Totals = Record<string, { earned: number; owner_share: number; sent: number; owed: number }>;
@@ -343,7 +343,11 @@ export default function PursePage() {
                     ) : (
                       <>
                         <p className="text-white">{formatMoney(r.gross_cents, r.currency)}</p>
-                        <p className="text-neutral-500">you {formatMoney(r.coordinator_cents, r.currency)} · NorthEDM {formatMoney(r.owner_cents, r.currency)}{r.kind === "sale" ? ` · shop ${formatMoney(r.shop_cents, r.currency)}` : ""}</p>
+                        <p className="text-neutral-500">you {formatMoney(r.coordinator_cents, r.currency)} · NorthEDM {formatMoney(r.owner_cents, r.currency)}{r.kind === "sale" ? ` · shop ${formatMoney(r.shop_cents, r.currency)}` : ""}{r.kind === "sale" && Number(r.runner_cents ?? 0) > 0 ? ` · runner ${formatMoney(Number(r.runner_cents), r.currency)}` : ""}</p>
+                        {r.collected_by === "owner" && r.kind === "sale" && (
+                          <p className="text-orange-300">Paid by card to NorthEDM — the shop&apos;s share, yours and the runner&apos;s come to you by Remitly; pay the shop and runner from it.</p>
+                        )}
+                        {r.kind === "payout" && <p className="text-green-300">NorthEDM sent you {formatMoney(r.gross_cents, r.currency)} by Remitly for card sales.</p>}
                       </>
                     )}
                   </div>

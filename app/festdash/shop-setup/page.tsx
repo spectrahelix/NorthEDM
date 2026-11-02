@@ -149,7 +149,7 @@ export default function ShopSetupPage() {
           <div className="grid gap-3 sm:grid-cols-3 text-sm">
             <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Listing fee</p><p className="mt-1 text-white"><span className="font-semibold">{formatMoney(s.subscription_fee_cents, "USD")}</span> a month, paid in dalasi to your coordinator</p></div>
             <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Each sale</p><p className="mt-1 text-white">You keep <span className="font-semibold">{shopPct}%</span> · coordinator {s.sale_coordinator_bps / 100}% · NorthEDM {s.sale_owner_bps / 100}%</p></div>
-            <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Customers pay by</p><p className="mt-1 text-white">Wave · QMoney · Afrimoney</p></div>
+            <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Customers pay by</p><p className="mt-1 text-white">Wave · QMoney · Afrimoney · card</p></div>
           </div>
           <PaymentTimingNote all className="mt-4" />
         </div>

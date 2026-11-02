@@ -5,6 +5,7 @@ import { getStripe } from "@/utils/stripe";
 import { checkWrite } from "@/utils/dbWrite";
 
 import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
+import { isLocalRail } from "@/utils/gambiaPay";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
 import { payRunnerFee } from "@/utils/runnerPay";
 // Allowed status transitions — orders can't skip steps or move backwards.
@@ -144,6 +145,20 @@ export async function PATCH(
               .eq("id", id),
             { critical: true }
           );
+          const { data: vend } = await admin
+            .from("vendors").select("coordinator_user_id, user_id, currency").eq("id", order.vendor_id).maybeSingle();
+          if (vend && isLocalRail(vend)) {
+            // Card on a Gambian shop: the whole charge sits with NorthEDM.
+            // Stripe can't reach the shop or the runner, so book the 80/10/10
+            // plus the runner fee as owed BY the owner to the coordinator, who
+            // pays the shop and runner locally. Settled by Remitly from
+            // /admin/festdash/coordinators ("Sent by Remitly").
+            const settings = await loadSplitSettings(admin);
+            await recordSaleSplit(admin, {
+              id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0),
+              currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: full.stripe_payment_intent, collected_by: "owner",
+            }, vend.coordinator_user_id as string, settings, user.id);
+          } else {
           // The runner's fee, in full, to the runner's payout account (or the
           // daily cron pays it once they set payouts up).
           await payRunnerFee(admin, id);
@@ -153,8 +168,6 @@ export async function PATCH(
           // cron through Stripe Connect once the refund window closes — the
           // same path promoter commissions take, idempotent per order. A vendor
           // with no coordinator leaves that share with NorthEDM.
-          const { data: vend } = await admin
-            .from("vendors").select("coordinator_user_id, user_id").eq("id", order.vendor_id).maybeSingle();
           if (vend?.coordinator_user_id) {
             const splits = await loadSplitSettings(admin);
             const { holdDays } = await commissionTerms(admin, "festdash_order");
@@ -167,6 +180,7 @@ export async function PATCH(
               rateBps: splits.sale_coordinator_bps,
               holdDays,
             });
+          }
           }
         } else {
           await stripe.paymentIntents.cancel(full.stripe_payment_intent);

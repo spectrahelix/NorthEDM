@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { isLocalRail } from "@/utils/gambiaPay";
+import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
@@ -157,9 +159,19 @@ export async function POST(req: Request) {
         const { data: st } = await db.from("stores").select("owner_user_id").eq("id", order.store_id).maybeSingle();
         if (st?.owner_user_id) {
           const { data: op } = await db.from("user_profiles").select("vendor_id").eq("id", st.owner_user_id).maybeSingle();
-          const { data: vend } = op?.vendor_id ? await db.from("vendors").select("coordinator_user_id").eq("id", op.vendor_id).maybeSingle() : { data: null };
+          const { data: vend } = op?.vendor_id ? await db.from("vendors").select("id, coordinator_user_id, currency").eq("id", op.vendor_id).maybeSingle() : { data: null };
           const promoter = (vend?.coordinator_user_id as string | null) ?? null;
-          if (promoter) {
+          if (vend && isLocalRail(vend) && promoter) {
+            // Card on a Gambian shop's store: the money is with NorthEDM, so the
+            // shop's 80% and the coordinator's 10% are owed BY the owner and
+            // sent to the coordinator to disburse. No Connect commission.
+            const settings = await loadSplitSettings(db);
+            await recordSaleSplit(db, {
+              id: String(order.id), vendor_id: Number(vend.id), total_cents: Number(order.subtotal_cents ?? order.total_cents), runner_fee_cents: 0,
+              currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: (session.payment_intent as string) ?? null,
+              source: "store", collected_by: "owner",
+            }, promoter, settings, null);
+          } else if (promoter) {
             const { data: prof } = await db.from("user_profiles").select("role").eq("id", promoter).maybeSingle();
             if (prof?.role !== "archon") {
               const { data: split } = await db.from("coordinator_program_settings").select("sale_coordinator_bps").eq("id", 1).maybeSingle();

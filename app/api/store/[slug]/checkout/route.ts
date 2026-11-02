@@ -102,10 +102,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   // Afrimoney paid to the coordinator, confirmed in the purse console before
   // the order counts as paid — the same flow as a FestDash wallet order.
   const rail = await storeRail(admin, (store.owner_user_id as string | null) ?? null);
-  if (rail) {
+  if (rail && body.paymentMethod !== "card") {
     if (!user) return NextResponse.json({ error: "Sign in to pay by wallet, so we can match your payment to you." }, { status: 401 });
     const method = body.paymentMethod;
-    if (!isWalletMethod(method)) return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney or Afrimoney." }, { status: 400 });
+    if (!isWalletMethod(method)) return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney, Afrimoney or card." }, { status: 400 });
     const payTo = walletNumberFor(rail.numbers, method);
     if (!payTo) return NextResponse.json({ error: `${method} isn't set up for this store yet — pick another way to pay.` }, { status: 400 });
     const { data: wo, error: woErr } = await admin.from("store_orders").insert({
@@ -127,8 +127,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     operator_fee_cents: operatorFee,
     total_cents: subtotal,
     status: "pending",
+    // Card on a wallet-rail store: priced and charged in the shop's currency;
+    // the webhook books the split as owed by the owner (collected_by = 'owner').
+    ...(rail ? { currency: rail.currency, vendor_id: rail.vendorId, payment_method: "card" } : {}),
   }).select("id").single();
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
+  if (rail) for (const li of lineItems) if (li.price_data) li.price_data.currency = rail.currency.toLowerCase();
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -137,7 +141,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     line_items: lineItems,
     success_url: `${origin}/${store.slug}?order=${order.id}`,
     cancel_url: `${origin}/${store.slug}`,
-    shipping_address_collection: { allowed_countries: ["US"] },
+    shipping_address_collection: { allowed_countries: rail ? ["GM", "US", "GB", "SN"] : ["US"] },
     customer_email: user?.email ?? undefined,
     metadata: { kind: "store_order", store_order_id: order.id, store_slug: store.slug },
     client_reference_id: order.id,
