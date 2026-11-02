@@ -9,9 +9,10 @@ import { recordCommission, voidCommission, commissionTerms } from "@/utils/commi
 // captured. On that event we promote the order out of "awaiting_payment" into
 // the vendor queue ("pending") and record the PaymentIntent for later capture.
 //
-// Endpoint to register in Stripe: /api/festdash/stripe/webhook
-// Events: checkout.session.completed, payment_intent.canceled,
-//         payment_intent.payment_failed
+// Endpoint registered in Stripe: https://www.northedm.com/api/festdash/stripe/webhook
+// (the www host — the apex answers with a redirect, which Stripe counts as a
+// failed delivery). Events: checkout.session.completed, payment_intent.canceled,
+// payment_intent.payment_failed, charge.refunded, charge.dispute.created.
 export const dynamic = "force-dynamic";
 
 function admin() {
