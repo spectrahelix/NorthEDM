@@ -32,7 +32,6 @@ async function resolveCoordinator(admin: ReturnType<typeof serviceClient>, code:
     .from("festdash_promoters")
     .select("user_id, display_name, region, referral_code")
     .ilike("referral_code", code)
-    .eq("is_coordinator", true)
     .eq("is_active", true)
     .maybeSingle();
   return data;

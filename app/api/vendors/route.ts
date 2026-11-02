@@ -76,6 +76,10 @@ export async function POST(req: Request) {
     const description = String(data.description).trim();
     // Optional website — stored as entered (the UI normalizes to https:// on display).
     const website = data.website ? String(data.website).trim().slice(0, 200) : null;
+    // Optional promoter code: the promoter who signed this vendor up earns the
+    // coordinator share of every sale (owner's model, 2026-11-02). Resolved
+    // against active promoters; an unknown code is ignored rather than refused.
+    const promoterCode = data.promoterCode ? String(data.promoterCode).trim().toUpperCase().slice(0, 40) : "";
     const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const emailOk = EMAIL_SHAPE.test(email);
     if (businessEmail && !EMAIL_SHAPE.test(businessEmail)) {
@@ -111,6 +115,12 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+    type Referrer = { user_id: string; referral_code: string };
+    let referrer: Referrer | null = null;
+    if (promoterCode) {
+      const { data: p } = await svc.from("festdash_promoters").select("user_id, referral_code").ilike("referral_code", promoterCode).eq("is_active", true).maybeSingle();
+      referrer = (p as Referrer | null) ?? null;
+    }
     const { data: created, error } = await svc.from("vendors").insert([
       {
         name,
@@ -122,6 +132,8 @@ export async function POST(req: Request) {
         category,
         description,
         website,
+        coordinator_user_id: referrer?.user_id ?? null,
+        coordinator_code: referrer?.referral_code ?? null,
         capacity: data.capacity ? String(data.capacity).trim().slice(0, 60) : null,
         // is_public is the live listing flag and an applicant may never set it:
         // the "public apply as vendor" RLS policy requires false, and sending

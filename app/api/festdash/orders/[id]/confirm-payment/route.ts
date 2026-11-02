@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const admin = serviceClient();
   const { data: order } = await admin
     .from("festdash_orders")
-    .select("id, vendor_id, status, payment_method, payment_ref, total_cents, currency")
+    .select("id, vendor_id, status, payment_method, payment_ref, total_cents, runner_fee_cents, currency")
     .eq("id", id)
     .maybeSingle();
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -51,7 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (coordinatorId) {
     const settings = await loadSplitSettings(admin);
     await recordSaleSplit(admin, {
-      id: order.id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents),
+      id: order.id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0),
       currency: String(order.currency || "USD"), payment_method: String(order.payment_method), payment_ref: order.payment_ref ?? null,
     }, coordinatorId, settings, user.id);
   }

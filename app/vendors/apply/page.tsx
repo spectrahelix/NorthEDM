@@ -62,6 +62,7 @@ export default function VendorApplyPage() {
               public: formData.get("public"),
               // Anti-spam: honeypot (should stay empty) + time-to-submit.
               company_website: formData.get("company_website"),
+              promoterCode: formData.get("promoterCode"),
               elapsedMs: Date.now() - loadedAt,
             };
 
@@ -187,6 +188,13 @@ export default function VendorApplyPage() {
             name="capacity"
             placeholder="Capacity (low, medium, high)"
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+          />
+
+          <input
+            name="promoterCode"
+            placeholder="Promoter code (optional) — who told you about us?"
+            autoComplete="off"
+            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-dm-mono uppercase placeholder:font-sans placeholder:normal-case"
           />
 
           <p className="-mb-1 px-1 text-xs text-neutral-500">

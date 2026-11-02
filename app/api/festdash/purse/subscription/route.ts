@@ -38,7 +38,11 @@ export async function POST(req: Request) {
   const end = addDays(addMonths(start, months), -1);
 
   const settings = await loadSplitSettings(admin);
-  const feeCents = settings.subscription_fee_cents * months;
+  // A shop signed up with the owner's own code pays 10% less on the listing
+  // fee (owner's decision, 2026-11-02). "Owner" = an archon account.
+  const { data: ownerRows } = await admin.from("user_profiles").select("id").eq("role", "archon");
+  const ownerReferred = !!vendor.coordinator_user_id && (ownerRows ?? []).some((r) => r.id === vendor.coordinator_user_id);
+  const feeCents = Math.round(settings.subscription_fee_cents * months * (ownerReferred ? 0.9 : 1));
   const split = splitSubscription(feeCents, settings);
 
   const { data: sub, error } = await admin.from("vendor_subscriptions").insert({

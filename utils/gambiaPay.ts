@@ -93,6 +93,17 @@ export function isLocalRail(v: { coordinator_user_id?: string | null; currency?:
   return !!v?.coordinator_user_id && String(v.currency ?? "USD").toUpperCase() !== "USD";
 }
 
+/**
+ * Runner fee: what the customer adds for the runner, on top of the items. The
+ * floor is 10% of the items (after any code); the customer may pick more. All
+ * of it goes to the runner — it is outside the 80/10/10 split.
+ */
+export const RUNNER_FEE_MIN_BPS = 1000;
+export const RUNNER_FEE_CHOICES_BPS = [1000, 1500, 2000, 2500] as const;
+export function minRunnerFeeCents(itemsCents: number): number {
+  return itemsCents > 0 ? Math.ceil((itemsCents * RUNNER_FEE_MIN_BPS) / 10000) : 0;
+}
+
 /** A monthly shop fee: the coordinator's cut, the owner gets the rest. */
 export function splitSubscription(feeCents: number, s: SplitSettings) {
   const coordinator = Math.round((feeCents * s.subscription_coordinator_bps) / 10000);

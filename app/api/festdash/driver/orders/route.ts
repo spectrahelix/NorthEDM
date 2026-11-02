@@ -14,7 +14,7 @@ function getAdminClient() {
 // customer. Never included: the customer's phone (the delivery code is its
 // last four digits), their email, and the payment / promo fields.
 const POOL_COLUMNS =
-  "id, vendor_id, event_name, campground, sub_campground, campground_zone, delivery_window, items, total_cents, currency, payment_method, status, driver_id, created_at, updated_at";
+  "id, vendor_id, event_name, campground, sub_campground, campground_zone, delivery_window, items, total_cents, runner_fee_cents, currency, payment_method, status, driver_id, created_at, updated_at";
 const MINE_COLUMNS =
   `${POOL_COLUMNS}, customer_name, campsite_row, tent, campsite_notes, campsite_photo_url, car_photo_url, license_plate, customer_lat, customer_lng, driver_lat, driver_lng, location_updated_at`;
 

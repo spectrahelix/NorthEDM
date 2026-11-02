@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe, platformFeeCents } from "@/utils/stripe";
 
-import { isLocalMethod, isLocalRail, isWalletMethod, platformShareBps, walletNumberFor } from "@/utils/gambiaPay";
+import { isLocalMethod, isLocalRail, isWalletMethod, minRunnerFeeCents, platformShareBps, walletNumberFor } from "@/utils/gambiaPay";
 import { activeSubscription, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     campsitePhotoUrl, deliveryWindow, items, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
     licensePlate, carPhotoUrl, customerLat, customerLng,
-    promoCode, paymentMethod,
+    promoCode, paymentMethod, runnerFeeCents,
   } = body;
 
   if (!vendorId || !eventName || !campgroundZone || !deliveryWindow || !items?.length) {
@@ -158,7 +158,10 @@ export async function POST(req: Request) {
   // orders still read correctly.
   const discountedCents = grossCents - discountCents;
   const creditCents = 0;
-  const netCents = discountedCents;
+  // Runner fee: the customer's pick, never below 10% of the items. It rides on
+  // top of the items and goes to the runner in full (utils/runnerPay.ts).
+  const runnerFee = Math.max(minRunnerFeeCents(discountedCents), Math.floor(Number(runnerFeeCents) || 0));
+  const netCents = discountedCents + runnerFee;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
@@ -190,6 +193,7 @@ export async function POST(req: Request) {
       delivery_window: deliveryWindow,
       items: lines,
       total_cents: netCents,
+      runner_fee_cents: runnerFee,
       store_credit_cents: creditCents,
       discount_cents: discountCents,
       commission_cents: commissionCents,
@@ -286,8 +290,10 @@ export async function POST(req: Request) {
     metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id },
   };
   if (vendorAccount) {
+    // Platform share of the ITEMS, plus the whole runner fee: the fee is
+    // collected here and transferred to the runner at the delivery code.
     const splits = await loadSplitSettings(admin);
-    paymentIntentData.application_fee_amount = platformFeeCents(dueCents, platformShareBps(splits));
+    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee, platformShareBps(splits)) + runnerFee;
     paymentIntentData.transfer_data = { destination: vendorAccount };
   }
 

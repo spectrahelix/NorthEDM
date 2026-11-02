@@ -23,6 +23,7 @@ type Order = {
   customer_lng: number | null;
   currency?: string;
   payment_method?: string;
+  runner_fee_cents?: number;
   created_at: string;
 };
 
@@ -35,6 +36,22 @@ export default function DriverPage() {
   const [driver, setDriver] = useState<Driver | null>(null);
 
   const [available, setAvailable] = useState<Order[]>([]);
+  const [payout, setPayout] = useState<{ connected: boolean; onboarded: boolean; owed_cents: number } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  useEffect(() => {
+    fetch("/api/festdash/driver/stripe/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setPayout(d); })
+      .catch(() => {});
+  }, []);
+  async function connectPayouts() {
+    setConnecting(true);
+    const res = await fetch("/api/festdash/driver/stripe/connect", { method: "POST" });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok && j.url) { window.location.href = j.url; return; }
+    setConnecting(false);
+    alert(j.error ?? "Couldn't start Stripe setup.");
+  }
   const [mine, setMine] = useState<Order[]>([]);
   const [selected, setSelected] = useState<Order | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -302,6 +319,17 @@ export default function DriverPage() {
           </div>
         )}
 
+        {/* Payouts: the runner fee on every delivery goes to the runner through Stripe */}
+        {payout && !payout.onboarded && (
+          <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-orange-950/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-orange-300">💳 Set up payouts</p>
+              <p className="text-sm text-neutral-400">Every delivery pays you the customer&apos;s runner fee — 10% of the order at minimum, often more. Connect Stripe to receive it{payout.owed_cents > 0 ? ` — ${formatMoney(payout.owed_cents, "USD")} is already waiting for you` : ""}.</p>
+            </div>
+            <button onClick={connectPayouts} disabled={connecting} className="shrink-0 rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white hover:bg-orange-400 disabled:opacity-50">{connecting ? "Opening Stripe…" : "Set up payouts"}</button>
+          </div>
+        )}
+
         {/* My deliveries */}
         <h2 className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">My Deliveries</h2>
         {mine.length === 0 ? (
@@ -457,9 +485,10 @@ function OrderCard({ order, onDetails, children }: { order: Order; onDetails: ()
       </div>
 
       <p className="mb-3 text-xs text-neutral-500">Window: {order.delivery_window}</p>
-      {order.payment_method === "cash" && (
-        <p className="mb-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300">
-          💵 Cash on delivery — collect {formatMoney(order.total_cents, order.currency)} at handover
+      {(order.runner_fee_cents ?? 0) > 0 && (
+        <p className="mb-3 rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-2 text-xs text-green-300">
+          💸 Your fee for this delivery: {formatMoney(order.runner_fee_cents ?? 0, order.currency)}
+          {order.payment_method !== "card" ? " — paid to you by the coordinator" : ""}
         </p>
       )}
 
