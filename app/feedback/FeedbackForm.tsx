@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 const CATEGORIES = ["Bug", "Idea", "Praise", "Other"] as const;
 
 export function FeedbackForm() {
   const [category, setCategory] = useState<string>("Bug");
+  const { shield, honeypot } = useFormShield();
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -23,7 +25,7 @@ export function FeedbackForm() {
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ category, message, email }),
+        body: JSON.stringify({ category, message, email, ...shield() }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -58,6 +60,7 @@ export function FeedbackForm() {
 
   return (
     <form onSubmit={submit} className="mt-8 space-y-6">
+<Honeypot {...honeypot} />
       <div>
         <label className="mb-2 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
           What kind of feedback?

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BackBar } from "@/app/components/BackBar";
 import { formatMoney } from "@/utils/money";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 // The shop owner's walkthrough for a coordinator region (The Gambia). One page
 // takes someone from a QR code to a live shop: account → application →
@@ -38,6 +39,7 @@ function Chip({ kind, children }: { kind: "done" | "now" | "later"; children: Re
 
 export default function ShopSetupPage() {
   const [state, setState] = useState<State | null>(null);
+  const { shield, honeypot } = useFormShield();
   const [ref, setRef] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [form, setForm] = useState({
@@ -81,7 +83,7 @@ export default function ShopSetupPage() {
       body: JSON.stringify({
         shopName: form.shopName, category: form.category, description: form.description, area: form.area, whatsapp: form.whatsapp,
         wallets: { wave: form.wave, qmoney: form.qmoney, afrimoney: form.afrimoney, preferred: form.preferred },
-        coordinatorCode: form.coordinatorCode, agree: form.agree,
+        coordinatorCode: form.coordinatorCode, agree: form.agree, ...shield(),
       }),
     });
     const j = await res.json().catch(() => ({}));
@@ -184,6 +186,7 @@ export default function ShopSetupPage() {
             <p className="text-sm text-neutral-500">Takes two minutes once you&apos;re signed in.</p>
           ) : (
             <form onSubmit={submitApplication} className={`space-y-4 ${verified ? "" : "pointer-events-none opacity-50"}`}>
+<Honeypot {...honeypot} />
               <div><span className={label}>Shop name *</span><input className={input} value={form.shopName} onChange={(e) => setForm({ ...form, shopName: e.target.value })} placeholder="e.g. Fatou's Fabrics" required /></div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div><span className={label}>What you sell *</span>

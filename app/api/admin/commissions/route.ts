@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   const g = await guard();
   if (!g.ok) return NextResponse.json({ error: "Forbidden" }, { status: g.status });
 
-  const { id } = await req.json().catch(() => ({}));
+  const { id, action, note } = await req.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
 
   const { data: c } = await g.admin
@@ -86,6 +86,18 @@ export async function POST(req: Request) {
       { error: `Refund-protection window is still open until ${c.payable_after}. It cannot be released early.` },
       { status: 400 }
     );
+  }
+
+  // Paid outside Stripe/PayPal (Remitly, cash): the owner sent it themselves
+  // and records that here. For promoters in countries neither processor pays
+  // out to — Gee in The Gambia — this is the only way their cut reaches them.
+  if (action === "mark_paid") {
+    const { error } = await g.admin.from("commissions").update({
+      status: "paid", released_at: new Date().toISOString(), payout_method: "manual",
+      reversal_reason: note ? `Paid outside Stripe: ${String(note).slice(0, 200)}` : "Paid outside Stripe (Remitly/cash)",
+    }).eq("id", id).eq("status", "held");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
   }
 
   const res = await releaseCommission(g.admin, c);

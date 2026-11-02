@@ -301,6 +301,21 @@ signed-in profile without the stamp (`/api/profile/username` checks and saves;
 "Later" hides it for the browser session). Existing accounts were backfilled as
 chosen on 2026-11-02 so nobody was prompted retroactively.
 
+**Every form is shielded (2026-11-02).** `shieldForm(req, body, bucket)` in
+`utils/botSignals.ts` is the one server check (honeypot `company_website`,
+`elapsedMs` under 2.5s, Chromium-without-`sec-ch-ua`, per-IP success throttle);
+`useFormShield()` + `<Honeypot/>` in `app/components/FormShield.tsx` is the
+client half. Applied to promote, marketplace apply, feedback, runner
+registration, shop-setup, foraging booking, service requests and bug reports
+on top of the verified-account gate; `/api/vendors`, signup and signin-help
+keep their earlier inline versions. Call `shield.record()` only after the
+write succeeded. New form → both halves, nothing hand-rolled.
+
+**Promoter commissions paid outside Stripe.** A promoter Stripe Connect and
+PayPal can't pay (The Gambia) is settled by the owner by Remitly; **Paid by
+Remitly** on /admin/promoter-payouts marks the row `paid` with
+`payout_method = 'manual'` and the note. No money moves.
+
 **Dependencies:** `npm audit` runs at session start. Next.js must stay at
 16.4.1 or newer (two remote-code-execution advisories cover every 16.x up to
 16.4.0). Moderate findings left in `eslint`/`@capacitor/cli` are lint tooling,

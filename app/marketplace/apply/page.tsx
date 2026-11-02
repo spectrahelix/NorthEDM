@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 const CATEGORIES = [
   "Mushrooms & Foraged", "Holistic & Wellness", "Art & Prints", "Crafts & Handmade",
@@ -11,6 +12,7 @@ const CATEGORIES = [
 
 export default function MarketplaceApplyPage() {
   const [businessName, setBusinessName] = useState("");
+  const { shield, honeypot } = useFormShield();
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("");
@@ -31,7 +33,7 @@ export default function MarketplaceApplyPage() {
     const res = await fetch("/api/marketplace/apply", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ businessName, category, description, contact, website }),
+      body: JSON.stringify({ businessName, category, description, contact, website, ...shield() }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -86,6 +88,7 @@ export default function MarketplaceApplyPage() {
         </p>
 
         <form onSubmit={submit} className="mt-8 space-y-5">
+<Honeypot {...honeypot} />
           <Field label="Business / Shop name *">
             <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} maxLength={120}
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 focus:outline-none" />

@@ -2,9 +2,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 export default function PromoterSignup() {
   const router = useRouter();
+  const { shield, honeypot } = useFormShield();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +38,7 @@ export default function PromoterSignup() {
     const res = await fetch("/api/promote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, ...shield() }),
     });
     const json = await res.json();
 
@@ -102,6 +104,7 @@ export default function PromoterSignup() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+<Honeypot {...honeypot} />
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">

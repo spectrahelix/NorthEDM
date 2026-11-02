@@ -1,3 +1,4 @@
+import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { requireVerifiedUser } from "@/utils/authGate";
@@ -23,6 +24,8 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const body = await req.json();
+  const shield = await shieldForm(req, body, "promote-apply");
+  if (shield.verdict !== "ok") return shield.response;
   const { displayName, email, phone, audience, promoteVendor, why } = body;
 
   if (!displayName || !email) {
@@ -60,5 +63,6 @@ export async function POST(req: Request) {
     ],
   });
 
-  return NextResponse.json({ success: true });
+await shield.record();
+    return NextResponse.json({ success: true });
 }

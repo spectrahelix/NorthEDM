@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 export default function ForagingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { shield, honeypot } = useFormShield();
   const [successMessage, setSuccessMessage] = useState("");
 
   return (
@@ -51,6 +53,7 @@ export default function ForagingPage() {
               const formData = new FormData(form);
 
               const data = {
+                ...shield(),
                 name: formData.get("name"),
                 email: formData.get("email"),
                 groupSize: formData.get("groupSize"),
@@ -85,6 +88,7 @@ export default function ForagingPage() {
             }}
             className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 space-y-4"
           >
+<Honeypot {...honeypot} />
             <h2 className="text-2xl font-semibold">Booking Inquiry</h2>
 
             <div>
