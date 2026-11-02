@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { adminGuard } from "@/utils/admin";
 import { sendEmail } from "@/utils/email";
+import { usernameProblem } from "@/utils/username";
 
 // Admin "take the wheel": edit any user's profile fields. Most fields hard-save
 // immediately. Changing the email does NOT hard-save — it stores a pending
@@ -14,6 +15,15 @@ const PROFILE_FIELDS = [
   "pronouns",
   "website",
   "role",
+  // Personal details from signup / profile edit. Grant-protected columns, so
+  // only this service-role write can touch them (see AGENTS.md).
+  "full_name",
+  "phone",
+  "address_line1",
+  "address_line2",
+  "city",
+  "region",
+  "postal_code",
 ] as const;
 
 const ROLES = ["drifter", "wanderer", "merchant", "warden", "archon", "promoter"];
@@ -32,6 +42,20 @@ export async function POST(req: Request) {
     if (f in patch) {
       if (f === "role" && !ROLES.includes(String(patch.role))) continue;
       update[f] = patch[f];
+    }
+  }
+
+  // Username: one rule for the whole site (utils/username.ts), plus uniqueness.
+  if (typeof patch.username === "string") {
+    const wanted = patch.username.trim();
+    if (wanted) {
+      const problem = usernameProblem(wanted);
+      if (problem) return NextResponse.json({ error: `Username: ${problem}` }, { status: 400 });
+      const { data: taken } = await g.admin
+        .from("user_profiles").select("id").ilike("username", wanted).neq("id", userId).maybeSingle();
+      if (taken) return NextResponse.json({ error: "That username is taken." }, { status: 409 });
+      update.username = wanted;
+      update.username_chosen_at = new Date().toISOString();
     }
   }
 

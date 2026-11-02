@@ -41,7 +41,7 @@ export async function GET() {
 
   const { data: profiles, error: profilesError } = await adminClient
     .from("user_profiles")
-    .select("id, display_name, avatar_url, role, created_at, is_founder, is_vendor, is_marketplace, is_festdash_vendor, is_promoter, is_artisan, is_driver, is_forager, is_verified")
+    .select("id, display_name, username, avatar_url, role, created_at, is_founder, is_vendor, is_marketplace, is_festdash_vendor, is_promoter, is_artisan, is_driver, is_forager, is_verified")
     .order("created_at", { ascending: false });
 
   if (profilesError) {
@@ -66,6 +66,7 @@ export async function GET() {
     (p: {
       id: string;
       display_name: string;
+      username?: string | null;
       avatar_url: string | null;
       role: string;
       created_at: string;
