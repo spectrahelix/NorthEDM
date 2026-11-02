@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     vendorId, eventName, campgroundZone, campsiteNotes,
     campsitePhotoUrl, deliveryWindow, items, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
-    licensePlate, carPhotoUrl, customerLat, customerLng, useCredit,
+    licensePlate, carPhotoUrl, customerLat, customerLng,
     promoCode, paymentMethod,
   } = body;
 
@@ -146,19 +146,16 @@ export async function POST(req: Request) {
     claimedTimes = claimed.times_redeemed;
   }
 
-  // Store credit covers up to the post-discount subtotal. Computed server-side
-  // from the real balance so the client can't over-redeem.
+  // Store credit is NOT accepted on FestDash orders (owner's decision,
+  // 2026-11-02). Credit is NorthEDM's own liability; on an independent vendor's
+  // order the credit-covered part never reached the vendor through Stripe, so a
+  // credit-paid order was delivered and never paid for, with nothing recording
+  // the debt. Credit stays spendable on NorthEDM's own shop and avatar items.
+  // A `useCredit` flag from an older client is ignored; the columns stay so old
+  // orders still read correctly.
   const discountedCents = grossCents - discountCents;
-  let creditCents = 0;
-  if (useCredit && !local) {
-    const { data: bal } = await admin
-      .from("store_credit_balances")
-      .select("balance_cents")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    creditCents = Math.min(Math.max(bal?.balance_cents ?? 0, 0), discountedCents);
-  }
-  const netCents = discountedCents - creditCents;
+  const creditCents = 0;
+  const netCents = discountedCents;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
@@ -235,28 +232,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ order: data });
   }
 
-  // Deduct the applied credit from the wallet. If this fails (e.g. a race
-  // drained the balance), undo the credit on the order rather than give it free.
-  if (creditCents > 0) {
-    const { error: spendErr } = await admin.rpc("grant_store_credit", {
-      p_user: user.id, p_amount: -creditCents,
-      p_reason: "order_redeem", p_ref_type: "festdash_order", p_ref_id: data.id,
-    });
-    if (spendErr) {
-      await admin
-        .from("festdash_orders")
-        .update({ total_cents: discountedCents, store_credit_cents: 0 })
-        .eq("id", data.id);
-      data.total_cents = discountedCents;
-      data.store_credit_cents = 0;
-    }
-  }
-
-  // The amount actually owed on a card after discount + store credit.
+  // The amount owed on the card after any code discount.
   const dueCents = data.total_cents as number;
 
-  // Fully covered by store credit / discounts → nothing to charge. Mark it as
-  // settled by credit; it goes straight into the queue, no escrow needed.
+  // Nothing to charge (a 100% code) → straight into the queue, no escrow. The
+  // status value predates the no-credit rule and is kept for old rows.
   if (dueCents <= 0) {
     await admin
       .from("festdash_orders")

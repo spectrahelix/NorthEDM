@@ -193,6 +193,12 @@ coordinator leaves that part with NorthEDM. Which rail an order takes is
 `isLocalRail()` in `utils/gambiaPay.ts`: a coordinator **and** a non-USD
 currency → wallets / cash and the monthly-fee gate; anything else → card.
 
+**No store credit on vendor orders (2026-11-02).** Store credit is NorthEDM's
+own liability. Spent on an independent vendor's order, the credit-covered part
+never reached the vendor through Stripe, and a fully credit-covered order was
+delivered and never paid for. The order route now ignores credit and the order
+page no longer offers it; credit stays spendable on NorthEDM's shop and avatars.
+
 **Nobody waits in silence (2026-11-02).** Every application alert to the owner
 carries the whole application (`vendorApplicationFields`) and links to the
 right admin card; **Email me this application** on /admin/vendors re-sends it.
