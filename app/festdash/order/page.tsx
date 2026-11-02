@@ -838,8 +838,8 @@ export default function OrderPage() {
                     onClick={() => setPaymentMethod("card")}
                     className={`rounded-xl border px-4 py-3 text-left text-sm transition ${paymentMethod === "card" ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}
                   >
-                    <span className="font-semibold">Card (any country)</span>
-                    <span className="block text-xs text-neutral-500">Visa / Mastercard, charged in {selectedVendor?.currency ?? "the shop's currency"}; held until delivery</span>
+                    <span className="font-semibold">Card · Google Pay · Apple Pay</span>
+                    <span className="block text-xs text-neutral-500">Any Visa / Mastercard, or Google Pay / Apple Pay with a card saved; charged in {selectedVendor?.currency ?? "the shop's currency"}, held until delivery</span>
                   </button>
                   {walletOptions.map((m) => (
                     <button
