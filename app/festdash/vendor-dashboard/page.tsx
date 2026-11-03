@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 
@@ -193,9 +194,9 @@ export default function VendorDashboard() {
           <div className="mb-4 text-4xl">🎪</div>
           <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Not Yet Enrolled</h2>
           <p className="mb-6 text-neutral-500">Your account isn&apos;t linked to a FestDash vendor profile. Apply to join the network or contact an admin to be directly enrolled.</p>
-          <a href="/festdash/vendor-signup" className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
+          <Link href="/festdash/vendor-signup" className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
             Apply to FestDash
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -212,10 +213,10 @@ export default function VendorDashboard() {
             </h1>
             <div className="flex flex-wrap items-center gap-3">
               <p className="font-dm-mono text-xs text-neutral-500">Vendor Dashboard</p>
-              <a href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Runner View →</a>
-              <a href="/vendor/dashboard" className="font-dm-mono text-xs text-[#00D4FF] hover:text-[#00D4FF]/80">Add / edit items →</a>
-              <a href="/promote/codes" className="font-dm-mono text-xs text-[#39FF14] hover:text-[#39FF14]/80">Referral Codes →</a>
-              <a href="/festdash/commission-codes" className="font-dm-mono text-xs text-orange-400 hover:text-orange-300">Commission Codes →</a>
+              <Link href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Runner View →</Link>
+              <Link href="/vendor/dashboard" className="font-dm-mono text-xs text-[#00D4FF] hover:text-[#00D4FF]/80">Add / edit items →</Link>
+              <Link href="/promote/codes" className="font-dm-mono text-xs text-[#39FF14] hover:text-[#39FF14]/80">Referral Codes →</Link>
+              <Link href="/festdash/commission-codes" className="font-dm-mono text-xs text-orange-400 hover:text-orange-300">Commission Codes →</Link>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5">
