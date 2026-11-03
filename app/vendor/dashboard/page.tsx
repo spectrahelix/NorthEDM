@@ -13,13 +13,14 @@ import { BackBar } from "@/app/components/BackBar";
 import { SpecsEditor, EMPTY_SPECS_FORM, specsFormFrom, specsPayload } from "@/app/components/SpecsEditor";
 import type { SpecsColumns } from "@/utils/specs";
 import { GuidedTour, tourPending, type TourStep } from "@/app/components/GuidedTour";
+import { PriceField } from "@/app/components/PriceField";
 
 // First-visit walkthrough for a new shop owner: each step spotlights a part of
 // the add-product form (data-tour attributes below). Shown once per device when
 // the shop has no items yet; "Show me how" replays it.
 const TOUR_STEPS: TourStep[] = [
   { target: "name", title: "Name your item", body: "Type what you're selling the way a customer would search for it, e.g. \"Attaya tea set\" or \"Phone charger, USB-C\"." },
-  { target: "price", title: "Set the price", body: "Numbers only, in your shop's currency. Customers see it on your menu and store page." },
+  { target: "price", title: "Set the price", body: "Numbers only, e.g. 12.50. If your shop sells in dalasi you can switch the box to USD and type dollars: the ≈ line shows the dalasi price your customers will pay, at today's rate." },
   { target: "stock", title: "How many you have", body: "Each sale counts down from this number. When it reaches zero the item shows as out of stock." },
   { target: "description", title: "Describe it", body: "A sentence or two: what it is, what's included, anything a buyer should know." },
   { target: "specs", title: "Weight and specifications", body: "Weight sets the shipping price for posted orders. Add specs like Brand, Material or Size and they appear as a table on the item page." },
@@ -64,6 +65,7 @@ export default function VendorDashboard() {
   const [notice, setNotice] = useState("");
   const [photoVersion, setPhotoVersion] = useState(0);
   const [tourOpen, setTourOpen] = useState(false);
+  const [currency, setCurrency] = useState("USD");
   const [tourChecked, setTourChecked] = useState(false);
 
   const formDirty = JSON.stringify(form) !== JSON.stringify(EMPTY);
@@ -118,6 +120,8 @@ export default function VendorDashboard() {
       setAccess("ok");
       loadProducts();
       loadSquareStatus();
+      // The shop's currency decides how the price box reads (GMD shops get a USD helper).
+      fetch("/api/vendor/me").then((r) => (r.ok ? r.json() : null)).then((j) => j?.vendor?.currency && setCurrency(String(j.vendor.currency))).catch(() => {});
     })();
   }, []);
 
@@ -347,8 +351,7 @@ export default function VendorDashboard() {
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
             <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Category"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
-            <input data-tour="price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Price (e.g. 25.00)" inputMode="decimal"
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
+            <div data-tour="price"><PriceField value={form.price} onChange={(price) => setForm({ ...form, price })} currency={currency} /></div>
             <input data-tour="stock" value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} placeholder="In stock (qty)" inputMode="numeric"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
           </div>
