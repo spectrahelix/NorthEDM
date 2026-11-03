@@ -16,7 +16,8 @@ const STATUS_TEXT: Record<string, string> = { draft: "Not submitted yet", submit
  * aggregator details (Waychit first, Modem Pay second). Saved values that are
  * secrets show as •••• and are replaced only when a new value is typed.
  */
-export function BridgeIntake() {
+export function BridgeIntake({ scope = "coordinator" }: { scope?: "coordinator" | "shop" }) {
+  const endpoint = scope === "shop" ? "/api/vendor/bridge" : "/api/festdash/purse/bridge";
   const [bridge, setBridge] = useState<Bridge | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [provider, setProvider] = useState<"waychit" | "modempay">("waychit");
@@ -24,11 +25,11 @@ export function BridgeIntake() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
-  const load = () => fetch("/api/festdash/purse/bridge").then((r) => (r.ok ? r.json() : { bridge: null })).then((j) => { setBridge(j.bridge); if (j.bridge?.provider) setProvider(j.bridge.provider); if (typeof j.bridge?.bank_can_send_usd === "boolean") setCanUsd(j.bridge.bank_can_send_usd); }).catch(() => {});
-  useEffect(() => { load(); }, []);
+  const load = () => fetch(endpoint).then((r) => (r.ok ? r.json() : { bridge: null })).then((j) => { setBridge(j.bridge); if (j.bridge?.provider) setProvider(j.bridge.provider); if (typeof j.bridge?.bank_can_send_usd === "boolean") setCanUsd(j.bridge.bank_can_send_usd); }).catch(() => {});
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [endpoint]);
   async function send(action: "save" | "submit") {
     setBusy(action); setMsg("");
-    const r = await fetch("/api/festdash/purse/bridge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, provider, bank_can_send_usd: canUsd, action }) });
+    const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, provider, bank_can_send_usd: canUsd, action }) });
     const j = await r.json().catch(() => ({}));
     setBusy(null);
     setMsg(r.ok ? (action === "submit" ? "Submitted. NorthEDM has been told and will confirm the next step." : "Saved.") : j.error ?? "Failed.");
@@ -45,10 +46,10 @@ export function BridgeIntake() {
   return (
     <div className="rounded-2xl border border-orange-500/20 bg-orange-950/10 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-300">Payment bridge — so customers&apos; payments can reach NorthEDM directly</p>
+        <p className="font-dm-mono text-xs uppercase tracking-widest text-orange-300">{scope === "shop" ? "Payment bridge — get paid straight to your own bank account" : "Payment bridge — so customers\u2019 payments can reach NorthEDM directly"}</p>
         <span className={`rounded-full px-2.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest ${status === "live" ? "bg-green-500/15 text-green-300" : status === "verified" ? "bg-[#3AFFD4]/15 text-[#3AFFD4]" : status === "submitted" ? "bg-yellow-500/15 text-yellow-300" : "bg-white/10 text-neutral-400"}`}>{STATUS_TEXT[status] ?? status}</span>
       </div>
-      <p className="mt-2 text-sm text-neutral-400">Right now customers pay your wallet and you keep the shop&apos;s and NorthEDM&apos;s shares until they are settled. The bridge replaces that: a licensed Gambian payment provider collects Wave, QMoney, Afrimoney and card payments, settles them to a business bank account, and the site pays each share out automatically. Fill in what you have — you can save and come back. Nothing here is shown to customers.</p>
+      <p className="mt-2 text-sm text-neutral-400">{scope === "shop" ? "Right now wallet payments for your orders go to your coordinator, who pays you your share. The bridge replaces that:" : "Right now customers pay your wallet and you keep the shop\u2019s and NorthEDM\u2019s shares until they are settled. The bridge replaces that:"} a licensed Gambian payment provider collects Wave, QMoney, Afrimoney and card payments, settles them to a business bank account, and the site pays each share out automatically. Fill in what you have — you can save and come back. Nothing here is shown to customers.</p>
       <button type="button" onClick={() => setOpen((o) => !o)} className="mt-3 text-sm text-orange-300 underline-offset-2 hover:underline">{open ? "Hide the form" : "Open the form"}</button>
       {open && (
         <div className="mt-4 space-y-5">

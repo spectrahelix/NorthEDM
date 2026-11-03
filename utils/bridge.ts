@@ -14,9 +14,11 @@ export const BRIDGE_TEXT_FIELDS = ["business_name", "registration_number", "tin"
 export const BRIDGE_SECRET_FIELDS = ["api_key", "webhook_secret"] as const;
 export const BRIDGE_MASKED = [...BRIDGE_SECRET_FIELDS, "bank_account_number", "tin"] as const;
 export type BridgeRow = Record<(typeof BRIDGE_TEXT_FIELDS)[number] | (typeof BRIDGE_SECRET_FIELDS)[number], string | null> & {
-  user_id: string; provider: "waychit" | "modempay"; status: "draft" | "submitted" | "verified" | "live"; bank_can_send_usd: boolean | null;
+  id: string; user_id: string; vendor_id: number | null; provider: "waychit" | "modempay"; status: "draft" | "submitted" | "verified" | "live"; bank_can_send_usd: boolean | null;
   owner_notes: string | null; submitted_at: string | null; verified_at: string | null; updated_at: string;
 };
+/** Whose intake: a coordinator's own (vendor_id null) or a shop's. */
+export type BridgeScope = { userId: string; vendorId: number | null };
 
 /** Last four characters only; the UI shows "saved" and lets the person overwrite. */
 export function maskBridge(row: BridgeRow | null) {
@@ -46,7 +48,33 @@ export function cleanBridgePatch(body: Record<string, unknown>) {
   return patch;
 }
 
-export async function loadBridge(admin: SupabaseClient, userId: string): Promise<BridgeRow | null> {
-  const { data } = await admin.from("coordinator_bridge").select("*").eq("user_id", userId).maybeSingle();
+export async function loadBridge(admin: SupabaseClient, scope: BridgeScope): Promise<BridgeRow | null> {
+  const q = admin.from("coordinator_bridge").select("*");
+  const { data } = scope.vendorId == null ? await q.eq("user_id", scope.userId).is("vendor_id", null).maybeSingle() : await q.eq("vendor_id", scope.vendorId).maybeSingle();
   return (data as BridgeRow | null) ?? null;
+}
+
+/**
+ * Save (and optionally submit) an intake for a coordinator or a shop. Blank
+ * fields keep their saved values; submitting needs the business and bank
+ * basics; editing a verified intake sends it back for review.
+ */
+export async function saveBridge(admin: SupabaseClient, scope: BridgeScope, body: Record<string, unknown>) {
+  const patch = cleanBridgePatch(body);
+  const existing = await loadBridge(admin, scope);
+  const submit = body.action === "submit";
+  if (submit) {
+    const merged = { ...(existing ?? {}), ...patch } as Record<string, unknown>;
+    const need = ["business_name", "bank_name", "bank_account_name", "bank_account_number"].filter((k) => !merged[k]);
+    if (need.length) return { error: `Still needed before submitting: ${need.map((k) => k.replace(/_/g, " ")).join(", ")}.`, status: 400 as const };
+    patch.status = "submitted"; patch.submitted_at = new Date().toISOString();
+  } else if ((existing?.status === "verified" || existing?.status === "live") && Object.keys(patch).length) {
+    patch.status = "submitted";
+  }
+  patch.updated_at = new Date().toISOString();
+  const res = existing
+    ? await admin.from("coordinator_bridge").update(patch).eq("id", existing.id).select("*").single()
+    : await admin.from("coordinator_bridge").insert({ user_id: scope.userId, vendor_id: scope.vendorId, ...patch }).select("*").single();
+  if (res.error) return { error: res.error.message, status: 500 as const };
+  return { row: res.data as BridgeRow, submitted: submit };
 }
