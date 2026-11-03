@@ -113,7 +113,8 @@ export async function PATCH(req: Request) {
       if (coord > owner) return NextResponse.json({ error: "The promoter's part can't be more than the platform's share of the sale." }, { status: 400 });
     }
     if (fee != null) patch.subscription_fee_cents = fee; if (sub != null) patch.subscription_coordinator_bps = sub;
-    const bundle = n(body.bundle_fee_cents, 0, 1_000_000), mp = n(body.mint_max_percent_off, 0, 100), ma = n(body.mint_max_amount_off_cents, 0, 1_000_000);
+    const bundle = n(body.bundle_fee_cents, 0, 1_000_000), mp = n(body.mint_max_percent_off, 0, 100), ma = n(body.mint_max_amount_off_cents, 0, 1_000_000), dx = n(body.delivery_extra_bps, 0, 5000);
+    if (dx != null) patch.delivery_extra_bps = dx;
     if (bundle != null) patch.bundle_fee_cents = bundle; if (mp != null) patch.mint_max_percent_off = mp; if (ma != null) patch.mint_max_amount_off_cents = ma;
     if (!Object.keys(patch).length) return NextResponse.json({ error: "nothing to change" }, { status: 400 });
     const { data, error } = await admin.from("coordinator_program_settings").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", 1).select("*").single();

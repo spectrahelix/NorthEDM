@@ -23,7 +23,7 @@ export async function isSiteAdminUser(admin: SupabaseClient, user: User): Promis
 export async function loadSplitSettings(admin: SupabaseClient): Promise<SplitSettings> {
   const { data } = await admin
     .from("coordinator_program_settings")
-    .select("sale_owner_bps, sale_coordinator_bps, subscription_fee_cents, subscription_coordinator_bps, bundle_fee_cents, mint_max_percent_off, mint_max_amount_off_cents")
+    .select("sale_owner_bps, sale_coordinator_bps, delivery_extra_bps, subscription_fee_cents, subscription_coordinator_bps, bundle_fee_cents, mint_max_percent_off, mint_max_amount_off_cents")
     .eq("id", 1)
     .maybeSingle();
   return (data as SplitSettings | null) ?? DEFAULT_SPLITS;
@@ -114,7 +114,7 @@ export async function paidLocalVendorIds(admin: SupabaseClient, vendorIds: numbe
  */
 export async function recordSaleSplit(
   admin: SupabaseClient,
-  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null; source?: "festdash" | "store"; collected_by?: "coordinator" | "owner" },
+  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null; source?: "festdash" | "store"; collected_by?: "coordinator" | "owner"; /** FestDash order delivered by a runner (not pickup, not a store sale) */ delivery?: boolean },
   coordinatorUserId: string,
   settings: SplitSettings,
   createdBy: string | null
@@ -132,7 +132,7 @@ export async function recordSaleSplit(
 
   // The runner's fee is the runner's; the 90/10 split is on the items only.
   const runner = Math.max(0, Math.min(Number(order.runner_fee_cents ?? 0), order.total_cents));
-  const s = splitSale(order.total_cents - runner, settings);
+  const s = splitSale(order.total_cents - runner, settings, true, order.delivery === true);
   const { data, error } = await admin
     .from("coordinator_ledger")
     .insert({

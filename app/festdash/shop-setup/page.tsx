@@ -27,7 +27,7 @@ type State = {
   user: { email: string | null; verified: boolean } | null;
   vendor: Vendor | null;
   coordinator: { display_name: string | null; region: string | null; whatsapp_number: string | null } | null;
-  settings: { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number };
+  settings: { sale_owner_bps: number; sale_coordinator_bps: number; delivery_extra_bps?: number; subscription_fee_cents: number; subscription_coordinator_bps: number };
   refCoordinator: { display_name: string | null; region: string | null } | null;
 };
 
@@ -125,6 +125,7 @@ export default function ShopSetupPage() {
 
   const s = state.settings;
   const shopPct = 100 - s.sale_owner_bps / 100;
+  const deliveredPct = 100 - (s.sale_owner_bps + (s.delivery_extra_bps ?? 1000)) / 100;
   const northPct = (s.sale_owner_bps - s.sale_coordinator_bps) / 100;
   const signedIn = !!state.user;
   const verified = !!state.user?.verified;
@@ -154,7 +155,7 @@ export default function ShopSetupPage() {
           <p className={label}>What it costs · what you earn</p>
           <div className="grid gap-3 sm:grid-cols-3 text-sm">
             <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Listing fee</p><p className="mt-1 text-white"><span className="font-semibold">{formatMoney(s.subscription_fee_cents, "USD")}</span> a month, paid in dalasi to your coordinator</p></div>
-            <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Each sale</p><p className="mt-1 text-white">You keep <span className="font-semibold">{shopPct}%</span> of every sale · the other {s.sale_owner_bps / 100}% is shared by NorthEDM ({northPct}%) and your coordinator ({s.sale_coordinator_bps / 100}%)</p></div>
+            <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Each sale</p><p className="mt-1 text-white">You keep <span className="font-semibold">{shopPct}%</span> of pickup and store sales ({deliveredPct}% when a runner delivers) · the platform&apos;s part is shared by NorthEDM ({northPct}%) and your coordinator ({s.sale_coordinator_bps / 100}%)</p></div>
             <div className="rounded-xl bg-white/5 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Customers pay by</p><p className="mt-1 text-white">Wave · QMoney · Afrimoney · card / Google Pay / Apple Pay</p></div>
           </div>
           <PaymentTimingNote all className="mt-4" />
@@ -226,7 +227,7 @@ export default function ShopSetupPage() {
 
               <label className="flex items-start gap-3 rounded-xl border border-orange-500/20 bg-orange-950/10 p-4 text-sm text-neutral-300">
                 <input type="checkbox" className="mt-1 h-4 w-4 accent-orange-500" checked={form.agree} onChange={(e) => setForm({ ...form, agree: e.target.checked })} />
-                <span>I understand the listing fee of {formatMoney(s.subscription_fee_cents, "USD")} a month (paid in dalasi to my coordinator), that I keep {shopPct}% of each sale and the remaining {s.sale_owner_bps / 100}% is shared between NorthEDM and my coordinator, and that transfer times depend on each payment app, not on FestDash.</span>
+                <span>I understand the listing fee of {formatMoney(s.subscription_fee_cents, "USD")} a month (paid in dalasi to my coordinator), that I keep {shopPct}% of each pickup or store sale and {deliveredPct}% of each delivered FestDash order, with the rest shared between NorthEDM and my coordinator, and that transfer times depend on each payment app, not on FestDash.</span>
               </label>
               {error && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>}
               <button type="submit" disabled={busy === "apply"} className="w-full rounded-2xl bg-orange-500 py-3 font-semibold text-white hover:bg-orange-400 disabled:opacity-50">{busy === "apply" ? "Sending…" : "Send my application"}</button>

@@ -318,7 +318,7 @@ export async function POST(req: Request) {
     // Platform share of the ITEMS, plus the whole runner fee: the fee is
     // collected here and transferred to the runner at the delivery code.
     const splits = await loadSplitSettings(admin);
-    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee, platformShareBps(splits)) + runnerFee;
+    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee, platformShareBps(splits, !pickup)) + runnerFee;
     paymentIntentData.transfer_data = { destination: vendorAccount };
   }
 
