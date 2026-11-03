@@ -97,6 +97,24 @@ export default async function MarketplacePage() {
     .select("vendor_id")
     .eq("is_active", true);
   const festdashIds = new Set<number>((fdRows ?? []).map((r) => r.vendor_id as number));
+  // A vendor with a LIVE store (active + paid) gets their card pointed at it;
+  // their own store wins over a shared one they also sell in. Everyone else
+  // keeps the marketplace vendor page. Owner's decision, 2026-11-03.
+  const { data: svRows } = await admin
+    .from("store_vendors")
+    .select("vendor_id, stores(slug, active, billing_status, owner_user_id)")
+    .in("vendor_id", vendors.map((v) => v.id))
+    .eq("status", "approved");
+  type SvRow = { vendor_id: number; stores: { slug: string; active: boolean; billing_status: string; owner_user_id: string } | { slug: string; active: boolean; billing_status: string; owner_user_id: string }[] | null };
+  const storeFor = new Map<number, string>();
+  for (const r of (svRows ?? []) as SvRow[]) {
+    const list = (Array.isArray(r.stores) ? r.stores : r.stores ? [r.stores] : []).filter((s) => s.active && s.billing_status === "active");
+    if (!list.length) continue;
+    const v = vendors.find((x) => x.id === r.vendor_id);
+    const own = list.find((s) => v?.user_id && s.owner_user_id === v.user_id);
+    const pick = own ?? list[0];
+    if (own || !storeFor.has(r.vendor_id)) storeFor.set(r.vendor_id, pick.slug);
+  }
   const publicVendors = await publicVendorIds([5, 6]);
   const frankPublic = publicVendors.has(5);
   const homesteadPublic = publicVendors.has(6);
@@ -333,7 +351,7 @@ export default async function MarketplacePage() {
                     only the real buttons opt back in. Before 2026-11-03 the text blocks
                     swallowed every tap and the card went nowhere on a phone. */}
                 <Link
-                  href={`/marketplace/${vendor.id}`}
+                  href={storeFor.has(vendor.id) ? `/${storeFor.get(vendor.id)}` : `/marketplace/${vendor.id}`}
                   aria-label={`View ${vendor.name || "vendor"}`}
                   className="absolute inset-0 z-0 rounded-3xl"
                 />
