@@ -47,8 +47,8 @@ Put outputs in the scratchpad, not the repo; send the PDF with SendUserFile.
    verified for this report." Hebrew year = calendar label only.
 7. **Traditional figures** (Chart 3): weekday, month, name-origin connections, each
    with its named tradition and source. Month-based lists stay month-based.
-8. **Astrology:** only from a real ephemeris. None configured → `"status":
-   "unavailable"`; never estimate placements or assume noon.
+8. **Astrology:** from `utils/numerology/astrology.ts` (Astronomy Engine, checked
+   against NASA). Unknown time → no Ascendant/houses/aspects; never assume noon.
 9. Write the report JSON (same shape as the example), render, read the PDF pages
    back to check layout, send it.
 
@@ -63,9 +63,29 @@ Put outputs in the scratchpad, not the repo; send the PDF with SendUserFile.
 - Book material: summarize methods in your own words with a citation; don't paste
   copyrighted passages into the repo or into reports.
 
-## Building it into the site
+## The live tool on the site
 
-The web app (`/apps-and-tools/astrology-hebrew-numerology`, saved reports, PDF
-export) is specified in `reference/spec.md` §2–§14 and is **not built yet**. When
-building it, move `calculateGematria` into `utils/` and import it from both the
-app and this skill — one copy, per AGENTS.md.
+`/apps-and-tools/astrology-hebrew-numerology` (menu: **Apps and Tools**) does all of
+this for anyone, with PDF download via the browser's print-to-PDF. The calculation
+code is shared — use it here instead of re-deriving anything:
+
+- `utils/numerology/gematria.ts` — values, Hebrew numerals, number words (this skill's
+  `scripts/gematria.mjs` is a CLI over it)
+- `utils/numerology/hebrewCalendar.ts` — offline Hebrew dates + fixed holidays
+- `utils/numerology/birthTiming.ts` — time zones (DST gaps/folds), sunset, the date decision
+- `utils/numerology/astrology.ts` — Astronomy Engine positions, Ascendant/MC, Whole Sign, aspects.
+  **Astrology is now available**: use it rather than marking it unavailable.
+- `utils/numerology/lexicon.ts` — same-value Hebrew words from Strong's (CC BY-SA)
+- `utils/numerology/report.ts` — `buildReport()` produces the report JSON
+
+Quick report from Node (run in the repo root):
+
+```bash
+node --no-warnings -e 'import("./utils/numerology/report.ts").then(r => console.log(JSON.stringify(r.buildReport({
+  components: [{ original: "Alec", role: "given", hebrew: "אלק" }],
+  date: "2002-07-24", time: "13:00", timeAccuracy: "exact",
+  place: { label: "Hazleton, PA", lat: 40.9549, lon: -75.977, zone: "America/New_York" } }), null, 2)))'
+```
+
+Tests: `npm run test:astro-hebrew` (offline) and `-- --live` (re-asks Hebcal and NASA JPL Horizons).
+Saved reports in accounts are not built yet (spec §12).
