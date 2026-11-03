@@ -12,7 +12,7 @@ import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
-  payments?: VendorPayments;
+  payments?: VendorPayments; pickup_location?: string | null; area?: string | null;
 };
 type MenuItem = { id: number; name: string; description: string; price: number; image_url: string | null; category: string };
 type CartItem = MenuItem & { qty: number };
@@ -28,6 +28,7 @@ const NE_EVENTS = [
   "Local Market / Other",
 ];
 
+const PICKUP_WINDOWS = ["ASAP", "In 30 minutes", "In 1 hour", "In 2 hours", "Later today"];
 const DELIVERY_WINDOWS = [
   "ASAP (next 30 min)",
   "30 min – 1 hour",
@@ -70,6 +71,7 @@ export default function OrderPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [deliveryWindow, setDeliveryWindow] = useState("");
+  const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingCar, setUploadingCar] = useState(false);
   const [customerLat, setCustomerLat] = useState<number | null>(null);
@@ -162,7 +164,8 @@ export default function OrderPage() {
   const money = (cents: number) => formatMoney(cents, currency);
   const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
   const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
-  const payableCents = (local ? discountedCents : netTotalCents) + runnerFeeCents;
+  const pickup = fulfillment === "pickup";
+  const payableCents = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents);
 
   async function applyPromo() {
     if (!promoInput.trim() || !selectedVendor) return;
@@ -268,8 +271,9 @@ export default function OrderPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         vendorId: selectedVendor!.id,
-        eventName: finalEvent,
-        campgroundZone: [
+        fulfillment,
+        eventName: pickup ? "Pickup" : finalEvent,
+        campgroundZone: pickup ? "Pick up at the shop" : [
           campground,
           subCampground,
           campsiteRow && `row ${campsiteRow}`,
@@ -289,7 +293,7 @@ export default function OrderPage() {
         deliveryWindow,
         items: cart.map((c) => ({ product_id: c.id, name: c.name, qty: c.qty, price: Math.round(c.price * 100) })),
         totalCents: cartTotalCents,
-        runnerFeeCents,
+        runnerFeeCents: pickup ? 0 : runnerFeeCents,
         promoCode: promo?.code,
         customerName,
         paymentMethod: local ? paymentMethod : undefined,
@@ -483,8 +487,20 @@ export default function OrderPage() {
           <button onClick={() => setStep(2)} className="mb-6 font-dm-mono text-xs text-neutral-500 hover:text-white">
             ← Back to menu
           </button>
-          <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">Delivery <span className="text-orange-400">Details</span></h1>
-          <p className="mb-8 text-neutral-500">Tell us where to find you.</p>
+          <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">{pickup ? <>Pickup <span className="text-orange-400">Details</span></> : <>Delivery <span className="text-orange-400">Details</span></>}</h1>
+          <p className="mb-5 text-neutral-500">{pickup ? "You collect from the shop. No runner fee." : "Tell us where to find you."}</p>
+
+          {/* Delivery or pickup */}
+          <div className="mb-6 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setFulfillment("delivery")} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${!pickup ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
+              <span className="font-semibold">🏕️ Deliver to me</span>
+              <span className="block text-xs text-neutral-500">A runner brings it. Runner fee applies.</span>
+            </button>
+            <button type="button" onClick={() => { setFulfillment("pickup"); if (!deliveryWindow || !PICKUP_WINDOWS.includes(deliveryWindow)) setDeliveryWindow("ASAP"); }} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${pickup ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
+              <span className="font-semibold">🛍️ I&apos;ll pick it up</span>
+              <span className="block text-xs text-neutral-500">Collect at the shop. No runner fee.</span>
+            </button>
+          </div>
 
           <div className="space-y-5">
             <div>
@@ -507,8 +523,22 @@ export default function OrderPage() {
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
                 placeholder="(570) 555-1234"
               />
-              <p className="mt-1 text-xs text-neutral-600">The last 4 digits are your delivery confirmation code.</p>
+              <p className="mt-1 text-xs text-neutral-600">The last 4 digits are your confirmation code — give them at {pickup ? "the counter" : "handover"}.</p>
             </div>
+
+            {pickup && (
+              <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
+                <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Where to collect</p>
+                <p className="mt-1 text-white">{selectedVendor?.pickup_location || selectedVendor?.area || "The shop will tell you where — check your order page."}</p>
+                <label className="mt-4 mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">When will you collect? *</label>
+                <select value={deliveryWindow} onChange={(e) => setDeliveryWindow(e.target.value)} className="w-full rounded-xl border border-white/10 bg-neutral-900 px-4 py-3 text-sm text-white focus:border-orange-500/50 focus:outline-none">
+                  {PICKUP_WINDOWS.map((w) => <option key={w} value={w}>{w}</option>)}
+                </select>
+                <p className="mt-2 text-xs text-neutral-500">The shop marks it ready; you&apos;ll see that on your order page. Show your code when you collect.</p>
+              </div>
+            )}
+
+            {!pickup && (<>
 
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Event *</label>
@@ -700,13 +730,14 @@ export default function OrderPage() {
                 {DELIVERY_WINDOWS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
             </div>
+            </>)}
 
             {error && (
               <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
             )}
 
             <button
-              disabled={!eventName || !campground || !customerPhone || !deliveryWindow || (eventName === "Local Market / Other" && !customEvent)}
+              disabled={pickup ? (!customerPhone || !deliveryWindow) : (!eventName || !campground || !customerPhone || !deliveryWindow || (eventName === "Local Market / Other" && !customEvent))}
               onClick={() => setStep(4)}
               className="w-full rounded-2xl bg-orange-500 py-3.5 font-semibold text-white transition hover:bg-orange-400 disabled:opacity-40"
             >
@@ -779,7 +810,10 @@ export default function OrderPage() {
               )}
               {promoError && <p className="text-xs text-[#FF5C3A]">{promoError}</p>}
 
-              {/* Runner fee — all of it goes to the person who brings the order */}
+              {/* Runner fee — all of it goes to the person who brings the order; none on a pickup */}
+              {pickup ? (
+                <div className="flex justify-between text-sm"><span className="text-neutral-400">Pickup at the shop</span><span className="text-neutral-300">no runner fee</span></div>
+              ) : (
               <div className="pt-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-400">Runner fee <span className="text-neutral-600">(goes to your runner, 10% min)</span></span>
@@ -799,6 +833,7 @@ export default function OrderPage() {
                   <p className="mt-1 text-xs text-neutral-500">The minimum runner fee is {money(runnerMinCents)}; that&apos;s what will be charged.</p>
                 )}
               </div>
+              )}
 
               <div className="flex justify-between font-semibold">
                 <span className="text-white">Total</span>
@@ -864,7 +899,7 @@ export default function OrderPage() {
                     The shop&apos;s purse keeper confirms it, then the shop starts on your order.
                   </p>
                 )}
-                <p className="mt-3 text-xs text-neutral-600">On delivery, give your runner the last 4 digits of your phone to confirm.</p>
+                <p className="mt-3 text-xs text-neutral-600">At handover, give the last 4 digits of your phone to confirm — to your runner, or at the counter if you're picking up.</p>
                 {paymentMethod && paymentMethod !== "card" && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
               </div>
               {whatsappTo && (

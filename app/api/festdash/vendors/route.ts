@@ -7,7 +7,7 @@ import { festdashListingActive } from "@/utils/billing";
 
 type V = {
   id: number; name: string; category: string; description: string;
-  coordinator_user_id: string | null; region: string | null; currency: string | null; whatsapp_number: string | null;
+  coordinator_user_id: string | null; region: string | null; currency: string | null; whatsapp_number: string | null; pickup_location?: string | null; area?: string | null;
 };
 
 // Public list of vendors taking FestDash orders. RLS on festdash_vendors and
@@ -20,7 +20,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data: fdVendors, error } = await supabase
     .from("festdash_vendors")
-    .select("vendor_id, vendors(id, name, category, description, coordinator_user_id, region, currency, whatsapp_number)")
+    .select("vendor_id, vendors(id, name, category, description, coordinator_user_id, region, currency, whatsapp_number, pickup_location, area)")
     .eq("is_active", true);
   if (error) return NextResponse.json({ vendors: [], error: error.message }, { status: 500 });
 

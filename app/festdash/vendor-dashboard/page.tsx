@@ -17,8 +17,11 @@ type Order = {
   status: "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
   currency?: string;
   payment_method?: string;
+  fulfillment?: string;
   created_at: string;
 };
+const statusLabel = (o: Pick<Order, "status" | "fulfillment">) =>
+  o.fulfillment === "pickup" && o.status === "in_transit" ? "Ready for pickup" : o.fulfillment === "pickup" && o.status === "delivered" ? "Collected" : STATUS_LABELS[o.status];
 
 const STATUS_LABELS: Record<Order["status"], string> = {
   awaiting_confirmation: "Awaiting payment",
@@ -327,7 +330,7 @@ export default function VendorDashboard() {
                     <span className="ml-2 text-xs text-neutral-600">{order.campground_zone}</span>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[order.status]}`}>
-                    {STATUS_LABELS[order.status]}
+                    {statusLabel(order)}
                   </span>
                 </div>
               ))}
@@ -383,7 +386,7 @@ export default function VendorDashboard() {
               </div>
 
               <div className={`rounded-full px-3 py-1 text-center font-dm-mono text-xs ${STATUS_COLORS[selected.status]}`}>
-                {STATUS_LABELS[selected.status]}
+                {statusLabel(selected)}
               </div>
 
               {selected.status === "pending" && (
@@ -496,7 +499,7 @@ function OrderCard({
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[order.status]}`}>
-            {STATUS_LABELS[order.status]}
+            {statusLabel(order)}
           </span>
           <span className="text-sm font-semibold text-orange-400">
             {formatMoney(order.total_cents, order.currency)}{order.payment_method === "cash" ? " · cash on delivery" : ""}
