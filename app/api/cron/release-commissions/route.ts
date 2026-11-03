@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { releaseCommission } from "@/utils/commissions";
 import { payPendingRunnerFees } from "@/utils/runnerPay";
 import { payPendingStorePayouts } from "@/utils/storePayouts";
+import { expireStoreHolds } from "@/utils/storeSettle";
 
 // Daily release of promoter commissions whose refund-protection window has closed
 // (scheduled in vercel.json). Vercel Cron calls this with
@@ -70,6 +71,8 @@ export async function GET(req: Request) {
   const runnerFees = await payPendingRunnerFees(db);
   // Store sales owed to vendors who have connected a payout account since.
   const storePayouts = await payPendingStorePayouts(db);
+  // Held store cards nobody handed over in six days: release them and restore stock.
+  const storeHolds = await expireStoreHolds(db);
 
   return NextResponse.json({
     checked: due?.length ?? 0,
@@ -78,5 +81,6 @@ export async function GET(req: Request) {
     skippedDetail: skipped.slice(0, 20),
     runnerFees,
     storePayouts,
+    storeHolds,
   });
 }

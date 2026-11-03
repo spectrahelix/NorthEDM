@@ -510,6 +510,16 @@ through the site; it records what moved and who confirmed it.** Full design in
   'payout'`); the page shows both directions. `payRunnerFee` and the Connect
   commission are skipped for these orders. Store sale rows use
   `store_order_id`, never `order_id` (which is a FestDash FK).
+  **Held cards on Gambian stores (2026-11-03).** A card order on a wallet-rail
+  store is authorised, not charged (`capture_method: manual`, session
+  `hold=1`): the webhook marks it `authorized`, reserves stock and books
+  nothing. The operator's **Handed over** on /<slug>/manage
+  (`/api/store/orders/[id]/fulfill`) captures the card, marks it `paid` and
+  runs `settleStoreOrder()` (`utils/storeSettle.ts`, the one place store
+  money is finalised — the webhook uses it too for US stores captured at
+  purchase). **Cancel** releases the hold and restores stock; the commissions
+  cron releases holds untouched for six days; a hold cancelled at Stripe
+  comes back through `payment_intent.canceled`. US stores are unchanged.
   **Store checkout follows the shop's rail** (`utils/storeRail.ts`): a store
   whose operator is a wallet-rail vendor sells for Wave / QMoney / Afrimoney in
   the shop's currency, paid to the coordinator; the order waits in
