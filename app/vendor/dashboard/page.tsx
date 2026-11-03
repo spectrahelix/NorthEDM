@@ -12,6 +12,21 @@ import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
 import { SpecsEditor, EMPTY_SPECS_FORM, specsFormFrom, specsPayload } from "@/app/components/SpecsEditor";
 import type { SpecsColumns } from "@/utils/specs";
+import { GuidedTour, tourPending, type TourStep } from "@/app/components/GuidedTour";
+
+// First-visit walkthrough for a new shop owner: each step spotlights a part of
+// the add-product form (data-tour attributes below). Shown once per device when
+// the shop has no items yet; "Show me how" replays it.
+const TOUR_STEPS: TourStep[] = [
+  { target: "name", title: "Name your item", body: "Type what you're selling the way a customer would search for it, e.g. \"Attaya tea set\" or \"Phone charger, USB-C\"." },
+  { target: "price", title: "Set the price", body: "Numbers only, in your shop's currency. Customers see it on your menu and store page." },
+  { target: "stock", title: "How many you have", body: "Each sale counts down from this number. When it reaches zero the item shows as out of stock." },
+  { target: "description", title: "Describe it", body: "A sentence or two: what it is, what's included, anything a buyer should know." },
+  { target: "specs", title: "Weight and specifications", body: "Weight sets the shipping price for posted orders. Add specs like Brand, Material or Size and they appear as a table on the item page." },
+  { target: "photos", title: "Add photos", body: "Tap + Add photos and pick from your camera roll. The first photo is the cover. Photos save as soon as they're added." },
+  { target: "publish", title: "Publish", body: "Leave \"Publish to my market\" ticked and press Add product. Untick it to keep the item hidden while you work on it." },
+  { target: "view", title: "See it live", body: "Open your market page to check how the item looks. You can come back here to edit it any time." },
+];
 
 type Product = Partial<SpecsColumns> & {
   id: number;
@@ -48,6 +63,8 @@ export default function VendorDashboard() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [photoVersion, setPhotoVersion] = useState(0);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourChecked, setTourChecked] = useState(false);
 
   const formDirty = JSON.stringify(form) !== JSON.stringify(EMPTY);
   const draftRestored = useUnsavedDraft(
@@ -72,6 +89,11 @@ export default function VendorDashboard() {
     const j = await res.json().catch(() => ({}));
     if (res.ok) setProducts(j.products ?? []);
     setPhotoVersion((v) => v + 1);
+    // First visit to an empty shop: open the walkthrough (once per device).
+    if (res.ok && !tourChecked) {
+      setTourChecked(true);
+      if ((j.products ?? []).length === 0 && tourPending("vendor_dashboard")) setTourOpen(true);
+    }
   }
 
   async function loadSquareStatus() {
@@ -236,12 +258,16 @@ export default function VendorDashboard() {
             <h1 className="mt-2 font-bebas text-5xl tracking-wide">Your Inventory</h1>
             <div className="mt-6"><PayoutsCard returnTo="/vendor/dashboard" /></div>
           </div>
-          {vendorId && (
-            <Link href={`/marketplace/${vendorId}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">
-              View my market →
-            </Link>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {vendorId && (
+              <Link data-tour="view" href={`/marketplace/${vendorId}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">
+                View my market →
+              </Link>
+            )}
+            <button type="button" onClick={() => setTourOpen(true)} className="text-xs text-[#00D4FF] underline-offset-2 hover:underline">Show me how to add an item</button>
+          </div>
         </div>
+        <GuidedTour id="vendor_dashboard" steps={TOUR_STEPS} open={tourOpen} onClose={() => setTourOpen(false)} />
 
         {/* Square sync */}
         <div className="mt-8 rounded-2xl border border-[#00D4FF]/20 bg-[#00D4FF]/[0.03] p-5">
@@ -317,23 +343,23 @@ export default function VendorDashboard() {
             {editingId ? "Edit product" : "Add a product"}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Product name *"
+            <input data-tour="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Product name *"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
             <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Category"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
-            <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Price (e.g. 25.00)" inputMode="decimal"
+            <input data-tour="price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Price (e.g. 25.00)" inputMode="decimal"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
-            <input value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} placeholder="In stock (qty)" inputMode="numeric"
+            <input data-tour="stock" value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} placeholder="In stock (qty)" inputMode="numeric"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
           </div>
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Description"
+          <textarea data-tour="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Description"
             className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
-          <div className="mt-4"><SpecsEditor value={form.specs} onChange={(specs) => setForm({ ...form, specs })} /></div>
-          <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
+          <div className="mt-4" data-tour="specs"><SpecsEditor value={form.specs} onChange={(specs) => setForm({ ...form, specs })} /></div>
+          <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4" data-tour="photos">
             {/* Photos are saved the moment they're added — they don't wait for the button below. */}
             <GalleryManager productId={editingId} ensureProductId={ensureSaved} onChanged={() => loadProducts()} />
           </div>
-          <label className="mt-4 flex items-center gap-2 text-sm text-neutral-300">
+          <label className="mt-4 flex items-center gap-2 text-sm text-neutral-300" data-tour="publish">
             <input type="checkbox" checked={form.isPublic} onChange={(e) => setForm({ ...form, isPublic: e.target.checked })} />
             Publish to my market
           </label>
