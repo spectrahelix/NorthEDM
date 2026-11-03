@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { serviceClient } from "@/utils/coordinator";
 import { asKind, createSubscriptionCheckout } from "@/utils/billing";
-import { isLocalRail } from "@/utils/gambiaPay";
 import { ensureOwnStore } from "@/utils/ownStore";
 
 // POST { kind: "festdash" | "store" | "bundle", storeSlug?, code? } → { url } to Stripe Checkout.
@@ -23,7 +22,8 @@ export async function POST(req: Request) {
       if (!vendorId) return NextResponse.json({ error: "No vendor linked to this account." }, { status: 403 });
       const { data: vendor } = await admin.from("vendors").select("id, name, coordinator_user_id, currency").eq("id", vendorId).maybeSingle();
       if (!vendor) return NextResponse.json({ error: "Vendor not found." }, { status: 404 });
-      if (isLocalRail(vendor)) return NextResponse.json({ error: "Your fees are paid to your coordinator, not by card." }, { status: 400 });
+      // Wallet-rail shops may pay fees by card too (owner's decision, 2026-11-03):
+      // the fee then lands with the owner and the coordinator's 10% is a commission.
       // The bundle needs a store to switch on; a vendor without one gets a draft
       // store under their own name, made live by the subscription.
       const store = kind === "bundle" ? await ensureOwnStore(admin, user.id, Number(vendor.id), String(vendor.name ?? "shop")) : null;

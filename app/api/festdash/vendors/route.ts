@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { serviceClient } from "@/utils/coordinator";
 import { isLocalRail } from "@/utils/gambiaPay";
+import { paidLocalVendorIds } from "@/utils/coordinator";
 import { festdashListingActive } from "@/utils/billing";
 
 type V = {
@@ -38,7 +39,7 @@ export async function GET() {
   const today = new Date().toISOString().slice(0, 10);
   const coordIds = [...new Set(local.map((v) => v.coordinator_user_id as string))];
   const [{ data: subs }, { data: purses }] = await Promise.all([
-    admin.from("vendor_subscriptions").select("vendor_id").eq("kind", "festdash").in("vendor_id", local.map((v) => v.id)).gte("period_end", today),
+    paidLocalVendorIds(admin, local.map((v) => v.id)).then((set) => ({ data: [...set].map((vendor_id) => ({ vendor_id })) })),
     admin.from("festdash_promoters")
       .select("user_id, wave_number, qmoney_number, afrimoney_number, whatsapp_number")
       .in("user_id", coordIds).eq("is_coordinator", true),

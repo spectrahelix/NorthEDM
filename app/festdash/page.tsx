@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { currentShow, type VendorShow } from "@/utils/supabase/user-profiles";
 import { PaymentPaths } from "@/app/components/festdash/PaymentPaths";
 import { isLocalRail } from "@/utils/gambiaPay";
+import { paidLocalVendorIds } from "@/utils/coordinator";
 import { festdashListingActive } from "@/utils/billing";
 
 export const metadata = {
@@ -78,7 +79,8 @@ export default async function FestDashPage() {
   const coordVendorIds = (vRows.data ?? []).filter((v) => isLocalRail(v)).map((v) => v.id);
   if (coordVendorIds.length) {
     const today = new Date().toISOString().slice(0, 10);
-    const { data: subs } = await admin.from("vendor_subscriptions").select("vendor_id").eq("kind", "festdash").in("vendor_id", coordVendorIds).gte("period_end", today);
+    const paidSet = await paidLocalVendorIds(admin, coordVendorIds);
+    const subs = [...paidSet].map((vendor_id) => ({ vendor_id }));
     const paid = new Set((subs ?? []).map((s) => Number(s.vendor_id)));
     for (const vid of coordVendorIds) if (!paid.has(vid)) visible.delete(vid);
   }

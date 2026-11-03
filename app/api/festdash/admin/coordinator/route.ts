@@ -16,6 +16,10 @@ export async function GET() {
     admin.from("coordinator_ledger").select("*").order("created_at", { ascending: false }).limit(300),
     admin.from("coordinator_program_settings").select("*").eq("id", 1).maybeSingle(),
   ]);
+  // Commissions still owed to each coordinator (fees paid by card, US-side sales) — part of the net.
+  const { data: heldRows } = await admin.from("commissions").select("promoter_user_id, amount_cents").eq("status", "held");
+  const heldByUser: Record<string, number> = {};
+  for (const r of heldRows ?? []) heldByUser[r.promoter_user_id] = (heldByUser[r.promoter_user_id] ?? 0) + Number(r.amount_cents);
   const paidThrough = new Map<number, string>();
   for (const s of subs ?? []) {
     const cur = paidThrough.get(Number(s.vendor_id));
@@ -26,6 +30,7 @@ export async function GET() {
     vendors: (vendors ?? []).map((v) => ({ ...v, paid_through: paidThrough.get(Number(v.id)) ?? null })),
     ledger: ledger ?? [],
     settings,
+    held_commissions: heldByUser,
   });
 }
 

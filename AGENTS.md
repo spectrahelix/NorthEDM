@@ -456,6 +456,15 @@ through the site; it records what moved and who confirmed it.** Full design in
   admin card shows who minted it. Wallet rail: the purse logs a `bundle` fee
   as a festdash period plus a store period. Approval email lists the three
   plans (the "invoice"); nothing is charged until the shop picks one.
+  **Business-safe routing (2026-11-03).** Every shop, wallet-rail included,
+  can pay its fee by card (`/api/billing/*` no longer refuses the local rail;
+  `activeSubscription` / `paidLocalVendorIds` count a Stripe listing or
+  bundle as a current period; the reminders job skips card payers). Paying
+  the coordinator in dalasi stays as the fallback. The coordinators admin
+  page shows a **Settle net** line per coordinator and currency: what you owe
+  them (owner-collected card sales + held commissions) minus what they owe
+  you (wallet sales/fees), so money crosses the border once, in the direction
+  that works (US → Gambia).
   **A promoter's own shop (2026-11-03)** is a shop that promoter referred:
   10% off the fee automatically and they keep the promoter share of its sales
   and fee payments (90% to them, 10% to the owner). `selfReferral()` in
