@@ -54,6 +54,9 @@ const nextConfig: NextConfig = {
       // but an older copy of the composer with no content moderation, no
       // categories and no hearts. Anyone entering the forum through CrowdWave
       // posted unmoderated. Removed; these keep existing links working.
+      // Gee's store moved from /gee to /Gees (owner's choice of link, 2026-11-03).
+      { source: "/gee", destination: "/Gees", permanent: true },
+      { source: "/gee/manage", destination: "/Gees/manage", permanent: true },
       { source: "/crowdwave/forum", destination: "/forum", permanent: true },
       { source: "/crowdwave/forum/:id", destination: "/forum/:id", permanent: true },
     ];
