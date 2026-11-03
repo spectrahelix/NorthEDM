@@ -143,8 +143,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     cancel_url: `${origin}/${store.slug}`,
     shipping_address_collection: { allowed_countries: rail ? ["GM", "US", "GB", "SN"] : ["US"] },
     customer_email: user?.email ?? undefined,
-    metadata: { kind: "store_order", store_order_id: order.id, store_slug: store.slug },
+    metadata: { kind: "store_order", store_order_id: order.id, store_slug: store.slug, hold: rail ? "1" : "0" },
     client_reference_id: order.id,
+    // Gambian stores: authorise now, charge at handover (operator's "Handed
+    // over"). A dispute can't land on a sale that never left the counter.
+    ...(rail ? { payment_intent_data: { capture_method: "manual" as const, metadata: { store_order_id: order.id } } } : {}),
   });
 
   await admin.from("store_orders").update({ stripe_session_id: session.id }).eq("id", order.id);
