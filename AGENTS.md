@@ -724,8 +724,11 @@ Festivals and shows come from `local_events` (the events cron + /admin/events):
 festivals = `source` seed/manual or `featured`; annual seeds rolled forward and
 still **pending** are listed by name under "Returning Next Season" with no
 dates until approved. Trending vendors (`utils/trendingVendors.ts`, also used
-by `/feed`) = completed sales through the site, 30 days: delivered FestDash
-orders + paid/fulfilled store orders, public vendors only, counts only. Weather
+by `/feed`) = 30 days of completed sales (delivered FestDash + paid/fulfilled
+store orders) plus distinct visitors to the shop's pages (admins and the shop's
+own people excluded); score = visitors + 10 × sales, listed once a vendor has a
+sale or 3+ visitors, public vendors only. Shown as "🔥 Hot topic" — never the
+numbers (owner's call). Weather
 for all 20 PA state forests (`utils/paStateForests.ts`, `ForestWeather`) is
 Open-Meteo, cached 1h. The old `festival_vendors` / `festival_events` seed rows
 are not read by these pages any more.

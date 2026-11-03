@@ -191,7 +191,7 @@ export default async function FeedPage() {
             </div>
             <div>
               <span className="font-dm-mono font-semibold text-[#E8FF47]">{vendors.length}</span>
-              <span className="ml-2 text-neutral-400">vendors with sales (30 days)</span>
+              <span className="ml-2 text-neutral-400">hot vendors right now</span>
             </div>
           </div>
         </div>
@@ -280,7 +280,7 @@ export default async function FeedPage() {
 
           {vendors.length === 0 ? (
             <p className="text-sm text-neutral-500">
-              No completed sales through the site in the last 30 days yet.
+              Nobody&apos;s trending yet — vendors show up here once people buy from them or visit their shops.
             </p>
           ) : (
             vendors.map((vendor) => (
@@ -294,8 +294,8 @@ export default async function FeedPage() {
                     <p className="truncate font-semibold leading-tight">{vendor.name}</p>
                     {vendor.category && <p className="text-xs text-neutral-500">{vendor.category}</p>}
                   </div>
-                  <span className="shrink-0 rounded-full bg-[#E8FF47]/10 px-2 py-0.5 font-dm-mono text-xs text-[#E8FF47]">
-                    {vendor.sales} {vendor.sales === 1 ? "sale" : "sales"} · 30d
+                  <span className="shrink-0 rounded-full bg-[#FF5C3A]/15 px-2 py-0.5 font-dm-mono text-xs uppercase tracking-widest text-[#FF5C3A]">
+                    🔥 Hot topic
                   </span>
                 </div>
               </Link>

@@ -145,7 +145,7 @@ export default async function CrowdWaveFeedPage() {
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
             <Stat n={festivals.length} label="festivals with confirmed dates" />
             <Stat n={shows.length} label="shows ahead" />
-            <Stat n={trending.length} label={`vendors with sales (${SALES_WINDOW_DAYS} days)`} />
+            <Stat n={trending.length} label="hot vendors right now" />
             <Stat n={carpoolGroups} label="carpool groups" />
             <Stat n={PA_STATE_FORESTS.length} label="state forests tracked" />
           </div>
@@ -219,15 +219,15 @@ export default async function CrowdWaveFeedPage() {
           <div>
             <h2 className="font-bebas text-4xl tracking-wide">Trending Vendors</h2>
             <p className="mt-1 text-xs text-neutral-500">
-              NorthEDM vendors ranked by completed sales through this site in the
-              last {SALES_WINDOW_DAYS} days.
+              NorthEDM vendors people are buying from and visiting most on this
+              site over the last {SALES_WINDOW_DAYS} days.
             </p>
           </div>
 
           {topVendors.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-neutral-500">
-              No completed sales through the site in the last {SALES_WINDOW_DAYS} days
-              yet — vendors show up here as soon as people buy from them.{" "}
+              Nobody&apos;s trending yet — vendors show up here once people start
+              buying from them or visiting their shops.{" "}
               <Link href="/marketplace" className="text-[#3AFFD4] hover:underline">
                 Browse the marketplace
               </Link>
@@ -247,9 +247,7 @@ export default async function CrowdWaveFeedPage() {
                       <p className="text-xs text-neutral-500">{vendor.category}</p>
                     )}
                   </div>
-                  <span className="shrink-0 rounded-full bg-[#E8FF47]/10 px-2 py-0.5 font-dm-mono text-xs text-[#E8FF47]">
-                    {vendor.sales} {vendor.sales === 1 ? "sale" : "sales"}
-                  </span>
+                  <HotBadge />
                 </div>
               </Link>
             ))
@@ -278,6 +276,14 @@ export default async function CrowdWaveFeedPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function HotBadge() {
+  return (
+    <span className="shrink-0 rounded-full bg-[#FF5C3A]/15 px-2 py-0.5 font-dm-mono text-xs uppercase tracking-widest text-[#FF5C3A]">
+      🔥 Hot topic
+    </span>
   );
 }
 
