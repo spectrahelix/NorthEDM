@@ -12,10 +12,12 @@ export async function canManageInventory(
   if (user.email === ADMIN_EMAIL) return true;
   const { data } = await supabase
     .from("user_profiles")
-    .select("role, is_marketplace")
+    .select("role, is_marketplace, is_festdash_vendor")
     .eq("id", user.id)
     .single();
+  // A FestDash shop sells from the same products table, so it must be able to
+  // add items without a separate marketplace grant (2026-11-03).
   return (
-    !!data?.is_marketplace || data?.role === "archon" || data?.role === "warden"
+    !!data?.is_marketplace || !!data?.is_festdash_vendor || data?.role === "archon" || data?.role === "warden"
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
+import { vendorStripeAccount } from "@/utils/storePayouts";
 import { loadSplitSettings } from "@/utils/coordinator";
 import { platformShareBps } from "@/utils/gambiaPay";
 
@@ -28,11 +29,8 @@ export async function GET() {
   }
 
   const admin = getAdminClient();
-  const { data: vendor } = await admin
-    .from("festdash_vendors")
-    .select("id, stripe_account_id")
-    .eq("vendor_id", profile.vendor_id)
-    .single();
+  const accountId = await vendorStripeAccount(admin, Number(profile.vendor_id));
+  const vendor = { stripe_account_id: accountId };
   if (!vendor) {
     return NextResponse.json({ error: "Not a FestDash vendor" }, { status: 404 });
   }

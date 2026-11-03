@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
+import { safeNext } from "@/utils/safeRedirect";
+import { vendorStripeAccount } from "@/utils/storePayouts";
 
 function getAdminClient() {
   return createAdminClient(
@@ -26,18 +28,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No vendor linked to this account" }, { status: 403 });
   }
 
+  // Any vendor (FestDash, marketplace, store operator) — one Connect account
+  // covers FestDash card orders and embedded-store sales. Lives on
+  // vendors.stripe_account_id; mirrored to festdash_vendors for older readers.
   const admin = getAdminClient();
-  const { data: vendor } = await admin
-    .from("festdash_vendors")
-    .select("id, name, stripe_account_id")
-    .eq("vendor_id", profile.vendor_id)
-    .single();
-  if (!vendor) {
-    return NextResponse.json({ error: "Not a FestDash vendor" }, { status: 404 });
-  }
+  const { data: vendor } = await admin.from("vendors").select("id, name").eq("id", profile.vendor_id).maybeSingle();
+  if (!vendor) return NextResponse.json({ error: "Vendor not found" }, { status: 404 });
+  const body = await req.json().catch(() => ({}));
+  const returnTo = safeNext(typeof body?.returnTo === "string" ? body.returnTo : null) ?? "/festdash/vendor-dashboard";
 
   const stripe = getStripe();
-  let accountId = vendor.stripe_account_id as string | null;
+  let accountId = await vendorStripeAccount(admin, Number(vendor.id));
 
   if (!accountId) {
     const account = await stripe.accounts.create({
@@ -45,20 +46,19 @@ export async function POST(req: Request) {
       email: user.email ?? undefined,
       business_profile: vendor.name ? { name: vendor.name } : undefined,
       capabilities: { transfers: { requested: true } },
-      metadata: { festdash_vendor_id: String(vendor.id) },
+      metadata: { vendor_id: String(vendor.id) },
     });
     accountId = account.id;
-    await admin
-      .from("festdash_vendors")
-      .update({ stripe_account_id: accountId })
-      .eq("id", vendor.id);
   }
+  await admin.from("vendors").update({ stripe_account_id: accountId }).eq("id", vendor.id);
+  await admin.from("festdash_vendors").update({ stripe_account_id: accountId }).eq("vendor_id", vendor.id);
 
   const origin = new URL(req.url).origin;
+  const sep = returnTo.includes("?") ? "&" : "?";
   const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${origin}/festdash/vendor-dashboard?stripe=refresh`,
-    return_url: `${origin}/festdash/vendor-dashboard?stripe=connected`,
+    refresh_url: `${origin}${returnTo}${sep}stripe=refresh`,
+    return_url: `${origin}${returnTo}${sep}stripe=connected`,
     type: "account_onboarding",
   });
 

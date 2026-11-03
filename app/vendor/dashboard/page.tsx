@@ -5,6 +5,7 @@ import { isUndisplayableImage } from "@/utils/webImage";
 import { GalleryManager } from "@/app/components/vendor/GalleryManager";
 import { ProductThumb } from "@/app/components/ProductThumb";
 import { PhotoLibrary } from "@/app/components/vendor/PhotoLibrary";
+import { PayoutsCard } from "@/app/components/PayoutsCard";
 import { useUnsavedDraft } from "@/utils/useUnsavedDraft";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -84,12 +85,12 @@ export default function VendorDashboard() {
       if (!user) { setAccess("no-vendor"); return; }
       const [{ data: prof }, { data: me }] = await Promise.all([
         supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single(),
-        supabase.from("user_profiles").select("is_marketplace, role").eq("id", user.id).single(),
+        supabase.from("user_profiles").select("is_marketplace, is_festdash_vendor, role").eq("id", user.id).single(),
       ]);
       if (!prof?.vendor_id) { setAccess("no-vendor"); return; }
       setVendorId(prof.vendor_id);
       const isAdmin = me?.role === "archon" || me?.role === "warden" || user.email === "cjblue27@gmail.com";
-      if (!me?.is_marketplace && !isAdmin) { setAccess("no-access"); return; }
+      if (!me?.is_marketplace && !me?.is_festdash_vendor && !isAdmin) { setAccess("no-access"); return; }
       setAccess("ok");
       loadProducts();
       loadSquareStatus();
@@ -230,6 +231,7 @@ export default function VendorDashboard() {
           <div>
             <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#00D4FF]">Vendor Dashboard</p>
             <h1 className="mt-2 font-bebas text-5xl tracking-wide">Your Inventory</h1>
+            <div className="mt-6"><PayoutsCard returnTo="/vendor/dashboard" /></div>
           </div>
           {vendorId && (
             <Link href={`/marketplace/${vendorId}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">
