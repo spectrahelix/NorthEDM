@@ -291,7 +291,7 @@ export async function POST(req: Request) {
   // authorized (held) now, and only captured when the driver confirms delivery.
   // If the vendor has an onboarded Connect account, the charge is a destination
   // transfer minus FestDash's share — owner % + coordinator % from
-  // coordinator_program_settings, 20% by default, so the vendor keeps 80% — and
+  // coordinator_program_settings, 10% by default, so the vendor keeps 90% — and
   // capture pays the vendor directly. The coordinator's part of that share is
   // booked to them at delivery (orders/[id]) and paid out by the commissions
   // cron after the hold window. If the vendor has no Connect account, funds are

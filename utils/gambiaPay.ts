@@ -65,23 +65,30 @@ export type SplitSettings = {
   mint_max_amount_off_cents?: number;
 };
 export const DEFAULT_SPLITS: SplitSettings = {
-  sale_owner_bps: 1000,
-  sale_coordinator_bps: 1000,
+  sale_owner_bps: 1000, // the platform's whole share of a sale; the shop keeps the rest
+  sale_coordinator_bps: 500, // the promoter's part OF that share (never on top of it)
   subscription_fee_cents: 3000,
   subscription_coordinator_bps: 1000,
 };
 
-/** A sale: the shop keeps what's left after the owner's and coordinator's cuts. */
-export function splitSale(totalCents: number, s: SplitSettings) {
-  const owner = Math.round((totalCents * s.sale_owner_bps) / 10000);
-  const coordinator = Math.round((totalCents * s.sale_coordinator_bps) / 10000);
-  return { owner, coordinator, shop: totalCents - owner - coordinator };
+/**
+ * A sale. The shop ALWAYS keeps the same share (100% − sale_owner_bps, 90% by
+ * default) whether or not a promoter signed it up. The platform's share is
+ * split between NorthEDM and the promoter who referred the shop
+ * (sale_coordinator_bps of the sale, out of the platform's part — never on
+ * top of it); with no promoter NorthEDM keeps the whole share.
+ * Owner's rule, 2026-11-03: a shop must not earn less for having been referred.
+ */
+export function splitSale(totalCents: number, s: SplitSettings, hasCoordinator = true) {
+  const platform = Math.round((totalCents * s.sale_owner_bps) / 10000);
+  const coordinator = hasCoordinator ? Math.min(platform, Math.round((totalCents * s.sale_coordinator_bps) / 10000)) : 0;
+  return { owner: platform - coordinator, coordinator, shop: totalCents - platform };
 }
-/** The platform's total share of a sale — owner + coordinator — in basis points.
- *  On a card order this is the Stripe application fee; on a wallet sale it is
- *  what the purse keeper holds back. Same two settings on both rails. */
+/** The platform's total share of a sale in basis points — what the shop does
+ *  NOT keep. On a card order this is the Stripe application fee; on a wallet
+ *  sale it is what the purse keeper holds back. The promoter is paid out of it. */
 export function platformShareBps(s: SplitSettings): number {
-  return s.sale_owner_bps + s.sale_coordinator_bps;
+  return s.sale_owner_bps;
 }
 
 /**
@@ -99,7 +106,7 @@ export function isLocalRail(v: { coordinator_user_id?: string | null; currency?:
 /**
  * Runner fee: what the customer adds for the runner, on top of the items. The
  * floor is 10% of the items (after any code); the customer may pick more. All
- * of it goes to the runner — it is outside the 80/10/10 split.
+ * of it goes to the runner — it is outside the 90/10 split.
  */
 export const RUNNER_FEE_MIN_BPS = 1000;
 export const RUNNER_FEE_CHOICES_BPS = [1000, 1500, 2000, 2500] as const;

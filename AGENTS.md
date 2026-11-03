@@ -372,13 +372,18 @@ through the site; it records what moved and who confirmed it.** Full design in
   paid_mobile`. Cash → straight to `pending`, `payment_status = cod`, settled
   (`paid_cash`) when the delivery code is entered. Both book a `sale` row in
   `coordinator_ledger` with the split; the booking is idempotent per order.
-- **Splits are settings, not code**: `coordinator_program_settings` (sale
-  shop 80 / owner 10 / coordinator 10; fee $30 of which coordinator 10%).
-  Change them in the admin page, never by editing percentages in a route.
-  The same two sale percentages are the **platform fee on US card orders**
-  (owner + coordinator, 20% by default, vendor keeps 80%); the coordinator's
-  part is booked as a `festdash_order` commission at delivery and paid through
-  Stripe Connect by the commissions cron. The rail is `isLocalRail()` in
+- **Splits are settings, not code**: `coordinator_program_settings`. Since
+  2026-11-03 (owner's rule): **every shop keeps 90% of a sale, referred or
+  not**. `sale_owner_bps` (1000) is the platform's whole share; the promoter /
+  coordinator who signed the shop up gets `sale_coordinator_bps` (500) of the
+  sale **out of that share**, NorthEDM the rest; with no promoter NorthEDM
+  keeps all of it. `splitSale()` / `platformShareBps()` in `utils/gambiaPay.ts`
+  are the one implementation; the admin page refuses a promoter part larger
+  than the platform share. Fee: $30 of which coordinator 10%. Change numbers in
+  the admin page, never by editing percentages in a route. The platform share
+  is the **Stripe application fee on US card orders** (10%, vendor keeps 90%);
+  the promoter's part is booked as a `festdash_order` commission at delivery
+  and paid through Stripe Connect by the commissions cron. The rail is `isLocalRail()` in
   `utils/gambiaPay.ts`: coordinator **and** non-USD currency → wallets/cash and
   the fee gate; a USD vendor with a coordinator stays on card checkout.
 - The coordinator's book: `coordinator_ledger` (`sale` | `subscription` |
@@ -430,7 +435,7 @@ through the site; it records what moved and who confirmed it.** Full design in
   to the runner's Connect account at the delivery code (`utils/runnerPay.ts`;
   runners set payouts up on /festdash/driver; the commissions cron sweeps fees
   owed to runners who connected later). Wallet rail: `runner_cents` on the
-  ledger `sale` row, paid by the coordinator. The 80/10/10 is on the items only.
+  ledger `sale` row, paid by the coordinator. The 90/10 split is on the items only.
   **Any active promoter's code** now attaches a promoter to a shop (shop-setup
   walkthrough and /vendors/apply → `vendors.coordinator_user_id/_code`); that
   promoter earns the coordinator share of each sale. A shop referred by the
@@ -518,7 +523,7 @@ through the site; it records what moved and who confirmed it.** Full design in
   card, on FestDash and in its store, charged in the shop's currency to
   NorthEDM's Stripe with no destination transfer (Stripe can't reach a Gambian
   shop or runner). At delivery (FestDash) or on the paid webhook (store) the
-  80/10/10 plus the runner fee is booked on `coordinator_ledger` with
+  90/10 split plus the runner fee is booked on `coordinator_ledger` with
   `collected_by = 'owner'`: the owner owes shop + coordinator + runner shares
   to the coordinator, who disburses locally. The owner records each Remitly
   payment with **Sent by Remitly** in /admin/festdash/coordinators (`kind =
@@ -541,7 +546,7 @@ through the site; it records what moved and who confirmed it.** Full design in
   `awaiting_confirmation` (`/api/store/orders/[id]/payment-ref` for the
   customer's reference, `…/confirm-payment` for the coordinator, who sees it in
   /festdash/purse next to FestDash orders). Confirming marks it paid, takes
-  stock down and books the 80/10/10 sale split. Card stores are unchanged.
+  stock down and books the 90/10 sale split. Card stores are unchanged.
 - **Shipping, specs and order documents (2026-11-03)** — one process for every
   parcel shop (NorthEDM's shop and US vendor stores). `utils/shipping.ts`:
   destination → zone (us / na / eu / wafrica incl. GM, SN / world), services

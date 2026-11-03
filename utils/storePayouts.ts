@@ -30,7 +30,7 @@ export async function chargeIdForPaymentIntent(paymentIntentId: string): Promise
  * transfer idempotency key means Stripe won't either.
  *
  * Split per selling vendor's lines: platform share (owner + coordinator bps,
- * 20% by default — the promoter's 10% is paid out of it by the commissions
+ * 10% by default — the promoter's part is paid out of it by the commissions
  * machinery) and, for a vendor who isn't the store's operator, the store's
  * operator fee; the rest is the vendor's. Operator fees from member vendors
  * are paid to the operator's own vendor account.
