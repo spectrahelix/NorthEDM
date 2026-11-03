@@ -9,7 +9,7 @@ export const RESERVED_SLUGS = new Set([
   "crowdwave", "vendors", "vendor", "artisans", "foraging", "festdash", "profile",
   "messages", "login", "signup", "avatar", "portfolio", "privacy", "terms",
   "feedback", "requests", "offline", "quote", "h", "store", "wook-world",
-  "reset-password", "forgot-password", "verify-email", "links",
+  "reset-password", "forgot-password", "verify-email", "links", "apps-and-tools",
 ]);
 
 export function storeAdminClient(): SupabaseClient {

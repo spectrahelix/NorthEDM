@@ -8,15 +8,18 @@
     "start": "next start",
     "lint": "eslint",
     "check": "node scripts/check-wiring.mjs",
-    "check:auth": "node scripts/check-oauth-providers.mjs"
+    "check:auth": "node scripts/check-oauth-providers.mjs",
+    "test:astro-hebrew": "node --no-warnings scripts/test-astro-hebrew.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
+    "@photostructure/tz-lookup": "^11.7.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.3",
     "@vercel/analytics": "^2.0.1",
+    "astronomy-engine": "^2.1.19",
     "mapbox-gl": "^3.34.1",
     "next": "^16.4.3",
     "qrcode": "^1.5.4",

@@ -48,7 +48,8 @@ design/*.png
 
 # Local agent skills tooling (installed via `skills add`)
 .agents/
-.claude/skills/
+.claude/skills/*
+!.claude/skills/hebrew-birth-chart/
 skills-lock.json
 
 # Local MCP + agent skills (machine-specific)
