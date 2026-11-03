@@ -5,7 +5,7 @@ import { isSiteAdminUser, loadSplitSettings, recordSaleSplit } from "@/utils/coo
 
 // POST — the coordinator (or an admin) confirms a store order's wallet payment
 // arrived, or rejects it. Confirming marks it paid, takes the stock down and
-// books the 80/10/10 split in the coordinator's ledger — the same moment the
+// books the 90/10 sale split in the coordinator's ledger — the same moment the
 // Stripe webhook handles for a card order.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();

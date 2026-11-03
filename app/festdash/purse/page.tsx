@@ -181,7 +181,7 @@ export default function PursePage() {
           )}
           {s && (
             <p className="mt-3 text-xs text-neutral-600">
-              Split per sale: shop {100 - (s.sale_owner_bps + s.sale_coordinator_bps) / 100}% · NorthEDM {s.sale_owner_bps / 100}% · you {s.sale_coordinator_bps / 100}%.
+              Split per sale: shop {100 - s.sale_owner_bps / 100}% · NorthEDM {(s.sale_owner_bps - s.sale_coordinator_bps) / 100}% · you {s.sale_coordinator_bps / 100}% (your part comes out of the platform&apos;s {s.sale_owner_bps / 100}%, never from the shop).
               Shop fee {formatMoney(s.subscription_fee_cents, "USD")}/month, of which you keep {s.subscription_coordinator_bps / 100}%.
             </p>
           )}
