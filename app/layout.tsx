@@ -143,11 +143,13 @@ export default async function RootLayout({
           <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent 0%, #39FF14 18%, #00D4FF 50%, #CC00FF 82%, transparent 100%)" }} />
           {/* Stage-light aura */}
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 35% 180% at 18% 120%, rgba(57,255,20,0.09) 0%, transparent 65%), radial-gradient(ellipse 35% 180% at 50% 120%, rgba(0,212,255,0.07) 0%, transparent 65%), radial-gradient(ellipse 35% 180% at 82% 120%, rgba(204,0,255,0.09) 0%, transparent 65%)" }} />
-          <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+          {/* On a narrow phone (or with large system text) the brand must give way:
+              it used to be shrink-0, which pushed the menu button off-screen. */}
+          <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4 sm:gap-6 sm:px-6">
             <Link
               href="/"
               aria-label="NorthEDM home"
-              className="-ml-3 flex shrink-0 flex-col gap-1 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
+              className="-ml-3 flex min-w-0 shrink flex-col gap-1 lg:shrink-0 rounded-xl px-3 py-2 transition hover:bg-white/[0.06]"
             >
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -158,9 +160,9 @@ export default async function RootLayout({
                   height={44}
                   className="h-11 w-11 shrink-0"
                 />
-                <div>
+                <div className="hidden min-w-0 min-[360px]:block">
                   <div
-                    className="font-bebas text-xl tracking-wide"
+                    className="truncate font-bebas text-xl tracking-wide"
                     style={{
                       background: "linear-gradient(90deg, #39FF14 0%, #00D4FF 100%)",
                       WebkitBackgroundClip: "text",
@@ -171,13 +173,13 @@ export default async function RootLayout({
                   >
                     NorthEDM
                   </div>
-                  <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+                  <div className="hidden font-dm-mono text-[9px] uppercase tracking-[0.3em] min-[400px]:block" style={{ color: "rgba(57,255,20,0.3)" }}>
                     Unite the Northeast
                   </div>
                 </div>
               </div>
               {/* Brand footer line, beneath the whole mark */}
-              <div className="font-dm-mono text-[9px] uppercase tracking-[0.3em]" style={{ color: "rgba(57,255,20,0.3)" }}>
+              <div className="hidden font-dm-mono text-[9px] uppercase tracking-[0.3em] min-[400px]:block" style={{ color: "rgba(57,255,20,0.3)" }}>
                 Northeast Dance Music
               </div>
             </Link>

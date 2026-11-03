@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
 import { WeatherStrip } from "@/app/components/WeatherStrip";
 import { vendorIsPublic } from "@/utils/vendorVisibility";
+import { trendingVendors } from "@/utils/trendingVendors";
 
 export const metadata: Metadata = {
   title: "What's Happening",
@@ -26,15 +27,6 @@ type FestivalEvent = {
   lng: number;
   ticket_status: string;
   badge: string | null;
-};
-
-type FestivalVendor = {
-  id: number;
-  name: string;
-  category: string;
-  emoji: string;
-  upcoming_shows_count: number;
-  growth_percent: number;
 };
 
 type ForagingCondition = {
@@ -126,7 +118,7 @@ export default async function FeedPage() {
 
   const [
     { data: eventsData },
-    { data: vendorsData },
+    vendors,
     { count: threadCount },
     { count: groupCount },
     { count: memberCount },
@@ -134,7 +126,8 @@ export default async function FeedPage() {
     { data: foragingData },
   ] = await Promise.all([
     supabase.from("festival_events").select("*").order("start_date", { ascending: true }),
-    supabase.from("festival_vendors").select("*").order("growth_percent", { ascending: false }),
+    // Ranked by real sales through the site — festival_vendors was demo seed data.
+    trendingVendors(30, 6).catch(() => []),
     supabase.from("threads").select("*", { count: "exact", head: true }),
     supabase.from("community_groups").select("*", { count: "exact", head: true }),
     supabase.from("group_members").select("*", { count: "exact", head: true }),
@@ -143,9 +136,7 @@ export default async function FeedPage() {
   ]);
 
   const events = ((eventsData?.length ? eventsData : EVENTS_FALLBACK)) as FestivalEvent[];
-  const vendors = (vendorsData ?? []) as FestivalVendor[];
   const foraging = (foragingData?.length ? foragingData : FORAGING_FALLBACK) as ForagingCondition[];
-  const totalVendorShows = vendors.reduce((sum, v) => sum + (v.upcoming_shows_count ?? 0), 0);
 
   return (
     <main className="min-h-screen text-neutral-100">
@@ -199,8 +190,8 @@ export default async function FeedPage() {
               <span className="ml-2 text-neutral-400">festivals on radar</span>
             </div>
             <div>
-              <span className="font-dm-mono font-semibold text-[#E8FF47]">{totalVendorShows}</span>
-              <span className="ml-2 text-neutral-400">vendor appearances</span>
+              <span className="font-dm-mono font-semibold text-[#E8FF47]">{vendors.length}</span>
+              <span className="ml-2 text-neutral-400">hot vendors right now</span>
             </div>
           </div>
         </div>
@@ -288,27 +279,26 @@ export default async function FeedPage() {
           )}
 
           {vendors.length === 0 ? (
-            <p className="text-sm text-neutral-500">No vendors yet.</p>
+            <p className="text-sm text-neutral-500">
+              Nobody&apos;s trending yet — vendors show up here once people buy from them or visit their shops.
+            </p>
           ) : (
             vendors.map((vendor) => (
-              <div
+              <Link
                 key={vendor.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                href={`/marketplace/${vendor.id}`}
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/20"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{vendor.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold leading-tight">{vendor.name}</p>
-                    <p className="text-xs text-neutral-500">{vendor.category}</p>
+                    {vendor.category && <p className="text-xs text-neutral-500">{vendor.category}</p>}
                   </div>
-                  <span className="shrink-0 rounded-full bg-[#E8FF47]/10 px-2 py-0.5 font-dm-mono text-xs text-[#E8FF47]">
-                    +{vendor.growth_percent}%
+                  <span className="shrink-0 rounded-full bg-[#FF5C3A]/15 px-2 py-0.5 font-dm-mono text-xs uppercase tracking-widest text-[#FF5C3A]">
+                    🔥 Hot topic
                   </span>
                 </div>
-                <p className="mt-2 font-dm-mono text-xs text-neutral-600">
-                  at {vendor.upcoming_shows_count} upcoming shows
-                </p>
-              </div>
+              </Link>
             ))
           )}
         </div>
