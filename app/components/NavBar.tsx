@@ -84,6 +84,13 @@ const NAV_LINKS: NavLink[] = [
     border: "rgba(255,179,71,0.28)",
   },
   {
+    href: "/apps-and-tools",
+    label: "Apps and Tools",
+    color: "#C4B5FD",
+    bg: "rgba(196,181,253,0.08)",
+    border: "rgba(196,181,253,0.28)",
+  },
+  {
     href: "/festdash",
     label: "FestDash",
     color: "#FB923C",
