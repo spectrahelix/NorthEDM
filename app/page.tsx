@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { SocialAuth } from "@/app/components/SocialAuth";
 import type { Metadata } from "next";
 import { publicVendorIds } from "@/utils/vendorVisibility";
+import { NAV_LINKS } from "@/app/components/navLinks";
 
 export const metadata: Metadata = {
   title: "NorthEDM — Unite the Northeast",
@@ -151,25 +152,19 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {/* Stat pills */}
-          <div className="mt-10 flex flex-wrap gap-2">
-            {[
-              { label: "Festival Community", accent: "#39FF14" },
-              { label: "Vendor Network",     accent: "#00D4FF" },
-              { label: "Foraging Guides",    accent: "#CC00FF" },
-              { label: "Website Creation",   accent: "#3AFFD4" },
-              { label: "Security Auditing",  accent: "#FF5C3A" },
-              { label: "FestDash Platform",  accent: "#FB923C" },
-            ].map((s) => (
-              <span
-                key={s.label}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 font-dm-mono text-xs uppercase tracking-widest"
-                style={{ color: s.accent, borderColor: s.accent + "33" }}
+          {/* Section buttons — the same tabs, colours and order as the menu */}
+          <nav aria-label="Sections" className="mt-10 flex flex-wrap gap-2">
+            {NAV_LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`rounded-full px-4 py-2 font-dm-mono text-xs uppercase tracking-widest transition hover:brightness-125 active:scale-[0.97] ${l.bold ? "font-semibold" : ""}`}
+                style={{ color: l.color, background: l.bg, border: `1px solid ${l.border}` }}
               >
-                {s.label}
-              </span>
+                {l.label}
+              </Link>
             ))}
-          </div>
+          </nav>
         </div>
       </section>
 
