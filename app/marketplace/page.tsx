@@ -328,13 +328,16 @@ export default async function MarketplacePage() {
                 key={vendor.id}
                 className="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:bg-white/[0.05]"
               >
-                {/* Whole-card link to the vendor's page (sits under the Visit Site button) */}
+                {/* Whole-card link to the vendor's page. The content layers above it are
+                    pointer-events-none so a tap anywhere on the card reaches this link;
+                    only the real buttons opt back in. Before 2026-11-03 the text blocks
+                    swallowed every tap and the card went nowhere on a phone. */}
                 <Link
                   href={`/marketplace/${vendor.id}`}
                   aria-label={`View ${vendor.name || "vendor"}`}
                   className="absolute inset-0 z-0 rounded-3xl"
                 />
-                <div className="relative z-10 flex items-center justify-between gap-3">
+                <div className="pointer-events-none relative z-10 flex items-center justify-between gap-3">
                   <h3 className="text-2xl font-semibold"
                     style={brands.get(vendor.id)?.font ? { fontFamily: brands.get(vendor.id)!.font!, fontWeight: 400 } : undefined}>
                     {vendor.name || "Unnamed Vendor"}
@@ -355,16 +358,16 @@ export default async function MarketplacePage() {
                 </div>
 
                 {/* A vendor who picked an accent gets their tags in it; others stay grey. */}
-                <p className="relative z-10 mt-3 text-sm text-neutral-400"
+                <p className="pointer-events-none relative z-10 mt-3 text-sm text-neutral-400"
                   style={vendor.accent_color ? { color: vendor.accent_color } : undefined}>
                   {vendor.category || "uncategorized"}
                 </p>
 
-                <p className="relative z-10 mt-4 text-neutral-300">
+                <p className="pointer-events-none relative z-10 mt-4 text-neutral-300">
                   {vendor.description || "No description available."}
                 </p>
 
-                <div className="relative z-10 mt-5 flex flex-wrap items-center gap-2 text-sm">
+                <div className="pointer-events-none relative z-10 mt-5 flex flex-wrap items-center gap-2 text-sm">
                   <span className="rounded-full bg-white/10 px-3 py-1">
                     {vendor.vendor_type || "listed"}
                   </span>
@@ -377,7 +380,7 @@ export default async function MarketplacePage() {
                     {festdashIds.has(vendor.id) ? (
                       <Link
                         href={`/festdash/order?vendor=${vendor.id}`}
-                        className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-400"
+                        className="pointer-events-auto rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-400"
                       >
                         Order on FestDash
                       </Link>
@@ -387,7 +390,7 @@ export default async function MarketplacePage() {
                         href={normalizeUrl(vendor.website)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-full bg-[#3AFFD4] px-3 py-1 text-xs font-semibold text-black transition hover:opacity-90"
+                        className="pointer-events-auto rounded-full bg-[#3AFFD4] px-3 py-1 text-xs font-semibold text-black transition hover:opacity-90"
                       >
                         Visit Site →
                       </a>
