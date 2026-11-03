@@ -40,6 +40,8 @@ export default async function OrderDocPage({ params, searchParams }: { params: P
   return doc === "label" ? <Label d={d} /> : <InvoiceOrReceipt d={d} receipt={doc === "receipt"} />;
 }
 
+/** Print just the document: the site header, footer and report button live in the root layout. */
+const PRINT_ONLY = `@media print { body * { visibility: hidden !important; } #doc, #doc * { visibility: visible !important; } #doc { position: absolute; left: 0; top: 0; margin: 0 !important; box-shadow: none !important; } }`;
 const page = "mx-auto my-6 max-w-3xl bg-white p-8 text-[13px] text-neutral-900 shadow print:my-0 print:max-w-none print:p-0 print:shadow-none";
 const head = "text-[10px] font-semibold uppercase tracking-widest text-neutral-500";
 
@@ -48,7 +50,8 @@ function InvoiceOrReceipt({ d, receipt }: { d: OrderDoc; receipt: boolean }) {
   return (
     <main className="min-h-screen bg-neutral-200 print:bg-white">
       <PrintButton />
-      <div className={page}>
+      <style>{PRINT_ONLY}</style>
+      <div id="doc" className={page}>
         <div className="flex items-start justify-between gap-6 border-b border-neutral-200 pb-5">
           <div>
             <p className="text-2xl font-bold tracking-tight">{d.seller.name}</p>
@@ -103,8 +106,8 @@ function Label({ d }: { d: OrderDoc }) {
   return (
     <main className="min-h-screen bg-neutral-200 print:bg-white">
       <PrintButton note="Prints at 4 × 6 in. Buy postage at the counter or online and stick it beside this label." />
-      <style>{`@media print { @page { size: 4in 6in; margin: 0.15in; } }`}</style>
-      <div className="mx-auto my-6 w-[4in] bg-white p-[0.15in] text-neutral-900 shadow print:my-0 print:shadow-none" style={{ minHeight: "6in" }}>
+      <style>{`@media print { @page { size: 4in 6in; margin: 0.15in; } } ${PRINT_ONLY}`}</style>
+      <div id="doc" className="mx-auto my-6 w-[4in] bg-white p-[0.15in] text-neutral-900 shadow print:my-0 print:shadow-none" style={{ minHeight: "6in" }}>
         <div className="flex items-start justify-between border-b-2 border-neutral-900 pb-1.5">
           <div className="text-[9px] leading-tight">
             <p className="font-bold uppercase">From</p>
