@@ -19,6 +19,14 @@ export default async function ShopPage() {
     .eq("active", true)
     .order("created_at", { ascending: false });
   const products = (data ?? []) as P[];
+  // The owner stocks this shop from /admin/shop; point admins there from here,
+  // because an empty shop page otherwise gives them nowhere to go.
+  const { data: { user } } = await supabase.auth.getUser();
+  let isAdmin = false;
+  if (user) {
+    const { data: me } = await supabase.from("user_profiles").select("role").eq("id", user.id).maybeSingle();
+    isAdmin = me?.role === "archon" || me?.role === "warden";
+  }
 
   return (
     <main className="min-h-screen px-6 py-16 text-neutral-100">
@@ -28,13 +36,28 @@ export default async function ShopPage() {
             <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#39FF14]">NorthEDM</p>
             <h1 className="mt-1 font-bebas text-5xl tracking-wide">Shop</h1>
           </div>
-          <Link href="/shop/cart" className="shrink-0 rounded-xl border border-white/10 px-4 py-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-300 transition hover:bg-white/5">
-            Cart →
-          </Link>
+          <div className="flex shrink-0 gap-2">
+            {isAdmin && (
+              <Link href="/admin/shop" className="rounded-xl bg-[#39FF14] px-4 py-2 font-dm-mono text-xs uppercase tracking-widest text-black transition hover:opacity-90">
+                {products.length === 0 ? "Add products" : "Manage shop"}
+              </Link>
+            )}
+            <Link href="/shop/cart" className="rounded-xl border border-white/10 px-4 py-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-300 transition hover:bg-white/5">
+              Cart →
+            </Link>
+          </div>
         </div>
 
         {products.length === 0 ? (
-          <p className="text-neutral-500">No products yet — check back soon.</p>
+          isAdmin ? (
+            <div className="rounded-2xl border border-[#39FF14]/20 bg-[#39FF14]/[0.04] p-6">
+              <p className="font-semibold text-white">Your shop is empty.</p>
+              <p className="mt-1 text-sm text-neutral-400">Only you see this note. Add your first product in the admin shop editor; a short guide there points at each field. Customers see &ldquo;check back soon&rdquo; until something is published.</p>
+              <Link href="/admin/shop" className="mt-4 inline-block rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90">Add your first product →</Link>
+            </div>
+          ) : (
+            <p className="text-neutral-500">No products yet — check back soon.</p>
+          )
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => {
