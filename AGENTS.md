@@ -69,9 +69,15 @@ request against `main` right away** — don't wait to be asked. This overrides
 any default of "only open a PR when the user asks". One PR per branch: if one
 is already open for it, push to it instead of opening another.
 
-Opening is automatic; **merging is not**. Merge only when the owner says so
-in the conversation, and after a merge verify production as described above
-(pushed ≠ merged ≠ deployed ≠ verified).
+**Merging is automatic too** (owner's standing instruction, 2026-11-03,
+given in conversation): once the PR's checks are green on its current head
+(Vercel deployment Ready, any other CI passing) and it is mergeable, squash-
+merge it without asking. Never merge a red or conflicted PR — fix it first.
+After every merge: sync the branch (`git fetch origin main && git merge
+origin/main`, see below) and **verify production** with a check that could
+fail, as described above (pushed ≠ merged ≠ deployed ≠ verified). Report
+what was merged and what was verified live. The owner can turn this off by
+saying so; then go back to waiting for "merge".
 
 ## Branch hygiene after a squash merge
 
