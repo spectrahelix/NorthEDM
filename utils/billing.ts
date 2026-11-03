@@ -93,6 +93,7 @@ export async function createSubscriptionCheckout(
   }
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
+    adaptive_pricing: { enabled: true },
     customer_email: args.email ?? undefined,
     line_items: [{
       quantity: 1,

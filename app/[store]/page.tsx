@@ -12,6 +12,8 @@ import { BackBar } from "@/app/components/BackBar";
 import { StoreCart, type StoreProduct } from "./StoreCart";
 import { brandFor, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
+import { CurrencyPill } from "@/app/components/CurrencyContext";
+import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 
 export const dynamic = "force-dynamic";
 
@@ -146,7 +148,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
           <p className="mt-4 font-dm-mono text-xs text-neutral-500">
             {vendors.length} vendor{vendors.length === 1 ? "" : "s"} · {products.length} product{products.length === 1 ? "" : "s"}
           </p>
-          {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-5" />}
+          <div className="mt-5 flex flex-wrap gap-2">{brand.hasFont && <ShopFontToggle enabled={viewerFonts} />}<CurrencyPill options={VIEW_CURRENCIES} /></div>
           {canStock && (
             <div className="mt-5 flex flex-wrap gap-2">
               <Link href="/vendor/dashboard" className="rounded-xl px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>

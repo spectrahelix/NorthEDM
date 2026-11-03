@@ -3,6 +3,8 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { serviceClient } from "@/utils/coordinator";
 import { myStoreSlug } from "@/utils/myStore";
+import { Price, CurrencyPill } from "@/app/components/CurrencyContext";
+import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 
 export const metadata = {
   title: "Shop",
@@ -45,7 +47,8 @@ export default async function ShopPage() {
             <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#39FF14]">NorthEDM</p>
             <h1 className="mt-1 font-bebas text-5xl tracking-wide">Shop</h1>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <CurrencyPill options={VIEW_CURRENCIES} />
             {isAdmin && (
               <Link href="/admin/shop" className="rounded-xl bg-[#39FF14] px-4 py-2 font-dm-mono text-xs uppercase tracking-widest text-black transition hover:opacity-90">
                 {products.length === 0 ? "Add products" : "Manage shop"}
@@ -83,7 +86,7 @@ export default async function ShopPage() {
                     {p.category && <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">{p.category}</p>}
                     <h3 className="mt-0.5 font-semibold text-white">{p.name}</h3>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="font-bebas text-2xl text-[#39FF14]">${(p.price_cents / 100).toFixed(2)}</span>
+                      <Price cents={p.price_cents} currency="USD" className="font-bebas text-2xl text-[#39FF14]" />
                       {out && <span className="font-dm-mono text-[10px] uppercase tracking-wide text-[#FF5C3A]">Sold out</span>}
                     </div>
                   </div>

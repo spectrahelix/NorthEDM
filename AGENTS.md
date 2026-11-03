@@ -560,6 +560,22 @@ through the site; it records what moved and who confirmed it.** Full design in
   addresses or order lines to it: a shop owner is not a site admin (owner's
   rule). The old `/vendor` was a second copy of the inventory dashboard; it is
   gone.
+- **Currencies (2026-11-03).** A shop's `vendors.country` (picked on shop
+  setup) sets `vendors.currency` (`utils/currencies.ts`); every price of that
+  shop is stored and charged in it. Buyers never need to hold it: a card is
+  charged in the shop's currency and the buyer's bank converts. Two helpers on
+  top, neither of which changes what is charged: (1) **display** — `Price`
+  from `app/components/CurrencyContext.tsx` shows "≈" in the visitor's
+  currency (cookie `ne_currency`, else Vercel's country header, picked with
+  the "Show prices ≈ in" pill) using `/api/fx` (open.er-api.com, cached 1h,
+  fallback constants); (2) **Stripe Adaptive Pricing** — `adaptive_pricing:
+  { enabled: true }` on every Checkout session except held-card (manual
+  capture) Gambian store orders and FestDash holds, so a foreign buyer may
+  choose their own currency at Stripe and **Stripe adds its 2–4% conversion
+  charge to the buyer's total; we still receive the shop's currency**. The
+  `ConversionNote` beside each checkout says exactly that (owner's decision:
+  the buyer carries the conversion fee). Prices in USD at Stripe are
+  eligible; GMD sessions are presented as GMD.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays
