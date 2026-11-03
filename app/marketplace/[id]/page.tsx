@@ -73,9 +73,12 @@ export default async function VendorDetailPage({
     notFound();
   }
 
+  // The vendor's own account, OR an account linked to this vendor through its
+  // profile (how co-operators such as Kody are attached), OR an admin.
   const canEdit =
     isAdminRole(profile?.role) ||
-    (user && vendor.user_id === user.id);
+    (!!user && vendor.user_id === user.id) ||
+    (profile?.vendor_id != null && Number(profile.vendor_id) === Number(vendor.id));
 
   const { data: productData } = await supabase
     .from("products")
