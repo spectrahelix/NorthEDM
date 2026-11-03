@@ -444,7 +444,11 @@ through the site; it records what moved and who confirmed it.** Full design in
   Applied as a Stripe coupon (`once`/`forever`) on the list price so the
   invoice shows it. `quote()` precedence: typed code → `vendors.signup_code`
   (the code on the application) → referring promoter. Owner makes codes in
-  **/admin/codes**; promoters mint ONE-TIME codes in /promote/codes
+  **/admin/codes** (Discounts & Vouchers: a pool of one-time 20/25/30/50%
+  vouchers, **Send voucher** assigns one to a member — emailed, in-app, and
+  shown on their profile via `VouchersCard` / `/api/vouchers/mine` — and the
+  billing card offers their vouchers as one-tap chips; a used voucher drops
+  out of every view because `times_redeemed` reached `max_redemptions`); promoters mint ONE-TIME codes in /promote/codes
   (`/api/promote/mint`, capped by `mint_max_percent_off` /
   `mint_max_amount_off_cents`), which attribute the shop to them like a
   referral. Applications (/vendors/apply, shop-setup, /promote) accept either

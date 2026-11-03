@@ -8,6 +8,7 @@ import { getRoleColor } from "@/app/components/roleColors";
 import { ProfileHeader } from "@/app/components/ProfileHeader";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
 import { ProfileCTAs } from "@/app/components/ProfileCTAs";
+import { VouchersCard } from "@/app/components/VouchersCard";
 import { profileTags, currentShow } from "@/utils/supabase/user-profiles";
 import type { ArtisanWork, Social, VendorShow } from "@/utils/supabase/user-profiles";
 
@@ -243,6 +244,7 @@ export default async function ProfilePage({
         </div>
 
         {/* Membership CTAs (own profile) */}
+        {isOwn && <VouchersCard />}
         {ctas && <ProfileCTAs vendor={ctas.vendor} festdash={ctas.festdash} promoter={ctas.promoter} />}
 
         {/* Dashboard links (own profile, once approved) */}

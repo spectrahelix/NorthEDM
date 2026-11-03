@@ -248,10 +248,10 @@ export default async function AdminPage() {
               >
                 <div className="mb-3 text-2xl">🏷️</div>
                 <h2 className="font-bebas text-2xl tracking-wide text-white group-hover:text-[#3AFFD4]">
-                  Discount Codes
+                  Discounts &amp; Vouchers
                 </h2>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Codes for subscriptions and the bundle; see what promoters mint
+                  Send a member a one-time voucher; codes for plans and the bundle
                 </p>
               </Link>
               <Link
