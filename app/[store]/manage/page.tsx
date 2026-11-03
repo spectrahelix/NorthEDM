@@ -9,6 +9,7 @@ import { PillSwitch } from "@/app/components/PillSwitch";
 import { SHOP_FONT_CHOICES } from "@/utils/storeFonts";
 import { StoreLogoUpload } from "@/app/components/StoreLogoUpload";
 import { BillingCard } from "@/app/components/BillingCard";
+import { PayoutsCard } from "@/app/components/PayoutsCard";
 
 type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number; theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; theme_options: string[]; logo_url: string | null };
 type Member = { vendor_id: number; status: string; name: string; category: string | null };
@@ -66,6 +67,7 @@ export default function StoreManagePage() {
 
         {/* Monthly store subscription — drives whether the store can take orders */}
         <div className="mt-8"><BillingCard kind="store" storeSlug={slug} what="Store subscription" /></div>
+        <div className="mt-4"><PayoutsCard returnTo={`/${slug}/manage`} /></div>
 
         {/* Branding */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">

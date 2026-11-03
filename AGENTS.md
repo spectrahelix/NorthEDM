@@ -432,6 +432,17 @@ through the site; it records what moved and who confirmed it.** Full design in
   (`vendor_subscriptions.kind` = `store`); it sets the shop's stores
   `billing_status = active`, and the daily reminders job sets `past_due` once
   the period lapses. Every listing-period reader filters `kind = 'festdash'`.
+  **Store payouts (2026-11-03)** — `utils/storePayouts.ts`. A paid USD store
+  order pays each selling vendor their lines minus the platform share
+  (`platformShareBps`, 20%) minus the store's `operator_fee_bps` (member
+  vendors only) by Stripe transfer drawn on the order's charge; operator fees
+  go to the operator's vendor. Rows in `store_payouts` (`owed` → `paid` →
+  `reversed`); no Connect account yet → `owed`, swept by the commissions cron
+  (`payPendingStorePayouts`); refund/dispute reverses transfers. The Connect
+  account is `vendors.stripe_account_id` (mirrored to `festdash_vendors`),
+  set up from `PayoutsCard` on /vendor/dashboard and /<slug>/manage or the
+  FestDash dashboard — one setup covers both. `canManageInventory` now admits
+  `is_festdash_vendor`: a FestDash shop adds items on /vendor/dashboard.
   **Card on a Gambian shop (2026-11-03).** A wallet-rail shop also takes any
   card, on FestDash and in its store, charged in the shop's currency to
   NorthEDM's Stripe with no destination transfer (Stripe can't reach a Gambian

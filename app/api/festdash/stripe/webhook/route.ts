@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
+import { chargeIdForPaymentIntent, payStoreOrder, reverseStorePayouts } from "@/utils/storePayouts";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
@@ -171,7 +172,15 @@ export async function POST(req: Request) {
               currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: (session.payment_intent as string) ?? null,
               source: "store", collected_by: "owner",
             }, promoter, settings, null);
-          } else if (promoter) {
+          } else {
+            // Card store sale in USD: pay each selling vendor (and the operator's
+            // cut, if any) from this charge. No account yet → 'owed', swept by
+            // the commissions cron once they connect. See utils/storePayouts.ts.
+            const pi = (session.payment_intent as string) ?? null;
+            const chargeId = pi ? await chargeIdForPaymentIntent(pi).catch(() => null) : null;
+            await payStoreOrder(db, String(order.id), chargeId);
+          }
+          if (!(vend && isLocalRail(vend)) && promoter) {
             const { data: prof } = await db.from("user_profiles").select("role").eq("id", promoter).maybeSingle();
             if (prof?.role !== "archon") {
               const { data: split } = await db.from("coordinator_program_settings").select("sale_coordinator_bps").eq("id", 1).maybeSingle();
@@ -215,7 +224,10 @@ export async function POST(req: Request) {
 
       const { data: stOrder } = await db
         .from("store_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
-      if (stOrder) await voidCommission(db, "store_order", String(stOrder.id), reason);
+      if (stOrder) {
+        await voidCommission(db, "store_order", String(stOrder.id), reason);
+        await reverseStorePayouts(db, String(stOrder.id), reason);
+      }
     }
   } else if (
     event.type === "payment_intent.canceled" ||

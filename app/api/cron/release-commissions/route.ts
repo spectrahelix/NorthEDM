@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { releaseCommission } from "@/utils/commissions";
 import { payPendingRunnerFees } from "@/utils/runnerPay";
+import { payPendingStorePayouts } from "@/utils/storePayouts";
 
 // Daily release of promoter commissions whose refund-protection window has closed
 // (scheduled in vercel.json). Vercel Cron calls this with
@@ -67,6 +68,8 @@ export async function GET(req: Request) {
   // commission stays 'held' and is retried on the next run, so nothing is lost.
   // Runner fees that couldn't be transferred at delivery (no payout account yet).
   const runnerFees = await payPendingRunnerFees(db);
+  // Store sales owed to vendors who have connected a payout account since.
+  const storePayouts = await payPendingStorePayouts(db);
 
   return NextResponse.json({
     checked: due?.length ?? 0,
@@ -74,5 +77,6 @@ export async function GET(req: Request) {
     skipped: skipped.length,
     skippedDetail: skipped.slice(0, 20),
     runnerFees,
+    storePayouts,
   });
 }
