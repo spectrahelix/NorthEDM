@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminGuard, slugify } from "@/utils/admin";
+import { specsPatch } from "@/utils/specs";
 
 // List all products (incl. inactive) for the admin manager.
 export async function GET() {
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     image_urls: Array.isArray(b.imageUrls) ? b.imageUrls.slice(0, 12) : [],
     category: b.category ? String(b.category) : null,
     active: b.active !== false,
+    ...specsPatch(b),
   }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ product: data });

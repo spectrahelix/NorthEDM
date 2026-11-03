@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { canManageInventory } from "@/utils/marketplace";
+import { specsPatch } from "@/utils/specs";
 
 async function getVendorId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number | null> {
   const { data } = await supabase
@@ -56,6 +57,7 @@ export async function PATCH(
   if (has("imageUrl")) patch.image_url = body.imageUrl || null;
   if (has("isPublic")) patch.is_public = body.isPublic ?? false;
   if (has("status")) patch.status = body.status || "draft";
+  Object.assign(patch, specsPatch(body));
   if (patch.name === "") {
     return NextResponse.json({ error: "Product name can't be empty." }, { status: 400 });
   }

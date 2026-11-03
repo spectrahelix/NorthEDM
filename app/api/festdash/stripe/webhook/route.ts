@@ -8,6 +8,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
 import { handleSubscriptionEvent } from "@/utils/billing";
+import { sendOrderEmails } from "@/utils/orderEmails";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
 // completed Checkout means the card is AUTHORIZED (funds held in escrow), not
@@ -139,6 +140,8 @@ export async function POST(req: Request) {
             email: ship?.email ?? order.email,
             ship_name: ship?.name ?? null,
             ship_address: ship?.address ?? null,
+            ship_country: (ship?.address?.country as string | undefined) ?? order.ship_country ?? null,
+            paid_at: held ? null : new Date().toISOString(),
             authorized_at: held ? new Date().toISOString() : null,
             updated_at: new Date().toISOString(),
           }).eq("id", order.id).eq("status", "pending"),
@@ -148,7 +151,10 @@ export async function POST(req: Request) {
         await adjustStock(db, (order.items ?? []) as { product_id: number; qty: number }[], -1);
         // Payouts, ledger split and commission happen when the money is final:
         // now for a captured card, at handover for a held one (orders/[id]/fulfill).
-        if (!held) await settleStoreOrder(db, String(order.id));
+        if (!held) {
+          await settleStoreOrder(db, String(order.id));
+          await sendOrderEmails(db, "store", String(order.id)).catch((e) => console.error("order emails failed:", e));
+        }
       }
     }
   } else if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {

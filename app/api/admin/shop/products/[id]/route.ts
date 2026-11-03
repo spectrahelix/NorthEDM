@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/utils/admin";
+import { specsPatch } from "@/utils/specs";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await adminGuard();
@@ -15,6 +16,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (b.imageUrls !== undefined) patch.image_urls = Array.isArray(b.imageUrls) ? b.imageUrls.slice(0, 12) : [];
   if (b.category !== undefined) patch.category = b.category ? String(b.category) : null;
   if (b.active !== undefined) patch.active = !!b.active;
+  Object.assign(patch, specsPatch(b));
 
   const { data, error } = await g.admin
     .from("shop_products").update(patch).eq("id", id).select().single();

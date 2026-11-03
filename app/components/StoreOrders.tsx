@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { formatMoney } from "@/utils/money";
 
-type O = { id: string; status: string; items: { name: string; qty: number; price_cents: number }[]; total_cents: number; currency: string | null; payment_method: string | null; email: string | null; ship_name: string | null; ship_address: { line1?: string; city?: string; country?: string } | null; authorized_at: string | null; fulfilled_at: string | null; created_at: string };
+type O = { id: string; status: string; items: { name: string; qty: number; price_cents: number }[]; total_cents: number; currency: string | null; payment_method: string | null; email: string | null; ship_name: string | null; ship_address: { line1?: string; city?: string; country?: string } | null; authorized_at: string | null; fulfilled_at: string | null; created_at: string; shipping_cents?: number | null; shipping_service?: string | null; tracking_number?: string | null };
 
 /** The operator's orders: hand over (captures a held card) or cancel (releases it). */
 export function StoreOrders({ slug }: { slug: string }) {
@@ -35,7 +35,14 @@ export function StoreOrders({ slug }: { slug: string }) {
               <div className="min-w-0">
                 <p className="text-sm text-white">{(o.items ?? []).map((i) => `${i.qty}× ${i.name}`).join(", ")}</p>
                 <p className="text-xs text-neutral-500">{formatMoney(o.total_cents, o.currency ?? "USD")} · {label(o)} · {new Date(o.created_at).toLocaleString()}{o.ship_name ? ` · ${o.ship_name}` : ""}{o.email ? ` · ${o.email}` : ""}</p>
-                {o.ship_address?.line1 && <p className="text-xs text-neutral-500">{[o.ship_address.line1, o.ship_address.city, o.ship_address.country].filter(Boolean).join(", ")}</p>}
+                {o.ship_address?.line1 && <p className="text-xs text-neutral-500">{[o.ship_address.line1, o.ship_address.city, o.ship_address.country].filter(Boolean).join(", ")}{o.shipping_service ? ` · ${o.shipping_service} (${formatMoney(o.shipping_cents ?? 0, o.currency ?? "USD")} paid)` : ""}</p>}
+                {o.status !== "awaiting_confirmation" && (
+                  <p className="mt-1 flex gap-3 text-xs">
+                    <a href={`/orders/store/${o.id}/label`} target="_blank" rel="noreferrer" className="text-[#3AFFD4] underline-offset-2 hover:underline">Shipping label</a>
+                    <a href={`/orders/store/${o.id}/invoice`} target="_blank" rel="noreferrer" className="text-[#3AFFD4] underline-offset-2 hover:underline">Invoice</a>
+                    <a href={`/orders/store/${o.id}/receipt`} target="_blank" rel="noreferrer" className="text-[#3AFFD4] underline-offset-2 hover:underline">Receipt</a>
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 gap-2">
                 {o.status !== "awaiting_confirmation" && (

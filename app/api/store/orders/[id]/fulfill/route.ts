@@ -4,6 +4,7 @@ import { storeAdminClient } from "@/utils/store";
 import { isSiteAdminUser } from "@/utils/coordinator";
 import { getStripe } from "@/utils/stripe";
 import { cancelStoreHold, settleStoreOrder } from "@/utils/storeSettle";
+import { sendOrderEmails } from "@/utils/orderEmails";
 
 // POST { action: "handed_over" | "cancel" } — the store's operator (or an admin)
 // completes or cancels an order. A held card (Gambian store) is captured only
@@ -43,7 +44,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!order.stripe_payment_intent) return NextResponse.json({ error: "No card hold on this order." }, { status: 409 });
     try { await getStripe().paymentIntents.capture(order.stripe_payment_intent as string); }
     catch (e) { return NextResponse.json({ error: `Card capture failed: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 }); }
-    const { data: upd } = await admin.from("store_orders").update({ status: "paid", fulfilled_at: now, updated_at: now }).eq("id", id).eq("status", "authorized").select("id").maybeSingle();
+    const { data: upd } = await admin.from("store_orders").update({ status: "paid", paid_at: now, fulfilled_at: now, updated_at: now }).eq("id", id).eq("status", "authorized").select("id").maybeSingle();
     if (!upd) return NextResponse.json({ error: "Already handled." }, { status: 409 });
     await settleStoreOrder(admin, id);
     return NextResponse.json({ ok: true, status: "paid", captured: true });

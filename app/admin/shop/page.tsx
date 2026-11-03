@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { SpecsEditor, EMPTY_SPECS_FORM, specsFormFrom, specsPayload } from "@/app/components/SpecsEditor";
+import type { SpecsColumns } from "@/utils/specs";
 
-type Product = {
+type Product = Partial<SpecsColumns> & {
   id: string; name: string; slug: string; description: string;
   price_cents: number; inventory_count: number; image_urls: string[];
   category: string | null; active: boolean; created_at: string;
@@ -16,7 +18,7 @@ export default function AdminShopPage() {
   const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [form, setForm] = useState({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [] as string[], active: true });
+  const [form, setForm] = useState({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [] as string[], active: true, specs: EMPTY_SPECS_FORM });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -40,7 +42,7 @@ export default function AdminShopPage() {
   }, [supabase, router, load]);
 
   function resetForm() {
-    setForm({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [], active: true });
+    setForm({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [], active: true, specs: EMPTY_SPECS_FORM });
     setEditingId(null);
   }
   function edit(p: Product) {
@@ -49,6 +51,7 @@ export default function AdminShopPage() {
       id: p.id, name: p.name, description: p.description,
       priceDollars: (p.price_cents / 100).toFixed(2),
       inventoryCount: String(p.inventory_count),
+      specs: specsFormFrom(p),
       category: p.category ?? "", imageUrls: p.image_urls ?? [], active: p.active,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -77,6 +80,7 @@ export default function AdminShopPage() {
       name: form.name, description: form.description, priceCents,
       inventoryCount: parseInt(form.inventoryCount || "0", 10),
       category: form.category, imageUrls: form.imageUrls, active: form.active,
+      ...specsPayload(form.specs),
     };
     const res = editingId
       ? await fetch(`/api/admin/shop/products/${editingId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
@@ -162,6 +166,7 @@ export default function AdminShopPage() {
                 </label>
               </div>
             </div>
+            <div className="sm:col-span-2"><SpecsEditor value={form.specs} onChange={(specs) => setForm({ ...form, specs })} /></div>
           </div>
           <div className="mt-5 flex gap-3">
             <button onClick={save} disabled={saving} className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50">

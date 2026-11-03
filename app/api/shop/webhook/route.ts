@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notifyNewOrder } from "@/utils/alerts";
+import { sendOrderEmails } from "@/utils/orderEmails";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
 import { checkWrite } from "@/utils/dbWrite";
 
@@ -42,10 +43,12 @@ export async function POST(req: Request) {
           `shop order ${orderId} -> paid`,
           await admin.from("shop_orders").update({
             status: "paid",
+            paid_at: new Date().toISOString(),
             stripe_payment_intent: (session.payment_intent as string) ?? null,
             email: session.customer_details?.email ?? order.email,
             ship_name: ship?.name ?? null,
             ship_address: ship?.address ?? null,
+            ship_country: (ship?.address?.country as string | undefined) ?? order.ship_country ?? null,
           }).eq("id", orderId),
           { critical: true }
         );
@@ -61,6 +64,8 @@ export async function POST(req: Request) {
           email: session.customer_details?.email ?? order.email,
           itemCount: items.reduce((s, i) => s + i.qty, 0),
         });
+        // Receipt to the buyer, pack sheet (label + invoice links) to the owner.
+        await sendOrderEmails(admin, "shop", orderId).catch((e) => console.error("order emails failed:", e));
 
         // Promoter reward on a NorthEDM-brand (shop) purchase. The promoter earns
         // what the customer saved — paid as CASH (Stripe transfer) when configured

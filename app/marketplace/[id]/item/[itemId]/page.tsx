@@ -7,6 +7,7 @@ import { ProductGallery } from "@/app/components/ProductGallery";
 import { accentOr } from "@/utils/accent";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
+import { SpecsTable } from "@/app/components/SpecsTable";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ async function load(id: string, itemId: string) {
   const supabase = await createClient();
   const { data: product } = await supabase
     .from("products")
-    .select("id, vendor_id, name, category, description, price, inventory_count, image_url, status, is_public")
+    .select("id, vendor_id, name, category, description, price, inventory_count, image_url, status, is_public, weight_g, length_cm, width_cm, height_cm, origin_country, specs")
     .eq("id", Number(itemId)).eq("vendor_id", Number(id)).maybeSingle();
   if (!product) return null;
   const [{ data: gallery }, { data: vendor }] = await Promise.all([
@@ -77,6 +78,7 @@ export default async function ItemPage({ params }: Params) {
               {Number(p.inventory_count ?? 0) > 0 ? `${p.inventory_count} in stock` : "Out of stock"}
             </p>
             {p.description && <p className="mt-6 whitespace-pre-line leading-7 text-neutral-300">{p.description as string}</p>}
+            <SpecsTable className="mt-6" product={p as unknown as Parameters<typeof SpecsTable>[0]["product"]} />
             {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-6" />}
             <br />
             <Link href={`/marketplace/${p.vendor_id}`}

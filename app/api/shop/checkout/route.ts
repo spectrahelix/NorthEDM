@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { resolvePromoterCode, DISCOUNT_BPS } from "@/utils/promoterCode";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { loadShippingSettings, quoteShipping } from "@/utils/shipping";
 
 // Creates a Stripe Checkout session for the cart. Prices/stock are validated
 // server-side from shop_products (the client cart is never trusted). A pending
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
 
   const ids = items.map((i) => i.id);
   const { data: products } = await admin
-    .from("shop_products").select("id, name, price_cents, inventory_count, active").in("id", ids);
+    .from("shop_products").select("id, name, price_cents, inventory_count, active, weight_g").in("id", ids);
   const byId = new Map((products ?? []).map((p) => [p.id, p]));
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
@@ -39,6 +40,15 @@ export async function POST(req: Request) {
     orderItems.push({ product_id: p.id, name: p.name, price_cents: p.price_cents, qty });
   }
   const subtotal = orderItems.reduce((s, i) => s + i.price_cents * i.qty, 0);
+
+  // Shipping: destination + service picked in the cart, re-quoted here from the
+  // products' weights (utils/shipping.ts). The customer pays it in Checkout as a
+  // Stripe shipping option, so the receipt and the Stripe record agree.
+  const country = String(body.country || "US").toUpperCase().slice(0, 2);
+  const settings = await loadShippingSettings(admin);
+  const quote = quoteShipping({ items: orderItems.map((i) => ({ weight_g: byId.get(i.product_id)?.weight_g ?? null, qty: i.qty })), country, rates: settings.rates, handlingCents: settings.handling_cents });
+  const service = quote.options.find((o) => o.id === body.shippingService) ?? quote.options[0];
+  if (!service) return NextResponse.json({ error: "We can't ship this order to that country yet." }, { status: 400 });
 
   // Who's ordering (optional — guest checkout allowed).
   const supabase = await createClient();
@@ -126,8 +136,13 @@ export async function POST(req: Request) {
     email: user?.email ?? null,
     items: orderItems,
     subtotal_cents: subtotal,
-    shipping_cents: 0,
-    total_cents: subtotal - discountCents,
+    shipping_cents: service.cents,
+    ship_country: country,
+    shipping_zone: quote.zone,
+    shipping_service: service.name,
+    shipping_eta: service.eta,
+    package_weight_g: quote.weight_g,
+    total_cents: subtotal - discountCents + service.cents,
     status: "pending",
     hoodie_code: hoodie?.code ?? null,
     promoter_code: promoter?.code ?? null,
@@ -142,7 +157,8 @@ export async function POST(req: Request) {
     line_items: lineItems,
     success_url: `${origin}/shop/success?order=${order.id}`,
     cancel_url: `${origin}/shop/cart`,
-    shipping_address_collection: { allowed_countries: ["US"] },
+    shipping_address_collection: { allowed_countries: [country as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry] },
+    shipping_options: [{ shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: service.cents, currency: "usd" }, display_name: service.name, delivery_estimate: { minimum: { unit: "day", value: service.eta_days[0] }, maximum: { unit: "day", value: service.eta_days[1] } } } }],
     // Attach the customer (prefills name/address) or just the email.
     ...(customerId ? { customer: customerId } : { customer_email: user?.email ?? undefined }),
     ...(discounts ? { discounts } : {}),

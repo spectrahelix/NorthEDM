@@ -527,6 +527,28 @@ through the site; it records what moved and who confirmed it.** Full design in
   customer's reference, `…/confirm-payment` for the coordinator, who sees it in
   /festdash/purse next to FestDash orders). Confirming marks it paid, takes
   stock down and books the 80/10/10 sale split. Card stores are unchanged.
+- **Shipping, specs and order documents (2026-11-03)** — one process for every
+  parcel shop (NorthEDM's shop and US vendor stores). `utils/shipping.ts`:
+  destination → zone (us / na / eu / wafrica incl. GM, SN / world), services
+  priced base + per-kg from the products' `weight_g` (300 g assumed when blank,
+  +10% and 60 g packaging) with an ETA string; the table is a **reference
+  estimate modelled on USPS retail**, overridable in **/admin/shipping**
+  (`shipping_settings.rates`, plus `ship_from` and a handling fee). The cart's
+  `ShipTo` picker calls `/api/shipping/quote`; both checkouts re-quote
+  server-side and charge it as a Stripe `shipping_options` line, so the Stripe
+  receipt matches ours; `allowed_countries` is the chosen country. Store
+  shipping is paid in full to the operator (`payStoreOrder`). Wallet-rail
+  (Gambian) stores hand over locally: no shipping line. **Documents**:
+  `/orders/<shop|store>/<id>/<invoice|receipt|label>` render from one
+  `OrderDoc` (`utils/orderDocs.ts`); the label is 4×6 with a CN22 customs
+  block when the destination differs from the ship-from country. Access: HMAC
+  `?t=` token (in the emails), buyer, operator or admin. `sendOrderEmails`
+  (`utils/orderEmails.ts`) sends the buyer a receipt and the seller a pack
+  sheet when money is final (shop webhook, store webhook, held-card
+  handover). **Specs**: `products`/`shop_products` carry `weight_g`, dims,
+  `hs_code`, `origin_country`, `specs` jsonb (`utils/specs.ts`, `SpecsEditor`
+  on the vendor dashboard and /admin/shop, `SpecsTable` on item pages).
+  Postage is bought at the counter; the site never buys labels.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays
