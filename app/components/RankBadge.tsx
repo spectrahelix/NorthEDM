@@ -1,20 +1,7 @@
 "use client";
 
-import { ROLE_CONFIG, TAG_CONFIG, type ForumRole, type TagKey } from "./roleColors";
-
-function TagChip({ tagKey, size }: { tagKey: TagKey; size: "sm" | "md" | "lg" }) {
-  const t = TAG_CONFIG[tagKey];
-  const chip = size === "lg" ? "text-[11px]" : "text-[10px]";
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-dm-mono ${chip} uppercase tracking-widest`}
-      style={{ color: t.color, borderColor: `${t.color}55`, background: `${t.color}14` }}
-      title={t.label}
-    >
-      <span aria-hidden>{t.glyph}</span> {t.label}
-    </span>
-  );
-}
+import { ROLE_CONFIG, type ForumRole, type TagKey } from "./roleColors";
+import { TagChip } from "./TagChips";
 
 export function RankBadge({
   role,
