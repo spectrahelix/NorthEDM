@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "method": "standard-hebrew-gematria",
+  "displayName": "Charles Jackson Lewis V",
+  "birth": {
+    "gregorian": "1996-12-27",
+    "localTime": "11:58 PM",
+    "timeAccuracy": "exact",
+    "place": "Berwick, Pennsylvania, United States",
+    "timeZone": "America/New_York",
+    "sunsetCondition": "after-sunset"
+  },
+  "hebrewDate": {
+    "label": "18 Tevet 5757",
+    "hebrew": "י״ח בטבת ה׳תשנ״ז",
+    "weekday": "Shabbat",
+    "note": "Shabbat. The birth was well after local sunset on Friday, so the Hebrew date had advanced to 18 Tevet.",
+    "sourceIds": ["1"]
+  },
+  "fullHebrewName": "צ׳ארלס ג׳קסון לואיס החמישי",
+  "nameChart": [
+    { "componentId": "given", "originalName": "Charles", "historicalMeaning": "Germanic Karl: man; often interpreted as free man.", "hebrewSpelling": "צ׳ארלס", "value": 381, "role": "base", "sourceIds": ["2"] },
+    { "componentId": "middle", "originalName": "Jackson", "historicalMeaning": "Son of Jack. Through John, related to Hebrew Yochanan (יוחנן), God is gracious.", "hebrewSpelling": "ג׳קסון", "value": 219, "role": "base", "sourceIds": ["3", "4", "5"] },
+    { "componentId": "surname", "originalName": "Lewis", "historicalMeaning": "Welsh Lewis was adopted for Llywelyn. Deeper roots are debated; proposed Celtic deity-name or Welsh leader connections.", "familyOrigin": "Welsh (Llywelyn branch)", "hebrewSpelling": "לואיס", "value": 107, "role": "base", "sourceIds": ["6", "7", "8"] },
+    { "componentId": "suffix", "originalName": "V: the fifth", "historicalMeaning": "The generational ordinal the fifth; Hebrew translation, not a phonetic letter V.", "hebrewSpelling": "החמישי", "value": 373, "role": "suffix", "sourceIds": ["18"] }
+  ],
+  "timingChart": [
+    { "condition": "Before sunset: earlier alternative, not this birth", "hebrewDate": "17 Tevet 5757", "hebrew": "י״ז בטבת", "matchedHebrew": "טוב", "pronunciation": "tov", "meaning": "good", "value": 17, "confirmed": false, "sourceIds": ["17"] },
+    { "condition": "Confirmed: after sunset, 11:58 PM", "hebrewDate": "18 Tevet 5757", "hebrew": "י״ח בטבת", "matchedHebrew": "חי", "pronunciation": "chai", "meaning": "life", "value": 18, "confirmed": true, "sourceIds": ["9"] }
+  ],
+  "numberChart": [
+    { "value": 18, "originLabel": "Confirmed Hebrew birth day", "matchedHebrew": "חי", "pronunciation": "chai", "meaningOrAssociation": "Life; the familiar Jewish association of 18 with wishes for life.", "kind": "traditional-number-symbolism", "status": "Word-value match and traditional association.", "sourceIds": ["9"] },
+    { "value": 381, "originLabel": "Charles spelling", "matchedHebrew": "אשף", "pronunciation": "ashshaf", "meaningOrAssociation": "Biblical lexical form: enchanter or conjurer.", "kind": "exact-word-value", "status": "Exact lexical match; not Charles's etymology.", "sourceIds": ["13"] },
+    { "value": 219, "originLabel": "Jackson spelling", "matchedHebrew": "אחרי", "pronunciation": "acharei", "meaningOrAssociation": "After / behind.", "kind": "exact-word-value", "status": "Exact lexical match; not Jackson's etymology.", "sourceIds": ["14"] },
+    { "value": 107, "originLabel": "Lewis spelling", "matchedHebrew": "האמונה", "pronunciation": "ha-emunah", "meaningOrAssociation": "The faith / faithfulness. The article ה contributes 5; אמונה contributes 102.", "kind": "exact-word-value", "status": "Exact prefixed word; article explicitly counted.", "sourceIds": ["15", "16"] },
+    { "value": 373, "originLabel": "Translated suffix V", "matchedHebrew": "החמישי", "pronunciation": "ha-chamishi", "meaningOrAssociation": "The fifth. The ordinal describes five; the letters total 373.", "kind": "translated-word-value", "status": "Value of the translated wording itself.", "sourceIds": ["18"] },
+    { "value": 707, "originLabel": "Three-name total", "matchedHebrew": "השבת", "pronunciation": "haShabbat", "meaningOrAssociation": "The Sabbath.", "kind": "exact-word-value", "status": "Exact same-value word; spelling-dependent coincidence.", "sourceIds": ["12"] },
+    { "value": 1080, "originLabel": "Name plus translated suffix", "meaningOrAssociation": "No additional sourced association verified for this report.", "kind": "arithmetic-only", "status": "Arithmetic total; no extra association asserted.", "sourceIds": [] },
+    { "value": 5757, "originLabel": "Hebrew birth year", "meaningOrAssociation": "The year recorded by ה׳תשנ״ז. No additional entity or word mapping is asserted.", "kind": "calendar-label", "status": "Calendar label, not a personal entity assignment.", "sourceIds": [] }
+  ],
+  "contextChart": [
+    { "connection": "Weekday: Shabbat", "figureOrConcept": "Shekhinah", "tradition": "Jewish Kabbalah", "explanation": "God's indwelling presence, portrayed as the Sabbath Queen or Bride.", "relationship": "calendar-context", "sourceIds": ["10"] },
+    { "connection": "Month: Tevet", "figureOrConcept": "Anael", "tradition": "Medieval Christian occult history", "explanation": "Listed among Tevet's angels in The Sworn Book of Honorius. This is a source-specific month association.", "relationship": "calendar-context", "sourceIds": ["11"] },
+    { "connection": "Welsh name origin: Llywelyn", "figureOrConcept": "Lugus and Belenus", "tradition": "Celtic etymology", "explanation": "Proposed Celtic deity-name roots in a scholarly name dictionary. Other proposals involve a root meaning strong or Welsh llyw, leader. This is etymology, not an assignment from 107.", "relationship": "name-etymology", "sourceIds": ["7", "8"] }
+  ],
+  "astrology": { "status": "unavailable", "reason": "No licensed ephemeris provider configured." },
+  "sources": [
+    { "id": "1", "label": "Hebcal: 18 Tevet 5757", "site": "hebcal.com", "url": "https://www.hebcal.com/converter?cfg=html&hy=5757&hm=Tevet&hd=18&h2g=1" },
+    { "id": "2", "label": "Online Etymology Dictionary: Charles", "site": "etymonline.com" },
+    { "id": "3", "label": "Behind the Name: Jackson surname", "site": "surnames.behindthename.com" },
+    { "id": "4", "label": "Behind the Name: Jack", "site": "behindthename.com" },
+    { "id": "5", "label": "Union for Reform Judaism: Yochanan", "site": "reformjudaism.org" },
+    { "id": "6", "label": "Dictionary of American Family Names: Lewis", "site": "ancestry.com" },
+    { "id": "7", "label": "Dictionary of Medieval Names: Llywellyn", "site": "dmnes.org", "url": "https://dmnes.org/name/Llywellyn" },
+    { "id": "8", "label": "Behind the Name: Llywelyn", "site": "behindthename.com" },
+    { "id": "9", "label": "Chabad: Chai and multiples of 18", "site": "chabad.org", "url": "https://www.chabad.org/library/article_cdo/aid/484894/jewish/What-is-the-reason-giving-money-in-multiples-of-18.htm" },
+    { "id": "10", "label": "Chabad: Shabbat as bride and queen", "site": "chabad.org", "url": "https://www.chabad.org/library/article_cdo/aid/3753326/jewish/Four-Reasons-Shabbat-Is-Compared-to-Bride-and-a-Queen.htm" },
+    { "id": "11", "label": "The Sworn Book of Honorius: month lists", "site": "esotericarchives.com", "url": "https://esotericarchives.com/juratus/juratus.htm" },
+    { "id": "12", "label": "Exodus 20: the Sabbath commandment", "site": "chabad.org" },
+    { "id": "13", "label": "BDB / Strong H825: ashshaf, enchanter", "site": "biblehub.com", "url": "https://biblehub.com/hebrew/825.htm" },
+    { "id": "14", "label": "Hebrew dictionary: אחרי, after / behind", "site": "en.wiktionary.org", "url": "https://en.wiktionary.org/wiki/%D7%90%D7%97%D7%A8%D7%99" },
+    { "id": "15", "label": "BDB / Strong H530: emunah, faithfulness", "site": "biblehub.com", "url": "https://biblehub.com/hebrew/530.htm" },
+    { "id": "16", "label": "Jeremiah 7:28: the prefixed form האמונה", "site": "openbible.com", "url": "https://www.openbible.com/text/jeremiah/7-28.htm" },
+    { "id": "17", "label": "Chabad: טוב / tov and the value 17", "site": "chabad.org" },
+    { "id": "18", "label": "Hebrew ordinal chamishi: fifth", "site": "biblehub.com" }
+  ]
+}

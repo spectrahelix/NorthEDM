@@ -1,7 +1,11 @@
 <!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
 <!-- END:nextjs-agent-rules -->
 
 # Don't guess. Verify, or say you haven't.
@@ -613,6 +617,41 @@ Recommended integrations: **Stripe Connect** (escrow + vendor payouts — note
 GoDaddy/Square don't fit this) and **Mapbox** (live map). Read the doc before
 working on FestDash.
 
+## Apps and Tools — Astrology and Hebrew Numerology Calculator (2026-11-03)
+`/apps-and-tools` (menu entry **Apps and Tools**; tools listed in
+`app/apps-and-tools/tools.ts`) and `/apps-and-tools/astrology-hebrew-numerology`.
+Spec: `.claude/skills/hebrew-birth-chart/reference/spec.md`. All calculation
+lives in `utils/numerology/` — one copy, shared with the agent skill:
+- **Hebrew calendar is computed offline** (`hebrewCalendar.ts`); no Hebcal call
+  at runtime. Sunset/time zones in `birthTiming.ts` (Astronomy Engine sunset,
+  `@photostructure/tz-lookup`, DST gap → refused, fold → both kept).
+- **Astrology = Astronomy Engine (MIT)**, not Swiss Ephemeris (AGPL or CHF 700
+  licence). Tropical, Whole Sign. Unknown time → no Ascendant/houses/aspects.
+- **Same-value words** come from Strong's Hebrew Dictionary (Open Scriptures,
+  CC BY-SA) in `utils/numerology/data/strongs-hebrew.json` — server-only, never
+  import `lexicon.ts` from a client component. Rebuild with
+  `scripts/build-hebrew-lexicon.mjs`.
+- Curated associations (`associations.ts`) are few and each has a source. A
+  number with nothing verified gets an explicit "No additional sourced
+  association verified" row — don't invent one.
+- **`npm run test:astro-hebrew`** (add `-- --live` to re-ask Hebcal for ~2,160
+  days and NASA JPL Horizons for 40 planet positions). Run it after any edit in
+  `utils/numerology/`.
+- Place search: `/api/apps-tools/astrology-hebrew/resolve-place` → OSM
+  Nominatim (usage policy: ≤1 req/s, identify the app, credit OSM; throttled
+  via `request_throttle`). PDF = the browser's print-to-PDF of the same report
+  element (no server PDF worker). Nothing is stored; saved reports (spec §12)
+  are not built yet.
+- `utils/numerology/*.ts` import each other with `.ts` extensions
+  (`allowImportingTsExtensions`) so Node can run them directly for tests and
+  the skill. Keep them erasable TypeScript (no enums/namespaces).
+- **Legal posture** (owner informed 2026-11-03, not legal advice): free tool,
+  reflective wording. Pennsylvania 18 Pa.C.S. § 7104 makes predicting the
+  future *for gain* "by the movements of the heavenly bodies" a misdemeanor —
+  don't charge for readings/predictions without a lawyer's OK.
+- A friend's book calculator may be added **only with his written permission**;
+  methods go in `.claude/skills/hebrew-birth-chart/reference/book-notes.md`.
+
 ## Weekly site audit — automated, don't rebuild it
 A GitHub Action (`.github/workflows/weekly-audit.yml`) runs **every Monday** and
 on demand (Actions → Weekly Site Audit → Run workflow). It runs
@@ -714,3 +753,17 @@ hotel bundles, meet-and-greets) are filtered before they reach review.
 **Identity is `dedup_key`**, computed by `dedupKey()`. Never hand-write one in SQL:
 a non-canonical key inserts a duplicate instead of matching the existing row. A
 unique index on `(name, city, start_date)` now backstops this.
+
+## CrowdWave hub (`/crowdwave`) — live data only (2026-11-03)
+Festivals and shows come from `local_events` (the events cron + /admin/events):
+festivals = `source` seed/manual or `featured`; annual seeds rolled forward and
+still **pending** are listed by name under "Returning Next Season" with no
+dates until approved. Trending vendors (`utils/trendingVendors.ts`, also used
+by `/feed`) = 30 days of completed sales (delivered FestDash + paid/fulfilled
+store orders) plus distinct visitors to the shop's pages (admins and the shop's
+own people excluded); score = visitors + 10 × sales, listed once a vendor has a
+sale or 3+ visitors, public vendors only. Shown as "🔥 Hot topic" — never the
+numbers (owner's call). Weather
+for all 20 PA state forests (`utils/paStateForests.ts`, `ForestWeather`) is
+Open-Meteo, cached 1h. The old `festival_vendors` / `festival_events` seed rows
+are not read by these pages any more.
