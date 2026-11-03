@@ -8,6 +8,8 @@ export default function VendorApplyPage() {
   const [message, setMessage] = useState("");
   // Captured at mount — used as a timing trap against instant bot submits.
   const [loadedAt] = useState(() => Date.now());
+  const [codeDefault, setCodeDefault] = useState("");
+  useEffect(() => { const c = new URLSearchParams(window.location.search).get("code"); if (c) setCodeDefault(c.toUpperCase()); }, []);
   // Pre-fill the personal email from the signed-in account. That address is
   // what links an approved vendor to the person who runs it, so the closer it
   // starts to their real login the fewer approvals end up with nobody to
@@ -191,8 +193,10 @@ export default function VendorApplyPage() {
           />
 
           <input
+            key={codeDefault}
+            defaultValue={codeDefault}
             name="promoterCode"
-            placeholder="Promoter code (optional) — who told you about us?"
+            placeholder="Referral or invite code (optional) — who told you about us?"
             autoComplete="off"
             className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-dm-mono uppercase placeholder:font-sans placeholder:normal-case"
           />

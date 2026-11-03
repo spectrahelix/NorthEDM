@@ -243,6 +243,18 @@ export default async function AdminPage() {
                 </p>
               </Link>
               <Link
+                href="/admin/codes"
+                className="group rounded-2xl border border-[#3AFFD4]/20 bg-[#3AFFD4]/[0.06] p-6 transition hover:border-[#3AFFD4]/40 hover:bg-[#3AFFD4]/[0.12]"
+              >
+                <div className="mb-3 text-2xl">🏷️</div>
+                <h2 className="font-bebas text-2xl tracking-wide text-white group-hover:text-[#3AFFD4]">
+                  Discount Codes
+                </h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Codes for subscriptions and the bundle; see what promoters mint
+                </p>
+              </Link>
+              <Link
                 href="/admin/promoter-payouts"
                 className="group rounded-2xl border border-[#E8FF47]/20 bg-[#E8FF47]/[0.06] p-6 transition hover:border-[#E8FF47]/40 hover:bg-[#E8FF47]/[0.12]"
               >

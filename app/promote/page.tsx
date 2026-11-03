@@ -18,12 +18,15 @@ export default function PromoterSignup() {
     audience: "",
     promoteVendor: "",
     why: "",
+    inviteCode: "",
   });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setForm((f) => ({ ...f, email: f.email || user.email! }));
     });
+    const c = new URLSearchParams(window.location.search).get("code");
+    if (c) setForm((f) => ({ ...f, inviteCode: c.toUpperCase() }));
   }, [supabase]);
 
   function set(field: string, value: string) {
@@ -142,6 +145,18 @@ export default function PromoterSignup() {
               onChange={(e) => set("phone", e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
               placeholder="(555) 000-0000"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
+              Invite code <span className="normal-case tracking-normal text-neutral-600">(optional — from the promoter who invited you)</span>
+            </label>
+            <input
+              value={form.inviteCode}
+              onChange={(e) => set("inviteCode", e.target.value.toUpperCase())}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-dm-mono text-sm uppercase text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
+              placeholder="ABC1234"
             />
           </div>
 

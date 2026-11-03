@@ -432,6 +432,26 @@ through the site; it records what moved and who confirmed it.** Full design in
   (`vendor_subscriptions.kind` = `store`); it sets the shop's stores
   `billing_status = active`, and the daily reminders job sets `past_due` once
   the period lapses. Every listing-period reader filters `kind = 'festdash'`.
+  **Bundle + discount codes (2026-11-03).** `SubscriptionKind` adds `bundle`
+  (`coordinator_program_settings.bundle_fee_cents`, $45: FestDash listing +
+  store, "buy one get one half off"); one Stripe subscription that counts as an
+  active listing (`festdashListingActive` reads festdash|bundle) AND flips the
+  store on. A FestDash vendor buying the bundle without a store gets a draft
+  one (`utils/ownStore.ts`). Codes at checkout — `utils/discountCodes.ts`:
+  a promoter's referral code (10% every month, attributes them) or a
+  `discount_codes` row (% or $; `max_redemptions = 1` is one-time = first
+  invoice only, spent on `checkout.session.completed`; null = every month).
+  Applied as a Stripe coupon (`once`/`forever`) on the list price so the
+  invoice shows it. `quote()` precedence: typed code → `vendors.signup_code`
+  (the code on the application) → referring promoter. Owner makes codes in
+  **/admin/codes**; promoters mint ONE-TIME codes in /promote/codes
+  (`/api/promote/mint`, capped by `mint_max_percent_off` /
+  `mint_max_amount_off_cents`), which attribute the shop to them like a
+  referral. Applications (/vendors/apply, shop-setup, /promote) accept either
+  kind; a promoter application records `invite_code` / `invited_by` and the
+  admin card shows who minted it. Wallet rail: the purse logs a `bundle` fee
+  as a festdash period plus a store period. Approval email lists the three
+  plans (the "invoice"); nothing is charged until the shop picks one.
   **Store payouts (2026-11-03)** — `utils/storePayouts.ts`. A paid USD store
   order pays each selling vendor their lines minus the platform share
   (`platformShareBps`, 20%) minus the store's `operator_fee_bps` (member

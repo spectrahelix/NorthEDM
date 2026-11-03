@@ -210,7 +210,7 @@ export default function ShopSetupPage() {
                   <select className={input} value={form.preferred} onChange={(e) => setForm({ ...form, preferred: e.target.value })}><option value="wave">Wave</option><option value="qmoney">QMoney</option><option value="afrimoney">Afrimoney</option></select></div>
               </div>
 
-              <div><span className={label}>Coordinator code (optional)</span><input className={input} value={form.coordinatorCode} onChange={(e) => setForm({ ...form, coordinatorCode: e.target.value.toUpperCase() })} placeholder="From the person who signed you up" />
+              <div><span className={label}>Coordinator or invite code (optional)</span><input className={input} value={form.coordinatorCode} onChange={(e) => setForm({ ...form, coordinatorCode: e.target.value.toUpperCase() })} placeholder="From the person who signed you up" />
                 {state.refCoordinator && <p className="mt-1 text-xs text-green-400">✓ Signed up by {state.refCoordinator.display_name}</p>}</div>
 
               <label className="flex items-start gap-3 rounded-xl border border-orange-500/20 bg-orange-950/10 p-4 text-sm text-neutral-300">

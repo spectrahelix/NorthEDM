@@ -117,7 +117,7 @@ async function grantVendorAccess(
 async function sendApprovalMessages(admin: SupabaseClient, vendorId: number): Promise<string> {
   const { data: v } = await admin
     .from("vendors")
-    .select("id, name, email, business_email, user_id, coordinator_user_id, currency, area, whatsapp_number")
+    .select("id, name, email, business_email, user_id, coordinator_user_id, currency, area, whatsapp_number, signup_code")
     .eq("id", vendorId)
     .maybeSingle();
   if (!v) return "";
@@ -157,10 +157,20 @@ async function sendApprovalMessages(admin: SupabaseClient, vendorId: number): Pr
     await notifyUserInApp(admin, v.coordinator_user_id, "coordinator_shop_approved", `${shopLine} is approved — collect and log its first fee to switch it on.`, "/festdash/purse");
     notes.push(c.ok ? ` Alerted ${coordName}.` : ` Couldn't email the coordinator (${c.error}).`);
   } else {
-    const r = await emailUser(to, `You're approved on ${BRAND}`, {
+    const settings = await loadSplitSettings(admin);
+    const single = formatMoney(settings.subscription_fee_cents, "USD");
+    const bundle = formatMoney(settings.bundle_fee_cents ?? Math.round(settings.subscription_fee_cents * 1.5), "USD");
+    const r = await emailUser(to, `You're approved on ${BRAND} — pick your plan`, {
       heading: `${shopName} is approved`,
-      intro: "Your vendor application has been approved. Sign in to add your items, photos and prices. If you plan to take FestDash orders, set up payouts from your FestDash vendor dashboard so each delivered order is paid straight to you.",
-      cta: { label: "Open your vendor dashboard", path: "/vendor/dashboard" },
+      intro: `Your application is approved. Choose a plan from your dashboard to go live${v.signup_code ? ` — your code ${v.signup_code} is applied automatically at checkout` : ""}. Then add your items, photos and prices, and set up payouts so each sale is paid straight to you.`,
+      rows: [
+        ["FestDash listing", `${single} / month — customers order, a runner delivers`],
+        ["Online store", `${single} / month — your own store page at northedm.com/your-name`],
+        ["Bundle (both)", `${bundle} / month — buy one, get one half off`],
+        v.signup_code ? ["Your code", v.signup_code] : ["Codes", "A referral or discount code can be entered at checkout"],
+      ],
+      cta: { label: "Choose a plan", path: "/festdash/vendor-dashboard" },
+      outro: "No plan is charged until you choose one. Cancel any time from the billing portal.",
     });
     notes.push(r.ok ? ` Emailed the applicant.` : to ? ` Couldn't email the applicant (${r.error}).` : " No email on the application, so nothing was sent.");
   }

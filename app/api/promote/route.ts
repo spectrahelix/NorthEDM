@@ -2,6 +2,8 @@ import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { requireVerifiedUser } from "@/utils/authGate";
+import { resolveCode } from "@/utils/discountCodes";
+import { serviceClient as admin } from "@/utils/coordinator";
 import { notifyNewApplication } from "@/utils/alerts";
 
 // Promoter applications. This handler lived at /api/festdash/promoter-signup
@@ -26,7 +28,10 @@ export async function POST(req: Request) {
   const body = await req.json();
   const shield = await shieldForm(req, body, "promote-apply");
   if (shield.verdict !== "ok") return shield.response;
-  const { displayName, email, phone, audience, promoteVendor, why } = body;
+  const { displayName, email, phone, audience, promoteVendor, why, inviteCode } = body;
+  // Who brought them in: a promoter's referral code or a code that promoter minted.
+  const invite = await resolveCode(admin(), typeof inviteCode === "string" ? inviteCode : null, 1000);
+  const invitedBy = invite?.promoter_user_id ?? null;
 
   if (!displayName || !email) {
     return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
@@ -42,6 +47,8 @@ export async function POST(req: Request) {
       why: why || null,
       user_id: user?.id ?? null,
       status: "pending",
+      invite_code: invite?.code ?? null,
+      invited_by: invitedBy,
     },
   ]);
 
@@ -60,6 +67,7 @@ export async function POST(req: Request) {
       ["Audience", audience || null],
       ["Wants to promote", promoteVendor || null],
       ["Why", why || null],
+      ["Invite code", invite ? `${invite.code}${invitedBy ? " (minted by a promoter — see the card)" : ""}` : null],
     ],
   });
 

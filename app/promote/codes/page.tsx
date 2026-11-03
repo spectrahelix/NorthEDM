@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
+import { MintCodes } from "@/app/components/MintCodes";
 import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 
@@ -136,6 +137,7 @@ export default function ReferralsPage() {
           {issuerKind === "vendor" ? "Vendor" : "Promoter"} · Referrals
         </div>
         <h1 className="mb-8 font-bebas text-5xl tracking-wide text-white">Referral Codes</h1>
+        {issuerKind === "promoter" && <MintCodes />}
 
         {/* Stats */}
         <div className="mb-8 grid grid-cols-3 gap-4">

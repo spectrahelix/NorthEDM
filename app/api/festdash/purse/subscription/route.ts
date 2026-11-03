@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const vendorId = Number(body.vendorId);
   const months = Math.min(Math.max(Math.floor(Number(body.months) || 1), 1), 12);
   // What the fee is for: the FestDash listing (default) or the shop's embedded store.
-  const kind: "festdash" | "store" = body.kind === "store" ? "store" : "festdash";
+  const kind: "festdash" | "store" | "bundle" = body.kind === "store" ? "store" : body.kind === "bundle" ? "bundle" : "festdash";
   const method = isLocalMethod(body.method) ? body.method : "cash";
   const collectedAmount = Number(body.collectedAmount);
   const collectedCurrency = typeof body.collectedCurrency === "string" ? body.collectedCurrency.toUpperCase().slice(0, 3) : null;
@@ -44,25 +44,34 @@ export async function POST(req: Request) {
   // fee (owner's decision, 2026-11-02). "Owner" = an archon account.
   const { data: ownerRows } = await admin.from("user_profiles").select("id").eq("role", "archon");
   const ownerReferred = !!vendor.coordinator_user_id && (ownerRows ?? []).some((r) => r.id === vendor.coordinator_user_id);
-  const feeCents = Math.round(settings.subscription_fee_cents * months * (ownerReferred ? 0.9 : 1));
+  const listCents = kind === "bundle" ? (settings.bundle_fee_cents ?? Math.round(settings.subscription_fee_cents * 1.5)) : settings.subscription_fee_cents;
+  const feeCents = Math.round(listCents * months * (ownerReferred ? 0.9 : 1));
   const split = splitSubscription(feeCents, settings);
 
+  const rowKind = kind === "bundle" ? "festdash" : kind;
   const { data: sub, error } = await admin.from("vendor_subscriptions").insert({
-    kind, vendor_id: vendorId, coordinator_user_id: user.id, period_start: start, period_end: end,
+    kind: rowKind, vendor_id: vendorId, coordinator_user_id: user.id, period_start: start, period_end: end,
     fee_cents: feeCents, collected_amount: Number.isFinite(collectedAmount) ? collectedAmount : null,
     collected_currency: collectedCurrency, method, reference, note,
   }).select("id, period_start, period_end, fee_cents").single();
+  if (!error && kind === "bundle") {
+    // The bundle's store half: its own period row so every store-period reader sees it.
+    await admin.from("vendor_subscriptions").insert({
+      kind: "store", vendor_id: vendorId, coordinator_user_id: user.id, period_start: start, period_end: end,
+      fee_cents: 0, method, reference, note: `bundle · ${start} → ${end}`,
+    });
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await admin.from("coordinator_ledger").insert({
     kind: "subscription", coordinator_user_id: user.id, vendor_id: vendorId, subscription_id: sub.id,
     currency: "USD", gross_cents: feeCents, shop_cents: 0, owner_cents: split.owner, coordinator_cents: split.coordinator,
-    method, reference, note: note ?? `${kind === "store" ? "store fee · " : ""}${months} month${months === 1 ? "" : "s"} · ${start} → ${end}`, created_by: user.id,
+    method, reference, note: note ?? `${kind === "store" ? "store fee · " : kind === "bundle" ? "bundle · " : ""}${months} month${months === 1 ? "" : "s"} · ${start} → ${end}`, created_by: user.id,
   });
 
   // A store fee switches the shop's embedded store(s) on; the daily job pauses
   // them again when the period lapses.
-  if (kind === "store") {
+  if (kind === "store" || kind === "bundle") {
     const { data: links } = await admin.from("store_vendors").select("store_id").eq("vendor_id", vendorId);
     const ids = (links ?? []).map((l) => l.store_id as string);
     if (ids.length) await admin.from("stores").update({ billing_status: "active" }).in("id", ids);
@@ -78,11 +87,15 @@ export async function POST(req: Request) {
     const by = me.display_name ?? "Your coordinator";
     const shopName = shop.name ?? "Your shop";
     await Promise.allSettled([
-      emailUser(to, kind === "store"
+      emailUser(to, kind === "bundle"
+        ? `Bundle received — on FestDash and your online store is on through ${end}`
+        : kind === "store"
         ? `Store subscription received — your online store is on through ${end}`
         : wasLive ? `Listing fee received — on FestDash through ${end}` : `${shopName} is live on FestDash`, {
-        heading: kind === "store" ? "Online store active" : wasLive ? "Fee received" : `${shopName} is live`,
-        intro: kind === "store"
+        heading: kind === "bundle" ? "Listing and store active" : kind === "store" ? "Online store active" : wasLive ? "Fee received" : `${shopName} is live`,
+        intro: kind === "bundle"
+          ? `${by} logged your bundle. Your shop is on FestDash and your embedded online store can take orders, both through ${end}.`
+          : kind === "store"
           ? `${by} logged your store subscription. Your embedded online store can take orders through ${end}.`
           : wasLive
           ? `${by} logged your listing fee. Your shop stays on FestDash through ${end}.`

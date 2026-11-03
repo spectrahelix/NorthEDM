@@ -16,7 +16,7 @@ type LedgerRow = {
   shop_cents: number; owner_cents: number; coordinator_cents: number; runner_cents?: number | null; collected_by?: string | null; method: string | null; reference: string | null;
   note: string | null; created_at: string; received_at: string | null; received_usd_cents: number | null;
 };
-type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number };
+type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number; bundle_fee_cents?: number; mint_max_percent_off?: number; mint_max_amount_off_cents?: number };
 type Data = { promoters: Promoter[]; vendors: Vendor[]; ledger: LedgerRow[]; settings: Settings | null };
 
 const input = "rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none";
@@ -115,6 +115,9 @@ export default function CoordinatorsClient() {
               <div><span className={label}>Coordinator % of sale</span><input className={input + " w-full"} value={settings.sale_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, sale_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Shop fee $/month</span><input className={input + " w-full"} value={settings.subscription_fee_cents / 100} onChange={(e) => setSettings({ ...settings, subscription_fee_cents: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Coordinator % of fee</span><input className={input + " w-full"} value={settings.subscription_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, subscription_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
+              <div><span className={label}>Bundle $/month (both)</span><input className={input + " w-full"} value={(settings.bundle_fee_cents ?? 4500) / 100} onChange={(e) => setSettings({ ...settings, bundle_fee_cents: Math.round(Number(e.target.value) * 100) })} /></div>
+              <div><span className={label}>Promoter codes: max % off</span><input className={input + " w-full"} value={settings.mint_max_percent_off ?? 50} onChange={(e) => setSettings({ ...settings, mint_max_percent_off: Math.round(Number(e.target.value)) })} /></div>
+              <div><span className={label}>Promoter codes: max $ off</span><input className={input + " w-full"} value={(settings.mint_max_amount_off_cents ?? 2000) / 100} onChange={(e) => setSettings({ ...settings, mint_max_amount_off_cents: Math.round(Number(e.target.value) * 100) })} /></div>
             </div>
             <p className="mt-2 text-xs text-neutral-500">Shop keeps {100 - (settings.sale_owner_bps + settings.sale_coordinator_bps) / 100}% of each sale. On card orders the two percentages together are taken as the Stripe platform fee when the order is delivered; the coordinator&apos;s part is paid to them through Stripe after the hold window, or stays with NorthEDM when the vendor has no coordinator. On wallet sales the coordinator keeps it from what they collected. Of each {formatMoney(settings.subscription_fee_cents, "USD")} fee you get {formatMoney(settings.subscription_fee_cents - Math.round(settings.subscription_fee_cents * settings.subscription_coordinator_bps / 10000), "USD")}.</p>
             <button onClick={() => run("settings", { action: "set_settings", ...settings }, "Settings saved.")} disabled={busy === "settings"} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-400 disabled:opacity-50">Save settings</button>

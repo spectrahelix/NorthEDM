@@ -3,6 +3,7 @@ import { notifyNewApplication } from "@/utils/alerts";
 import { vendorApplicationFields } from "@/utils/vendorApplication";
 import { createClient } from "@/utils/supabase/server";
 import { clientIp, clientContradictsItself, overRateLimit, recordAttempt } from "@/utils/botSignals";
+import { resolveCode } from "@/utils/discountCodes";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 // Per-IP throttle. This was an in-memory Map, which on serverless is close to
@@ -115,11 +116,19 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+    // A promoter's referral code attributes the shop to them. A discount code
+    // (owner-made or promoter-minted) is kept as signup_code so it applies
+    // itself at the first checkout; a minted one attributes the minter too.
     type Referrer = { user_id: string; referral_code: string };
     let referrer: Referrer | null = null;
+    let signupCode: string | null = null;
     if (promoterCode) {
-      const { data: p } = await svc.from("festdash_promoters").select("user_id, referral_code").ilike("referral_code", promoterCode).eq("is_active", true).maybeSingle();
-      referrer = (p as Referrer | null) ?? null;
+      const resolved = await resolveCode(svc, promoterCode, 1000);
+      if (resolved?.kind === "referral") referrer = { user_id: resolved.promoter_user_id, referral_code: resolved.code };
+      else if (resolved?.kind === "discount") {
+        signupCode = resolved.code;
+        if (resolved.promoter_user_id) referrer = { user_id: resolved.promoter_user_id, referral_code: resolved.code };
+      }
     }
     const { data: created, error } = await svc.from("vendors").insert([
       {
@@ -134,6 +143,7 @@ export async function POST(req: Request) {
         website,
         coordinator_user_id: referrer?.user_id ?? null,
         coordinator_code: referrer?.referral_code ?? null,
+        signup_code: signupCode,
         capacity: data.capacity ? String(data.capacity).trim().slice(0, 60) : null,
         // is_public is the live listing flag and an applicant may never set it:
         // the "public apply as vendor" RLS policy requires false, and sending
