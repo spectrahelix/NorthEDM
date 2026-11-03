@@ -141,6 +141,8 @@ export async function POST(req: Request) {
     }
   }
 
+  // A promoter opening their own shop is their own coordinator when nobody else is.
+  if (!coordinator) coordinator = await resolveCoordinatorByUser(admin, user.id);
   const { data: vendor, error } = await admin.from("vendors").insert({
     name, category, description, area,
     email: user.email ?? null,

@@ -58,6 +58,18 @@ export async function enrollCoordinatorShop(admin: SupabaseClient, vendorId: num
   return true;
 }
 
+/**
+ * A promoter's own shop is treated as a shop that promoter referred (owner's
+ * rule, 2026-11-03): 10% off the fee automatically, and they keep the promoter
+ * share of its sales and fees — 90% to them, 10% to the owner. Returns the
+ * self-referral when the vendor's account is an active promoter, else null.
+ */
+export async function selfReferral(admin: SupabaseClient, userId: string | null | undefined): Promise<{ user_id: string; referral_code: string | null } | null> {
+  if (!userId) return null;
+  const { data } = await admin.from("festdash_promoters").select("user_id, referral_code").eq("user_id", userId).eq("is_active", true).maybeSingle();
+  return data ? { user_id: data.user_id as string, referral_code: (data.referral_code as string | null) ?? null } : null;
+}
+
 /** A shop's current paid period, if any (period_end on or after today). */
 export async function activeSubscription(admin: SupabaseClient, vendorId: number) {
   const today = new Date().toISOString().slice(0, 10);
