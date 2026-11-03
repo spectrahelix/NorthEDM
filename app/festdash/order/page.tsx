@@ -12,7 +12,7 @@ import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
-  payments?: VendorPayments; pickup_location?: string | null; area?: string | null;
+  payments?: VendorPayments; pickup_location?: string | null; area?: string | null; fulfillment_modes?: string | null;
 };
 type MenuItem = { id: number; name: string; description: string; price: number; image_url: string | null; category: string };
 type CartItem = MenuItem & { qty: number };
@@ -129,6 +129,7 @@ export default function OrderPage() {
     setMenuItems(json.items ?? []);
     setLoadingMenu(false);
     setStep(2);
+    if ((vendor.fulfillment_modes ?? "both") === "pickup") { setFulfillment("pickup"); setDeliveryWindow("ASAP"); }
   }
 
   function adjustCart(item: MenuItem, delta: number) {
@@ -164,7 +165,9 @@ export default function OrderPage() {
   const money = (cents: number) => formatMoney(cents, currency);
   const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
   const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
-  const pickup = fulfillment === "pickup";
+  const modes = selectedVendor?.fulfillment_modes ?? "both";
+  const pickupOnly = modes === "pickup", deliveryOnly = modes === "delivery";
+  const pickup = pickupOnly ? true : deliveryOnly ? false : fulfillment === "pickup";
   const payableCents = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents);
 
   async function applyPromo() {
@@ -490,8 +493,9 @@ export default function OrderPage() {
           <h1 className="mb-2 font-bebas text-4xl tracking-wide text-white">{pickup ? <>Pickup <span className="text-orange-400">Details</span></> : <>Delivery <span className="text-orange-400">Details</span></>}</h1>
           <p className="mb-5 text-neutral-500">{pickup ? "You collect from the shop. No runner fee." : "Tell us where to find you."}</p>
 
-          {/* Delivery or pickup */}
-          <div className="mb-6 grid grid-cols-2 gap-2">
+          {/* Delivery or pickup — hidden when the shop offers only one */}
+          {pickupOnly && <p className="mb-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-300">🛍️ This shop is <span className="font-semibold text-white">pickup only</span> right now. You collect at the shop; no runner fee.</p>}
+          {!pickupOnly && !deliveryOnly && <div className="mb-6 grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setFulfillment("delivery")} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${!pickup ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
               <span className="font-semibold">🏕️ Deliver to me</span>
               <span className="block text-xs text-neutral-500">A runner brings it. Runner fee applies.</span>
@@ -500,7 +504,7 @@ export default function OrderPage() {
               <span className="font-semibold">🛍️ I&apos;ll pick it up</span>
               <span className="block text-xs text-neutral-500">Collect at the shop. No runner fee.</span>
             </button>
-          </div>
+          </div>}
 
           <div className="space-y-5">
             <div>

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   // ("lights out") one — this is the check that actually enforces it.
   const vid = Number(vendorId);
   const [{ data: vendorRow }, { data: fdRow }] = await Promise.all([
-    admin.from("vendors").select("id, status, is_public, suspended_at, coordinator_user_id, currency").eq("id", vid).maybeSingle(),
+    admin.from("vendors").select("id, status, is_public, suspended_at, coordinator_user_id, currency, fulfillment_modes").eq("id", vid).maybeSingle(),
     admin.from("festdash_vendors").select("vendor_id").eq("vendor_id", vid).eq("is_active", true).maybeSingle(),
   ]);
   if (!vendorRow || vendorRow.status !== "approved" || !vendorRow.is_public || vendorRow.suspended_at || !fdRow) {
@@ -55,6 +55,10 @@ export async function POST(req: Request) {
   // current. A USD vendor with a coordinator stays on card checkout. The wallet
   // number is snapshotted onto the order so the customer always sees the number
   // that was current when they ordered.
+  // The shop decides which fulfilment it offers (both | pickup | delivery).
+  const modes = String(vendorRow.fulfillment_modes ?? "both");
+  if (pickup && modes === "delivery") return NextResponse.json({ error: "This shop delivers only." }, { status: 400 });
+  if (!pickup && modes === "pickup") return NextResponse.json({ error: "This shop is pickup only right now." }, { status: 400 });
   const local = isLocalRail(vendorRow);
   const currency = String(vendorRow.currency || "USD");
   // A card on a local-rail shop (2026-11-03): charged in the shop's currency
