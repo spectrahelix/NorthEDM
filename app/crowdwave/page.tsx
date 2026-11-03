@@ -1,130 +1,105 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { WeatherStrip } from "@/app/components/WeatherStrip";
+import { ForestWeather } from "@/app/components/ForestWeather";
+import { trendingVendors } from "@/utils/trendingVendors";
+import { storeAdminClient } from "@/utils/store";
+import { PA_STATE_FORESTS } from "@/utils/paStateForests";
 
-type FestivalEvent = {
-  id: number;
+// Everything on this page is read live, so it moves with the rest of the site:
+//   - festivals/shows come from `local_events` (the nightly events cron +
+//     /admin/events approvals — the same rows /events shows),
+//   - trending vendors are ranked by real sales through NorthEDM
+//     (utils/trendingVendors.ts),
+//   - state forest weather is Open-Meteo, cached for an hour.
+// It used to read the `festival_events` / `festival_vendors` seed tables,
+// which nobody updated: every festival on it was in the past and the vendors
+// were demo rows with made-up growth percentages.
+export const revalidate = 3600;
+
+type LocalEvent = {
+  id: string;
   name: string;
-  location: string;
-  start_date: string;
-  end_date: string;
-  lat: number;
-  lng: number;
-  ticket_status: string;
-  badge: string | null;
-  href: string;
+  venue: string | null;
+  city: string | null;
+  region: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  lat: number | null;
+  lng: number | null;
+  source_url: string | null;
+  source: string | null;
+  featured: boolean | null;
 };
 
-type FestivalVendor = {
-  id: number;
-  name: string;
-  category: string;
-  emoji: string;
-  upcoming_shows_count: number;
-  growth_percent: number;
-};
+// Festivals are the hand-picked rows: curated seeds and owner-added events.
+// "Multi-day" alone is not a festival test — venue calendars list three-night
+// theatre runs (Beetlejuice, Riverdance) that way.
+const FESTIVAL_SOURCES = new Set(["seed", "manual"]);
+const isFestival = (e: LocalEvent) => FESTIVAL_SOURCES.has(e.source ?? "") || e.featured === true;
 
-const PINNED_EVENTS: FestivalEvent[] = [
-  {
-    id: -1,
-    name: "Elements Music & Arts Festival",
-    location: "Pocono Raceway, Long Pond, PA",
-    start_date: "2026-08-07",
-    end_date: "2026-08-09",
-    lat: 41.0559,
-    lng: -75.5103,
-    ticket_status: "available",
-    badge: "hot",
-    href: "/crowdwave/festival/elements-2026",
-  },
-];
+/**
+ * Annual festivals whose next dates were rolled forward by the events cron and
+ * are waiting for the owner to confirm them in /admin/events. Shown by name
+ * only — the estimated dates stay off the public page until approved.
+ * Pending rows aren't readable through RLS, hence the service role; only
+ * name/place leave this function.
+ */
+async function returningFestivals(): Promise<{ name: string; place: string }[]> {
+  try {
+    const { data } = await storeAdminClient()
+      .from("local_events")
+      .select("name, city, region, start_date")
+      .eq("status", "pending")
+      .eq("source", "seed")
+      .order("start_date", { ascending: true });
+    const seen = new Set<string>();
+    return ((data ?? []) as { name: string; city: string | null; region: string | null }[])
+      .filter((r) => (seen.has(r.name) ? false : (seen.add(r.name), true)))
+      .map((r) => ({ name: r.name, place: [r.city, r.region].filter(Boolean).join(", ") }));
+  } catch {
+    return [];
+  }
+}
 
-const BADGE_STYLES: Record<string, string> = {
-  hot: "bg-[#FF5C3A]/20 text-[#FF5C3A]",
-  new: "bg-[#3AFFD4]/20 text-[#3AFFD4]",
-  soon: "bg-[#E8FF47]/20 text-[#E8FF47]",
-};
+const SALES_WINDOW_DAYS = 30;
 
-const TICKET_LABEL: Record<string, string> = {
-  available: "Tickets Available",
-  limited: "Limited",
-  sold_out: "Sold Out",
-};
-
-const FORAGING_CONDITIONS: {
-  name: string;
-  condition: "good" | "fair" | "poor";
-  notes: string;
-}[] = [
-  {
-    name: "Blue Ridge",
-    condition: "good",
-    notes: "Chanterelles peaking, morels winding down. Check oak ridgelines.",
-  },
-  {
-    name: "Smoky Mountains",
-    condition: "fair",
-    notes: "Dry spell in effect — check north-facing slopes and stream drainages.",
-  },
-  {
-    name: "Catskills",
-    condition: "good",
-    notes: "Hen of the woods coming in strong near old-growth oak.",
-  },
-  {
-    name: "Adirondacks",
-    condition: "poor",
-    notes: "Too wet after recent rains. Wait 5–7 days before heading out.",
-  },
-];
-
-function formatDateRange(start: string, end: string) {
-  const s = new Date(start);
-  const e = new Date(end);
+function fmtRange(start: string | null, end: string | null) {
+  if (!start) return "Dates TBA";
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", opts)}`;
+  const s = new Date(`${start}T00:00:00`).toLocaleDateString("en-US", opts);
+  if (!end || end === start) return s;
+  return `${s} – ${new Date(`${end}T00:00:00`).toLocaleDateString("en-US", opts)}`;
+}
+
+function todayEastern() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
 }
 
 export default async function CrowdWaveFeedPage() {
   const supabase = await createClient();
+  const today = todayEastern();
 
-  const [
-    { data: eventsData },
-    { data: vendorsData },
-    { count: memberCount },
-    { count: eventsCount },
-    { data: carpoolData },
-  ] = await Promise.all([
+  const [{ data: eventsData }, { data: carpoolData }, trending, returning] = await Promise.all([
     supabase
-      .from("festival_events")
-      .select("*")
-      .order("start_date", { ascending: true }),
-    supabase
-      .from("festival_vendors")
-      .select("*")
-      .order("growth_percent", { ascending: false }),
-    supabase
-      .from("group_members")
-      .select("*", { count: "exact", head: true }),
-    supabase
-      .from("festival_events")
-      .select("*", { count: "exact", head: true }),
-    supabase
-      .from("community_groups")
-      .select("id")
-      .eq("category", "Carpool"),
+      .from("local_events")
+      .select("id, name, venue, city, region, start_date, end_date, lat, lng, source_url, source, featured")
+      .eq("status", "approved")
+      .or(`end_date.gte.${today},start_date.gte.${today}`)
+      .order("start_date", { ascending: true, nullsFirst: false }),
+    supabase.from("community_groups").select("id").eq("category", "Carpool"),
+    trendingVendors(SALES_WINDOW_DAYS, 50).catch(() => []),
+    returningFestivals(),
   ]);
 
-  const dbEvents = ((eventsData ?? []) as Omit<FestivalEvent, "href">[])
-    .filter((e) => !PINNED_EVENTS.some((p) => p.name === e.name))
-    .map((e) => ({ ...e, href: `/crowdwave/festival/${e.id}` }));
-  const events: FestivalEvent[] = [...PINNED_EVENTS, ...dbEvents];
-  const vendors = (vendorsData ?? []) as FestivalVendor[];
-  const totalVendorShows = vendors.reduce(
-    (sum, v) => sum + (v.upcoming_shows_count ?? 0),
-    0
-  );
+  const upcoming = (eventsData ?? []) as LocalEvent[];
+  const festivals = upcoming.filter(isFestival);
+  const shows = upcoming.filter((e) => !isFestival(e));
+  // Don't list a festival as "returning" when its confirmed dates are already up.
+  const confirmed = new Set(festivals.map((e) => e.name));
+  const returningSoon = returning.filter((r) => !confirmed.has(r.name));
   const carpoolGroups = carpoolData?.length ?? 0;
+  const topVendors = trending.slice(0, 6);
 
   return (
     <main className="min-h-screen text-neutral-100">
@@ -138,8 +113,8 @@ export default async function CrowdWaveFeedPage() {
             Festival Hub
           </h1>
           <p className="mt-4 max-w-xl text-neutral-400">
-            Upcoming events, community intel, trending vendors, and the people
-            who live for the music.
+            Upcoming festivals, the vendors people are actually buying from, and
+            conditions in Pennsylvania&apos;s state forests — refreshed every day.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -154,187 +129,202 @@ export default async function CrowdWaveFeedPage() {
             >
               Community Groups
             </Link>
+            <Link
+              href="/events"
+              className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/5"
+            >
+              All Events
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Insight Bar */}
+      {/* Insight Bar — plain counts, each from a live table */}
       <section className="border-b border-white/10 bg-white/[0.02]">
         <div className="mx-auto max-w-6xl px-6 py-4">
-          <div className="flex flex-wrap gap-8 text-sm">
-            <div>
-              <span className="font-dm-mono font-semibold text-[#E8FF47]">
-                {memberCount ?? 0}
-              </span>
-              <span className="ml-2 text-neutral-400">members attending</span>
-            </div>
-            <div>
-              <span className="font-dm-mono font-semibold text-[#E8FF47]">
-                {eventsCount ?? 0}
-              </span>
-              <span className="ml-2 text-neutral-400">festivals on radar</span>
-            </div>
-            <div>
-              <span className="font-dm-mono font-semibold text-[#E8FF47]">
-                {totalVendorShows}
-              </span>
-              <span className="ml-2 text-neutral-400">
-                vendors at upcoming shows
-              </span>
-            </div>
-            <div>
-              <span className="font-dm-mono font-semibold text-[#E8FF47]">
-                {carpoolGroups}
-              </span>
-              <span className="ml-2 text-neutral-400">carpool groups forming</span>
-            </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+            <Stat n={festivals.length} label="festivals with confirmed dates" />
+            <Stat n={shows.length} label="shows ahead" />
+            <Stat n={trending.length} label={`vendors with sales (${SALES_WINDOW_DAYS} days)`} />
+            <Stat n={carpoolGroups} label="carpool groups" />
+            <Stat n={PA_STATE_FORESTS.length} label="state forests tracked" />
           </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-12 lg:grid lg:grid-cols-3 lg:gap-12">
-        {/* Events – left 2/3 */}
+        {/* Festivals – left 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          <h2 className="font-bebas text-4xl tracking-wide">
-            Upcoming Festivals
-          </h2>
+          <h2 className="font-bebas text-4xl tracking-wide">Upcoming Festivals</h2>
 
-          {events.length === 0 ? (
+          {festivals.length === 0 && returningSoon.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-neutral-500">
-              No upcoming events yet — check back soon.
+              No festivals with confirmed dates right now.{" "}
+              <Link href="/events" className="text-[#3AFFD4] hover:underline">
+                See every upcoming show
+              </Link>
+              .
             </div>
           ) : (
-            events.map((event) => (
-              <Link
-                key={event.id}
-                href={event.href}
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.995]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-bebas text-3xl tracking-wide leading-none">
-                      {event.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-neutral-400">
-                      {event.location}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {event.badge && (
-                      <span
-                        className={`rounded-full px-3 py-1 font-dm-mono text-xs uppercase tracking-widest ${
-                          BADGE_STYLES[event.badge] ?? "bg-white/10 text-neutral-300"
-                        }`}
-                      >
-                        {event.badge}
+            festivals.slice(0, 8).map((event) => <EventCard key={event.id} event={event} />)
+          )}
+
+          {returningSoon.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+              <h3 className="font-bebas text-2xl tracking-wide">Returning Next Season</h3>
+              <p className="mt-1 text-xs text-neutral-500">
+                Annual festivals in our region. Next year&apos;s dates are being confirmed and
+                will appear here with the forecast once they are.
+              </p>
+              <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                {returningSoon.map((r) => (
+                  <li key={r.name} className="text-sm">
+                    <span className="text-neutral-200">{r.name}</span>
+                    {r.place && <span className="block text-xs text-neutral-500">{r.place}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {shows.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 className="font-bebas text-2xl tracking-wide">Next Shows</h3>
+                <Link href="/events" className="font-dm-mono text-xs text-[#3AFFD4] hover:underline">
+                  all {upcoming.length} →
+                </Link>
+              </div>
+              <ul className="divide-y divide-white/5">
+                {shows.slice(0, 6).map((e) => (
+                  <li key={e.id} className="flex items-baseline justify-between gap-4 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate text-neutral-200">{e.name}</span>
+                      <span className="block truncate text-xs text-neutral-500">
+                        {[e.venue, e.city].filter(Boolean).join(", ")}
                       </span>
-                    )}
-                    <span className="font-dm-mono text-xs text-neutral-600">→</span>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                  <span className="font-dm-mono text-neutral-300">
-                    {formatDateRange(event.start_date, event.end_date)}
-                  </span>
-                  <span
-                    className={`font-dm-mono text-xs uppercase tracking-widest ${
-                      event.ticket_status === "available"
-                        ? "text-[#3AFFD4]"
-                        : event.ticket_status === "limited"
-                        ? "text-[#FFB347]"
-                        : "text-neutral-500 line-through"
-                    }`}
-                  >
-                    {TICKET_LABEL[event.ticket_status] ?? event.ticket_status}
-                  </span>
-                </div>
-
-                <WeatherStrip
-                  lat={event.lat}
-                  lng={event.lng}
-                  startDate={event.start_date}
-                  endDate={event.end_date}
-                />
-              </Link>
-            ))
+                    </span>
+                    <span className="shrink-0 font-dm-mono text-xs text-neutral-400">
+                      {fmtRange(e.start_date, e.end_date)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 
         {/* Vendors – right 1/3 */}
         <div className="mt-12 lg:mt-0 space-y-5">
-          <h2 className="font-bebas text-4xl tracking-wide">
-            Trending Vendors
-          </h2>
+          <div>
+            <h2 className="font-bebas text-4xl tracking-wide">Trending Vendors</h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              NorthEDM vendors ranked by completed sales through this site in the
+              last {SALES_WINDOW_DAYS} days.
+            </p>
+          </div>
 
-          {vendors.length === 0 ? (
-            <p className="text-neutral-500 text-sm">No vendors yet.</p>
+          {topVendors.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-neutral-500">
+              No completed sales through the site in the last {SALES_WINDOW_DAYS} days
+              yet — vendors show up here as soon as people buy from them.{" "}
+              <Link href="/marketplace" className="text-[#3AFFD4] hover:underline">
+                Browse the marketplace
+              </Link>
+              .
+            </div>
           ) : (
-            vendors.map((vendor) => (
-              <div
+            topVendors.map((vendor) => (
+              <Link
                 key={vendor.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                href={`/marketplace/${vendor.id}`}
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/20 hover:bg-white/[0.06]"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{vendor.emoji}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold leading-tight">
-                      {vendor.name}
-                    </p>
-                    <p className="text-xs text-neutral-500">{vendor.category}</p>
+                    <p className="truncate font-semibold leading-tight">{vendor.name}</p>
+                    {vendor.category && (
+                      <p className="text-xs text-neutral-500">{vendor.category}</p>
+                    )}
                   </div>
                   <span className="shrink-0 rounded-full bg-[#E8FF47]/10 px-2 py-0.5 font-dm-mono text-xs text-[#E8FF47]">
-                    +{vendor.growth_percent}%
+                    {vendor.sales} {vendor.sales === 1 ? "sale" : "sales"}
                   </span>
                 </div>
-                <p className="mt-2 font-dm-mono text-xs text-neutral-600">
-                  at {vendor.upcoming_shows_count} upcoming shows
-                </p>
-              </div>
+              </Link>
             ))
           )}
         </div>
       </div>
 
-      {/* Foraging Conditions */}
+      {/* Pennsylvania State Forests */}
       <section className="border-t border-white/10">
         <div className="mx-auto max-w-6xl px-6 py-12">
-          <div className="mb-6 flex items-baseline gap-4">
-            <h2 className="font-bebas text-4xl tracking-wide">
-              Foraging Conditions
-            </h2>
-            <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
-              Appalachian Subregions
-            </span>
+          <div className="mb-6">
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <h2 className="font-bebas text-4xl tracking-wide">Pennsylvania State Forests</h2>
+              <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">
+                Local weather · updated hourly
+              </span>
+            </div>
+            <p className="mt-2 max-w-2xl text-xs text-neutral-500">
+              Current temperature, the next three days, and rain over the past week —
+              the number foragers watch. Forecasts from Open-Meteo for one point in
+              each forest; conditions vary across a large tract. Tap a forest for
+              DCNR maps and rules.
+            </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FORAGING_CONDITIONS.map((region) => (
-              <div
-                key={region.name}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="font-semibold text-sm">{region.name}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 font-dm-mono text-xs uppercase tracking-widest ${
-                      region.condition === "good"
-                        ? "bg-[#3AFFD4]/10 text-[#3AFFD4]"
-                        : region.condition === "fair"
-                        ? "bg-[#E8FF47]/10 text-[#E8FF47]"
-                        : "bg-[#FF5C3A]/10 text-[#FF5C3A]"
-                    }`}
-                  >
-                    {region.condition}
-                  </span>
-                </div>
-                <p className="text-xs text-neutral-500 leading-relaxed">
-                  {region.notes}
-                </p>
-              </div>
-            ))}
-          </div>
+          <ForestWeather />
         </div>
       </section>
     </main>
+  );
+}
+
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <div>
+      <span className="font-dm-mono font-semibold text-[#E8FF47]">{n}</span>
+      <span className="ml-2 text-neutral-400">{label}</span>
+    </div>
+  );
+}
+
+function EventCard({ event }: { event: LocalEvent }) {
+  const place = [event.venue, event.city, event.region].filter(Boolean).join(", ");
+  const body = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="font-bebas text-3xl tracking-wide leading-none">{event.name}</h3>
+          {place && <p className="mt-1 text-sm text-neutral-400">{place}</p>}
+        </div>
+        {event.source_url && (
+          <span className="shrink-0 font-dm-mono text-xs text-neutral-600">↗</span>
+        )}
+      </div>
+      <p className="mt-3 font-dm-mono text-sm text-neutral-300">
+        {fmtRange(event.start_date, event.end_date)}
+      </p>
+      {event.lat != null && event.lng != null && (
+        <WeatherStrip
+          lat={event.lat}
+          lng={event.lng}
+          startDate={event.start_date}
+          endDate={event.end_date}
+        />
+      )}
+    </>
+  );
+  const cls =
+    "block rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.06]";
+  return event.source_url ? (
+    <a href={event.source_url} target="_blank" rel="noopener noreferrer" className={cls}>
+      {body}
+    </a>
+  ) : (
+    <Link href="/events" className={cls}>
+      {body}
+    </Link>
   );
 }

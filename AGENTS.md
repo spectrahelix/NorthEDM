@@ -1,7 +1,11 @@
 <!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
 <!-- END:nextjs-agent-rules -->
 
 # Don't guess. Verify, or say you haven't.
@@ -714,3 +718,14 @@ hotel bundles, meet-and-greets) are filtered before they reach review.
 **Identity is `dedup_key`**, computed by `dedupKey()`. Never hand-write one in SQL:
 a non-canonical key inserts a duplicate instead of matching the existing row. A
 unique index on `(name, city, start_date)` now backstops this.
+
+## CrowdWave hub (`/crowdwave`) — live data only (2026-11-03)
+Festivals and shows come from `local_events` (the events cron + /admin/events):
+festivals = `source` seed/manual or `featured`; annual seeds rolled forward and
+still **pending** are listed by name under "Returning Next Season" with no
+dates until approved. Trending vendors (`utils/trendingVendors.ts`, also used
+by `/feed`) = completed sales through the site, 30 days: delivered FestDash
+orders + paid/fulfilled store orders, public vendors only, counts only. Weather
+for all 20 PA state forests (`utils/paStateForests.ts`, `ForestWeather`) is
+Open-Meteo, cached 1h. The old `festival_vendors` / `festival_events` seed rows
+are not read by these pages any more.
