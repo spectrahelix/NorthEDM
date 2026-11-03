@@ -461,8 +461,10 @@ through the site; it records what moved and who confirmed it.** Full design in
   runner fee; `campground_zone` reads "Pick up at the shop", the runner pool
   skips it, and `in_transit` means "ready for pickup" (labels only — the
   state machine is unchanged, and the 4-digit code is given at the counter).
-  The shop sets `vendors.pickup_location` on /festdash/shop-setup; the order
-  page shows it and offers Deliver / Pick up on the details step.
+  The shop sets `vendors.pickup_location` and `vendors.fulfillment_modes`
+  (`both` | `pickup` | `delivery`) on /festdash/shop-setup; the order page
+  offers Deliver / Pick up only when both are allowed and the order route
+  refuses a mode the shop doesn't offer. Gee's shop is pickup-only for now.
   **Business-safe routing (2026-11-03).** Every shop, wallet-rail included,
   can pay its fee by card (`/api/billing/*` no longer refuses the local rail;
   `activeSubscription` / `paidLocalVendorIds` count a Stripe listing or

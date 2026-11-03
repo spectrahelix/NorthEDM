@@ -13,7 +13,7 @@ import { Honeypot, useFormShield } from "@/app/components/FormShield";
 // /api/festdash/shop-setup so the page always shows the right step.
 
 type Wallets = { wave: string | null; qmoney: string | null; afrimoney: string | null; preferred: string | null };
-type Vendor = { pickup_location?: string | null;
+type Vendor = { pickup_location?: string | null; fulfillment_modes?: string | null;
   id: number; name: string | null; category: string | null; area: string | null; status: string | null;
   is_public: boolean | null; suspended_at: string | null; coordinator_user_id: string | null; coordinator_code: string | null;
   whatsapp_number: string | null; payout_wallets: Wallets | null; enrolled: boolean; fee_current: boolean;
@@ -47,7 +47,7 @@ export default function ShopSetupPage() {
     shopName: "", category: CATEGORIES[0], description: "", area: "", whatsapp: "",
     wave: "", qmoney: "", afrimoney: "", preferred: "wave", coordinatorCode: "", agree: false,
   });
-  const [wallets, setWallets] = useState({ wave: "", qmoney: "", afrimoney: "", preferred: "wave", whatsapp: "", area: "", pickupLocation: "" });
+  const [wallets, setWallets] = useState({ wave: "", qmoney: "", afrimoney: "", preferred: "wave", whatsapp: "", area: "", pickupLocation: "", fulfillmentModes: "both" });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
@@ -64,7 +64,7 @@ export default function ShopSetupPage() {
       if (r) setForm((f) => ({ ...f, coordinatorCode: f.coordinatorCode || r }));
       if (j.vendor) {
         const w = j.vendor.payout_wallets;
-        setWallets({ wave: w?.wave ?? "", qmoney: w?.qmoney ?? "", afrimoney: w?.afrimoney ?? "", preferred: w?.preferred ?? "wave", whatsapp: j.vendor.whatsapp_number ?? "", area: j.vendor.area ?? "", pickupLocation: j.vendor.pickup_location ?? "" });
+        setWallets({ wave: w?.wave ?? "", qmoney: w?.qmoney ?? "", afrimoney: w?.afrimoney ?? "", preferred: w?.preferred ?? "wave", whatsapp: j.vendor.whatsapp_number ?? "", area: j.vendor.area ?? "", pickupLocation: j.vendor.pickup_location ?? "", fulfillmentModes: j.vendor.fulfillment_modes ?? "both" });
       }
       setState(j);
     })();
@@ -98,7 +98,7 @@ export default function ShopSetupPage() {
     setBusy("wallets");
     const res = await fetch("/api/festdash/shop-setup", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallets: { wave: wallets.wave, qmoney: wallets.qmoney, afrimoney: wallets.afrimoney, preferred: wallets.preferred }, whatsapp: wallets.whatsapp, area: wallets.area, pickupLocation: wallets.pickupLocation }),
+      body: JSON.stringify({ wallets: { wave: wallets.wave, qmoney: wallets.qmoney, afrimoney: wallets.afrimoney, preferred: wallets.preferred }, whatsapp: wallets.whatsapp, area: wallets.area, pickupLocation: wallets.pickupLocation, fulfillmentModes: wallets.fulfillmentModes }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(null);
@@ -268,6 +268,7 @@ export default function ShopSetupPage() {
               <div><span className={label}>WhatsApp</span><input className={input} value={wallets.whatsapp} onChange={(e) => setWallets({ ...wallets, whatsapp: e.target.value })} /></div>
               <div><span className={label}>Area</span><input className={input} value={wallets.area} onChange={(e) => setWallets({ ...wallets, area: e.target.value })} /></div>
               <div className="sm:col-span-2"><span className={label}>Pickup location — where customers collect</span><input className={input} value={wallets.pickupLocation} onChange={(e) => setWallets({ ...wallets, pickupLocation: e.target.value })} placeholder="e.g. Stall 12, Serrekunda market, opposite the mosque" /></div>
+              <div className="sm:col-span-2"><span className={label}>How customers get their order</span><select className={input} value={wallets.fulfillmentModes} onChange={(e) => setWallets({ ...wallets, fulfillmentModes: e.target.value })}><option value="both">Delivery by runner or pickup — customer chooses</option><option value="pickup">Pickup only — customers collect from me</option><option value="delivery">Delivery only</option></select></div>
             </div>
             <button onClick={saveWallets} disabled={busy === "wallets"} className="mt-3 rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50">{busy === "wallets" ? "Saving…" : "Save"}</button>
             <p className="mt-3 text-xs text-neutral-600">Your coordinator pays your share to the preferred wallet. {PAYMENT_DISCLAIMER_SHORT}</p>
