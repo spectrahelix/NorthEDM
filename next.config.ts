@@ -22,6 +22,9 @@ const SW_VERSION =
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Server-made PDFs (utils/numerology/pdf.ts): headless Chromium for Vercel.
+  // Loaded with plain require so its compressed browser files ship as-is.
+  serverExternalPackages: ["@sparticuz/chromium", "playwright-core"],
   env: {
     NEXT_PUBLIC_SW_VERSION: SW_VERSION,
   },
