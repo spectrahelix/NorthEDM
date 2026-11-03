@@ -78,7 +78,7 @@ export async function loadOrderDoc(admin: SupabaseClient, kind: DocKind, id: str
     kind, id, number: shortNumber(kind, id, o.created_at), created_at: o.created_at, paid_at: o.paid_at ?? o.payment_confirmed_at ?? null, fulfilled_at: o.fulfilled_at ?? null, status: o.status,
     seller, buyer,
     lines: items.map((i) => ({ name: i.name, qty: i.qty, unit_cents: i.price_cents, total_cents: i.price_cents * i.qty, hs_code: byId.get(Number(i.product_id))?.hs_code ?? null, origin: byId.get(Number(i.product_id))?.origin_country ?? seller.country ?? "US", weight_g: byId.get(Number(i.product_id))?.weight_g ?? null })),
-    subtotal_cents: Number(o.subtotal_cents ?? 0), discount_cents: 0, shipping_cents: Number(o.shipping_cents ?? 0), total_cents: Number(o.total_cents ?? 0) + Number(o.shipping_cents ?? 0), currency: String(o.currency || "USD"),
+    subtotal_cents: Number(o.subtotal_cents ?? 0), discount_cents: 0, shipping_cents: Number(o.shipping_cents ?? 0), total_cents: Number(o.total_cents ?? 0), currency: String(o.currency || "USD"),
     shipping: { country, zone: o.shipping_zone ?? null, service: o.shipping_service ?? null, eta: o.shipping_eta ?? null, weight_g: o.package_weight_g ?? null, tracking: o.tracking_number ?? null },
     payment: paidStatuses.includes(o.status) ? (wallet ? `Paid by ${o.payment_method}${o.payment_ref ? ` · ref ${o.payment_ref}` : ""}` : "Paid by card (Stripe)") : o.status === "authorized" ? "Card held — charged at handover" : "Unpaid",
     paid: paidStatuses.includes(o.status), international: !!country && !!seller.country && country !== seller.country, store_slug: st?.slug ?? null,
