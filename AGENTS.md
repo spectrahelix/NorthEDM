@@ -402,9 +402,34 @@ through the site; it records what moved and who confirmed it.** Full design in
 - `is_coordinator` and all wallet numbers are written only by API routes
   (service role). `festdash_promoters` has no end-user UPDATE policy, so a
   promoter cannot make themselves a coordinator.
-- Stage two (not built): a Wave Business API or Gambian aggregator webhook
-  auto-confirms wallet payments. It needs a Gambian business account only the
-  coordinator can open; it changes nothing in the data model.
+- **Stage two — the Gambian payment bridge (owner's decision, 2026-11-03;
+  not built yet).** Gambian wallets (Wave, QMoney, Afrimoney) are domestic and
+  can never pay a US account, so the owner's share must first settle into a
+  Gambian bank account through a licensed aggregator, then be wired out.
+  **Provider preference: Waychit first, Modem Pay second** — both advertise
+  one API for Wave + QMoney + Afrimoney + cards with a hosted payment page and
+  a signed webhook; use whichever opens a merchant account first in that
+  order, and confirm fees, settlement time and KYC documents in writing before
+  building (Waychit says it has NO sandbox: test payments move real money).
+  Prerequisites, in order: (1) a registered Gambian business + GRA TIN —
+  preferably a company the owner controls with Gee as local representative,
+  so settlement lands with the owner, not with Gee; (2) a Gambian business
+  bank account that can send outbound USD transfers (ask the bank what papers
+  it needs — the site's invoice documents serve); (3) the aggregator merchant
+  account; (4) a Gambian lawyer's confirmation that a merchant behind a
+  licensed aggregator needs no payment-provider licence of its own. Build
+  then: checkout sends the buyer to the aggregator's payment page instead of
+  showing a wallet number, the webhook replaces the coordinator's manual
+  confirm, shop + coordinator shares are paid out locally from the settled
+  funds, the owner's share stays in the Gambian account for the bank wire.
+  The ledger's data model does not change. The final wire out of the country
+  is a bank operation, not an API — it stays manual.
+- **Gee's two-day grace (owner's instruction, 2026-11-03).** Gee keeps 100% of
+  his own shop's sales for two days — through **2026-11-05** — while his Wave
+  number is the only rail. The ledger still books the normal 90/5/5 on those
+  sales; the owner's 5% on sales dated up to and including 2026-11-05 is
+  **waived** and must be deducted when the first "Settle net" is done. From
+  2026-11-06 the split applies in full and the bridge above is the priority.
 - **Shop owners self-onboard at `/festdash/shop-setup`** (the QR on Gee's
   flyer). One application creates the pending vendor with its payout wallets
   (`vendors.payout_wallets`, private), WhatsApp, area, the coordinator code
