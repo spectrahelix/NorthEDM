@@ -206,7 +206,7 @@ export function AstroHebrewReport({
                 <Table head={["Body", "Position", "House"]}>
                   {astro.placements.map((p) => (
                     <tr key={p.body}>
-                      <td className={td}>{p.glyph}{"︎"} {p.body}{p.retrograde ? " ℞" : ""}</td>
+                      <td className={td}>{p.body}{p.retrograde ? " Rx" : ""}</td>
                       <td className={td}>{p.label}</td>
                       <td className={td}>{p.house ?? "—"}</td>
                     </tr>
