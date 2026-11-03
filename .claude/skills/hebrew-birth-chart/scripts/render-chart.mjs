@@ -59,6 +59,10 @@ if (problems.length) {
 
 // ---------- HTML ----------
 const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// Prose cells: isolate every Hebrew run so it keeps its own reading order
+// inside an English sentence (e.g. "written ט״ו instead of י״ה").
+const HE_RUN = /[\u0590-\u05FF\uFB1D-\uFB4F]+(?:[ \u05BE][\u0590-\u05FF\uFB1D-\uFB4F]+)*/g;
+const txt = (s = "") => esc(s).replace(HE_RUN, (m) => `<bdi dir="rtl" lang="he" class="he">${m}</bdi>`);
 const he = (s) => `<bdi dir="rtl" lang="he" class="he">${esc(s)}</bdi>`;
 const refs = (ids) => (ids?.length ? ` <span class="ref">[${ids.join(", ")}]</span>` : "");
 const when = [r.birth?.gregorian && new Date(r.birth.gregorian + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), r.birth?.localTime, r.birth?.place].filter(Boolean).join(" • ");
@@ -83,41 +87,41 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>
   a { color: #1f7a6d; text-decoration: none; }
 </style></head><body>
 <div class="kicker">Hebrew Birth &amp; Name Chart</div>
-<h1>${esc(r.displayName)}</h1>
-<div class="sub">${esc(when)}</div><hr>
-${r.hebrewDate ? `<h2>${esc(r.hebrewDate.label)}</h2><div class="center-he">${he(r.hebrewDate.hebrew)}</div><p>${esc(r.hebrewDate.note)}${refs(r.hebrewDate.sourceIds)}</p>` : ""}
+<h1>${txt(r.displayName)}</h1>
+<div class="sub">${txt(when)}</div><hr>
+${r.hebrewDate ? `<h2>${txt(r.hebrewDate.label)}</h2><div class="center-he">${he(r.hebrewDate.hebrew)}</div><p>${txt(r.hebrewDate.note)}${refs(r.hebrewDate.sourceIds)}</p>` : ""}
 
 <h2>1. Name meanings, Hebrew spellings and numbers</h2>
 ${r.fullHebrewName ? `<div class="center-he">${he(r.fullHebrewName)}</div>` : ""}
 <table><thead><tr><th>Name</th><th>Historical meaning / origin</th><th>Hebrew</th><th>Value / addends</th></tr></thead><tbody>
-${r.nameChart.map((n) => `<tr><td>${esc(n.originalName)}</td><td>${esc(n.historicalMeaning)}${n.familyOrigin ? ` <em>(${esc(n.familyOrigin)})</em>` : ""}${refs(n.sourceIds)}</td><td>${he(n.hebrewSpelling)}</td><td><strong>${n.value}</strong><br>${n._letters.map((l) => l.value).join(" + ")}</td></tr>`).join("")}
+${r.nameChart.map((n) => `<tr><td>${txt(n.originalName)}</td><td>${txt(n.historicalMeaning)}${n.familyOrigin ? ` <em>(${txt(n.familyOrigin)})</em>` : ""}${refs(n.sourceIds)}</td><td>${he(n.hebrewSpelling)}</td><td><strong>${n.value}</strong><br>${n._letters.map((l) => l.value).join(" + ")}</td></tr>`).join("")}
 </tbody></table>
 <div class="tot">Base name: ${base}${suffix ? ` • Suffix: ${suffix} • Combined: ${combined}` : ""}</div>
 <p class="note">Method: standard Hebrew gematria (final letters keep their ordinary value). Addends follow the Hebrew letters in reading order. Historical meanings and phonetic spellings are different kinds of information.</p>
 
 ${r.timingChart?.length ? `<section><h2>Birth timing and the Hebrew day</h2>
 <table><thead><tr><th>Timing / status</th><th>Hebrew date</th><th>Number-to-word association</th></tr></thead><tbody>
-${r.timingChart.map((t) => `<tr><td>${esc(t.condition)}</td><td>${esc(t.hebrewDate)}<br>${he(t.hebrew)}</td><td>${t.matchedHebrew ? `${he(t.matchedHebrew)} (${esc(t.pronunciation)}), ${esc(t.meaning)}. ` : ""}${t.value}${refs(t.sourceIds)}</td></tr>`).join("")}
+${r.timingChart.map((t) => `<tr><td>${txt(t.condition)}</td><td>${txt(t.hebrewDate)}<br>${he(t.hebrew)}</td><td>${t.matchedHebrew ? `${he(t.matchedHebrew)} (${txt(t.pronunciation)}), ${txt(t.meaning)}. ` : ""}${t.value}${refs(t.sourceIds)}</td></tr>`).join("")}
 </tbody></table></section>` : ""}
 
 <h2 class="pb">2. Number-to-association chart</h2>
 <p class="note">The matching words below are independent numerical equivalents. They do not replace the name meanings in Chart 1.</p>
 <table><thead><tr><th>Number</th><th>Comes from</th><th>Matching word / meaning / association</th><th>Basis / status</th></tr></thead><tbody>
-${r.numberChart.map((n) => `<tr><td><strong>${n.value}</strong></td><td>${esc(n.originLabel)}</td><td>${n.matchedHebrew && n.kind !== "calendar-label" ? `${he(n.matchedHebrew)} (${esc(n.pronunciation)})<br>` : ""}${esc(n.meaningOrAssociation)}${refs(n.sourceIds)}</td><td>${esc(n.status)}</td></tr>`).join("")}
+${r.numberChart.map((n) => `<tr><td><strong>${n.value}</strong></td><td>${txt(n.originLabel)}</td><td>${n.matchedHebrew && n.kind !== "calendar-label" ? `${he(n.matchedHebrew)} (${txt(n.pronunciation)})<br>` : ""}${txt(n.meaningOrAssociation)}${refs(n.sourceIds)}</td><td>${txt(n.status)}</td></tr>`).join("")}
 </tbody></table>
 <p class="note">Equal values do not establish a unique connection, and a same-value word is not the meaning of a person's name.</p>
 
 ${r.contextChart?.length ? `<section><h2>3. Traditional figures and concepts</h2>
 <table><thead><tr><th>Connection</th><th>Figure / concept</th><th>Tradition and explanation</th></tr></thead><tbody>
-${r.contextChart.map((c) => `<tr><td>${esc(c.connection)}</td><td>${esc(c.figureOrConcept)}</td><td><strong>${esc(c.tradition)}:</strong> ${esc(c.explanation)}${refs(c.sourceIds)}</td></tr>`).join("")}
+${r.contextChart.map((c) => `<tr><td>${txt(c.connection)}</td><td>${txt(c.figureOrConcept)}</td><td><strong>${txt(c.tradition)}:</strong> ${txt(c.explanation)}${refs(c.sourceIds)}</td></tr>`).join("")}
 </tbody></table>
 <p class="note">A sourced association does not assign a personal guardian, hostile being, moral character, or destiny.</p></section>` : ""}
 
 <h2>Western astrology</h2>
-<p>${r.astrology?.status === "available" ? "See attached positions." : `Not included: ${esc((r.astrology?.reason ?? "no ephemeris provider configured").replace(/\.$/, ""))}. No placements are estimated.`}</p>
+<p>${r.astrology?.status === "available" ? "See attached positions." : `Not included: ${txt((r.astrology?.reason ?? "no ephemeris provider configured").replace(/\.$/, ""))}. No placements are estimated.`}</p>
 
 <h2>Sources for these charts</h2>
-<ol class="src">${r.sources.map((s) => `<li>[${esc(s.id)}] ${s.url ? `<a href="${esc(s.url)}">${esc(s.label)}</a>` : esc(s.label)} (${esc(s.site)})</li>`).join("")}</ol>
+<ol class="src">${r.sources.map((s) => `<li>[${txt(s.id)}] ${s.url ? `<a href="${esc(s.url)}">${txt(s.label)}</a>` : txt(s.label)} (${txt(s.site)})</li>`).join("")}</ol>
 <p class="note">Astrology and numerology are interpretive traditions for reflection, not scientifically validated predictions. Prepared ${new Date().toISOString().slice(0, 10)} by NorthEDM — Unite the Northeast.</p>
 </body></html>`;
 
