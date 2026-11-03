@@ -17,6 +17,7 @@ type Order = {
   campsite_notes: string;
   campsite_photo_url: string | null;
   delivery_window: string;
+  fulfillment?: string;
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
   status: "awaiting_payment" | "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
@@ -276,7 +277,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 
             {/* Progress tracker */}
             <div className="mb-8 space-y-3">
-              {STEPS.map((s, i) => {
+              {(order.fulfillment === "pickup" ? STEPS.map((s) => s.key === "in_transit" ? { ...s, label: "Ready for pickup", icon: "🛍️" } : s.key === "delivered" ? { ...s, label: "Collected" } : s) : STEPS).map((s, i) => {
                 const done = i <= currentStep;
                 const active = i === currentStep;
                 return (
@@ -355,8 +356,8 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/8 bg-white/3 p-5 text-sm">
-              <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Delivery Info</p>
-              <p className="text-white">{order.campground_zone}</p>
+              <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">{order.fulfillment === "pickup" ? "Pickup" : "Delivery Info"}</p>
+              <p className="text-white">{order.fulfillment === "pickup" ? "Collect at the shop — show the last 4 digits of your phone." : order.campground_zone}</p>
               {order.campsite_notes && <p className="mt-1 text-neutral-400">{order.campsite_notes}</p>}
               <p className="mt-1 text-neutral-500">Window: {order.delivery_window}</p>
               {order.campsite_photo_url && (

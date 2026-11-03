@@ -456,6 +456,13 @@ through the site; it records what moved and who confirmed it.** Full design in
   admin card shows who minted it. Wallet rail: the purse logs a `bundle` fee
   as a festdash period plus a store period. Approval email lists the three
   plans (the "invoice"); nothing is charged until the shop picks one.
+  **Pickup orders (2026-11-03).** `festdash_orders.fulfillment` =
+  `delivery` | `pickup`. A pickup order has no campsite, no runner and no
+  runner fee; `campground_zone` reads "Pick up at the shop", the runner pool
+  skips it, and `in_transit` means "ready for pickup" (labels only — the
+  state machine is unchanged, and the 4-digit code is given at the counter).
+  The shop sets `vendors.pickup_location` on /festdash/shop-setup; the order
+  page shows it and offers Deliver / Pick up on the details step.
   **Business-safe routing (2026-11-03).** Every shop, wallet-rail included,
   can pay its fee by card (`/api/billing/*` no longer refuses the local rail;
   `activeSubscription` / `paidLocalVendorIds` count a Stripe listing or

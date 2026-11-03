@@ -48,7 +48,7 @@ async function myVendor(admin: ReturnType<typeof serviceClient>, userId: string)
   // The approved link lives on the profile; a pending application only has
   // vendors.user_id. Check both so the walkthrough shows the right step.
   const { data: prof } = await admin.from("user_profiles").select("vendor_id").eq("id", userId).maybeSingle();
-  const cols = "id, name, category, description, area, status, is_public, suspended_at, user_id, coordinator_user_id, coordinator_code, region, currency, whatsapp_number, payout_wallets, terms_accepted_at, created_at";
+  const cols = "id, name, category, description, area, pickup_location, status, is_public, suspended_at, user_id, coordinator_user_id, coordinator_code, region, currency, whatsapp_number, payout_wallets, terms_accepted_at, created_at";
   if (prof?.vendor_id) {
     const { data } = await admin.from("vendors").select(cols).eq("id", prof.vendor_id).maybeSingle();
     if (data) return data;
@@ -198,6 +198,7 @@ export async function PATCH(req: Request) {
   if (body.wallets !== undefined) patch.payout_wallets = cleanWallets(body.wallets);
   if (typeof body.whatsapp === "string") patch.whatsapp_number = body.whatsapp.trim().slice(0, 40) || null;
   if (typeof body.area === "string") patch.area = body.area.trim().slice(0, 80) || null;
+  if (typeof body.pickupLocation === "string") patch.pickup_location = body.pickupLocation.trim().slice(0, 160) || null;
   if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
 
   const { data, error } = await admin.from("vendors").update(patch).eq("id", vendor.id).select("id, whatsapp_number, area, payout_wallets").single();
