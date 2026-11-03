@@ -456,6 +456,12 @@ through the site; it records what moved and who confirmed it.** Full design in
   admin card shows who minted it. Wallet rail: the purse logs a `bundle` fee
   as a festdash period plus a store period. Approval email lists the three
   plans (the "invoice"); nothing is charged until the shop picks one.
+  **A promoter's own shop (2026-11-03)** is a shop that promoter referred:
+  10% off the fee automatically and they keep the promoter share of its sales
+  and fee payments (90% to them, 10% to the owner). `selfReferral()` in
+  `utils/coordinator.ts`; applications set it as `coordinator_user_id` when no
+  other code is given, `quote()` and the purse fee fall back to it. Gee's shop
+  is the first case.
   **Store payouts (2026-11-03)** — `utils/storePayouts.ts`. A paid USD store
   order pays each selling vendor their lines minus the platform share
   (`platformShareBps`, 20%) minus the store's `operator_fee_bps` (member
