@@ -25,7 +25,7 @@ Leave **Publish to my market** ticked and press **Add product**.
 
 **5. Check it**
 Tap **View my market →** (top right). Your item should be there. Your FestDash
-menu and your store page (northedm.com/gee) pick it up automatically.
+menu and your store page (northedm.com/Gees) pick it up automatically.
 
 **Also, one time only: your pickup spot**
 Your shop is pickup-only, so customers need to know where to collect.

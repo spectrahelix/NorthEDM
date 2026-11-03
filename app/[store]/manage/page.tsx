@@ -17,7 +17,7 @@ type Member = { vendor_id: number; status: string; name: string; category: strin
 type Available = { id: number; name: string | null; category: string | null };
 
 export default function StoreManagePage() {
-  const slug = String(useParams().store || "");
+  const slug = String(useParams().store || "").toLowerCase();
   const [store, setStore] = useState<Store | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [available, setAvailable] = useState<Available[]>([]);

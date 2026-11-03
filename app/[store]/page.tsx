@@ -20,7 +20,8 @@ type Vendor = { id: number; name: string | null; category: string | null; descri
 type Product = { id: number; vendor_id: number; name: string | null; category: string | null; price: number | null; image_url: string | null };
 
 export async function generateMetadata({ params }: { params: Promise<{ store: string }> }): Promise<Metadata> {
-  const { store } = await params;
+  const { store: raw } = await params;
+  const store = raw.toLowerCase();
   const supabase = await createClient();
   // Only a LIVE store gets real metadata. A draft must never leak its name into a
   // link preview or a search result, so it stays generic and noindex.
@@ -30,7 +31,8 @@ export async function generateMetadata({ params }: { params: Promise<{ store: st
 }
 
 export default async function StorefrontPage({ params }: { params: Promise<{ store: string }> }) {
-  const { store: slug } = await params;
+  const { store: raw } = await params;
+  const slug = raw.toLowerCase(); // /Gees is Gee's link; the row is stored lowercase
   const supabase = await createClient();
 
   // Look the store up regardless of `active`, then decide who may see it. A DRAFT

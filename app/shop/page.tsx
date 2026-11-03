@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import { serviceClient } from "@/utils/coordinator";
+import { myStoreSlug } from "@/utils/myStore";
 
 export const metadata = {
   title: "Shop",
@@ -26,6 +29,12 @@ export default async function ShopPage() {
   if (user) {
     const { data: me } = await supabase.from("user_profiles").select("role").eq("id", user.id).maybeSingle();
     isAdmin = me?.role === "archon" || me?.role === "warden";
+    // A shop owner's "Shop" is their own storefront: /shop → /franks, /Gees …
+    // Admins stay here, because this page is NorthEDM's own shop.
+    if (!isAdmin) {
+      const mine = await myStoreSlug(serviceClient(), user.id);
+      if (mine) redirect(`/${mine}`);
+    }
   }
 
   return (
