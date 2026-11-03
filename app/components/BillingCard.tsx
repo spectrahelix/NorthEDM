@@ -21,13 +21,14 @@ export function BillingCard({ kind, storeSlug, what, returnPath }: { kind: "fest
   const [applied, setApplied] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [mine, setMine] = useState<{ code: string; percent_off: number | null; amount_off_cents: number | null }[]>([]);
   async function load(c: string) {
     const qs = "?kind=" + kind + (storeSlug ? "&storeSlug=" + encodeURIComponent(storeSlug) : "") + (c ? "&code=" + encodeURIComponent(c) : "");
     const j = await fetch("/api/billing/status" + qs).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (j) setS(j);
     return j as Status | null;
   }
-  useEffect(() => { load(""); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [kind, storeSlug]);
+  useEffect(() => { load(""); fetch("/api/vouchers/mine").then((r) => (r.ok ? r.json() : null)).then((j) => setMine(j?.vouchers ?? [])).catch(() => {}); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [kind, storeSlug]);
   if (!s || s.not_applicable) return null;
 
   async function apply() {
@@ -69,6 +70,17 @@ export function BillingCard({ kind, storeSlug, what, returnPath }: { kind: "fest
 
       {!s.active && !s.has_customer && (
         <div className="mt-4 space-y-3">
+          {/* The member's own vouchers, one tap to apply */}
+          {mine.length > 0 && !applied && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+              <span>Your vouchers:</span>
+              {mine.map((m) => (
+                <button key={m.code} onClick={async () => { setCode(m.code); const j = await load(m.code); if (!j?.invalid_code) setApplied(m.code); }} className="rounded-full border border-[#E8FF47]/40 bg-[#E8FF47]/10 px-2.5 py-1 font-dm-mono text-[#E8FF47] hover:bg-[#E8FF47]/20">
+                  {m.code} · {m.percent_off != null ? `${m.percent_off}%` : `$${((m.amount_off_cents ?? 0) / 100).toFixed(0)}`} off
+                </button>
+              ))}
+            </div>
+          )}
           {/* Referral or discount code */}
           <div className="flex gap-2">
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Referral or discount code" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-dm-mono text-sm uppercase text-neutral-100 placeholder:font-sans placeholder:normal-case placeholder:text-neutral-600 outline-none" />

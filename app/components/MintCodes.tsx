@@ -32,9 +32,12 @@ export function MintCodes() {
         <button onClick={mint} disabled={busy || (!pct && !amt)} className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400 disabled:opacity-50">{busy ? "Minting…" : "Mint code"}</button>
       </div>
       {err && <p className="mt-2 text-xs text-[#FF5C3A]">{err}</p>}
-      {data.codes.length > 0 && (
+      {data.codes.some((c) => c.times_redeemed > 0) && (
+        <p className="mt-3 font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">{data.codes.filter((c) => c.times_redeemed > 0).length} used — a shop signed up with them</p>
+      )}
+      {data.codes.filter((c) => c.times_redeemed === 0 && c.active).length > 0 && (
         <div className="mt-4 space-y-1.5">
-          {data.codes.map((c) => (
+          {data.codes.filter((c) => c.times_redeemed === 0 && c.active).map((c) => (
             <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm">
               <span className="font-dm-mono text-white">{c.code} <span className="text-neutral-400">· {off(c)}</span>{c.note ? <span className="text-neutral-500"> · {c.note}</span> : null}</span>
               {c.times_redeemed > 0 ? <span className="font-dm-mono text-[11px] uppercase text-green-400">used</span> : (

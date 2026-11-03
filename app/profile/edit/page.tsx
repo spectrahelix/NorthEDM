@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { BORDER_OPTIONS, BorderPreview, type BorderKey } from "@/app/components/AvatarBorder";
 import { ProfileHeader } from "@/app/components/ProfileHeader";
+import { VouchersCard } from "@/app/components/VouchersCard";
 import { PROFILE_COLUMNS, profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
 import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
 import { VendorEditor } from "./VendorEditor";
@@ -205,6 +206,7 @@ export default function EditProfilePage() {
           />
           <input ref={fileRef} type="file" accept={ACCEPT_WEB_IMAGES} className="hidden" onChange={handleAvatarUpload} />
         </div>
+        <VouchersCard />
 
         <div className="space-y-5">
           {/* Display name */}
