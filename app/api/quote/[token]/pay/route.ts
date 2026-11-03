@@ -59,6 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    adaptive_pricing: { enabled: true },
     line_items: [
       {
         quantity: 1,

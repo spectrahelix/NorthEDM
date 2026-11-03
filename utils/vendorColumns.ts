@@ -8,4 +8,4 @@
  * site admins. The public contact address is `business_email`.
  */
 export const VENDOR_PUBLIC_COLUMNS =
-  "id, name, category, description, capacity, contact, vendor_type, is_public, is_founder, status, created_at, user_id, phone, show_phone, website, wants_public, suspended_at, suspended_reason, business_email, accent_color";
+  "id, name, category, description, capacity, contact, vendor_type, is_public, is_founder, status, created_at, user_id, phone, show_phone, website, wants_public, suspended_at, suspended_reason, business_email, accent_color, currency, country";

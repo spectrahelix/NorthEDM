@@ -154,6 +154,9 @@ export async function POST(req: Request) {
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    // Let a foreign buyer pay in their own currency at Stripe's rate; Stripe
+    // adds its 2–4% conversion charge to THEIR total and we still receive USD.
+    adaptive_pricing: { enabled: true },
     line_items: lineItems,
     success_url: `${origin}/shop/success?order=${order.id}`,
     cancel_url: `${origin}/shop/cart`,

@@ -7,6 +7,7 @@ import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, WALLET_METHODS, type WalletMethod } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
+import { Price, ConversionNote } from "@/app/components/CurrencyContext";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
@@ -126,7 +127,7 @@ export function StoreCart({
                 <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{p.name}</Link>
                 {p.vendor_name && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{p.vendor_name}</p>}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                  <p className={`text-xl ${displayFont ? "" : "font-bebas"}`} style={{ color: accent, ...(displayFont ? { fontFamily: displayFont } : {}) }}>{priced ? money(p.price_cents) : "—"}</p>
+                  {priced ? <Price cents={p.price_cents} currency={currency} className={`text-xl ${displayFont ? "" : "font-bebas"}`} style={{ color: accent, ...(displayFont ? { fontFamily: displayFont } : {}) }} /> : <p className="text-xl" style={{ color: accent }}>—</p>}
                   {n === 0 ? (
                     <button
                       onClick={() => bump(p.id, 1)}
@@ -166,7 +167,7 @@ export function StoreCart({
               <p className="font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">
                 {count} item{count === 1 ? "" : "s"} · tap to {open ? "hide" : "review"}
               </p>
-              <p className="font-bebas text-2xl" style={{ color: accent }}>{money(subtotal + (shipsParcels ? shipCents : 0))}{shipsParcels && shipCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(shipCents)} shipping</span> : null}</p>
+              <p className="font-bebas text-2xl" style={{ color: accent }}><Price cents={subtotal + (shipsParcels ? shipCents : 0)} currency={currency} />{shipsParcels && shipCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(shipCents)} shipping</span> : null}</p>
             </button>
             <button
               onClick={checkout}
@@ -177,6 +178,9 @@ export function StoreCart({
               {busy ? "Starting…" : wallet && method !== "card" ? "Place order" : "Checkout"}
             </button>
           </div>
+          {open && (
+            <div className="mx-auto mt-3 max-w-6xl"><ConversionNote shopCurrency={currency} /></div>
+          )}
           {open && shipsParcels && (
             <div className="mx-auto mt-3 max-w-6xl border-t border-white/10 pt-3">
               <ShipTo kind="store" items={lines.map((l) => ({ id: l.p.id, qty: l.n }))} value={ship} onChange={(v, cents) => { setShip(v); setShipCents(cents); }} accent={accent} />

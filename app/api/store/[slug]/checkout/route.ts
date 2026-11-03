@@ -154,6 +154,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    // US stores: a foreign buyer may pay in their own currency (Stripe adds its
+    // conversion charge to their total; the store still gets USD). Held-card
+    // Gambian orders can't use it (manual capture), so it's off for the rail.
+    ...(rail ? {} : { adaptive_pricing: { enabled: true } }),
     line_items: lineItems,
     success_url: `${origin}/${store.slug}?order=${order.id}`,
     cancel_url: `${origin}/${store.slug}`,

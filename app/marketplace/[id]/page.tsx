@@ -10,6 +10,8 @@ import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
 import { VENDOR_PUBLIC_COLUMNS } from "@/utils/vendorColumns";
+import { Price, CurrencyPill } from "@/app/components/CurrencyContext";
+import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 function normalizeUrl(url: string) {
   return /^https?:\/\//.test(url) ? url : `https://${url}`;
 }
@@ -27,6 +29,7 @@ type Vendor = {
   is_founder: boolean | null;
   status: string | null;
   user_id: string | null;
+  currency?: string | null;
   website: string | null;
   phone: string | null;
   show_phone: boolean | null;
@@ -202,7 +205,7 @@ export default async function VendorDetailPage({
                 Inventory
               </p>
               <h2 className="mt-2 text-3xl font-semibold" style={display}>Available Products</h2>
-              {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-3" />}
+              <div className="mt-3 flex flex-wrap gap-2">{brand.hasFont && <ShopFontToggle enabled={viewerFonts} />}<CurrencyPill options={VIEW_CURRENCIES} /></div>
             </div>
             {canEdit && (
               <Link href="/vendor/dashboard" className="rounded-xl px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>
@@ -230,7 +233,7 @@ export default async function VendorDetailPage({
                   <div className="flex flex-1 flex-col p-3">
                     <h3 className="line-clamp-2 text-sm font-semibold text-white" style={display}>{product.name || "Unnamed Product"}</h3>
                     {product.category && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{product.category}</p>}
-                    <p className={`mt-auto pt-2 text-xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }}>${Number(product.price ?? 0).toFixed(2)}</p>
+                    <Price cents={Math.round(Number(product.price ?? 0) * 100)} currency={vendor.currency ?? "USD"} className={`mt-auto pt-2 text-xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }} />
                   </div>
                 </Link>
               ))

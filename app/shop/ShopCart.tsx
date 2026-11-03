@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "./useCart";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
+import { Price, ConversionNote } from "@/app/components/CurrencyContext";
 
 // Floating cart button + slide-out drawer. The button shows the item count and
 // opens the drawer; the drawer also pops open whenever an item is added.
@@ -116,8 +117,9 @@ export function ShopCart() {
               </div>
               <div className="mb-3 flex items-center justify-between">
                 <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Total</span>
-                <span className="font-bebas text-2xl text-[#39FF14]">${((subtotal + shipCents) / 100).toFixed(2)}</span>
+                <Price cents={subtotal + shipCents} currency="USD" className="font-bebas text-2xl text-[#39FF14]" />
               </div>
+              <ConversionNote shopCurrency="USD" className="mb-3" />
               {error && <p className="mb-2 text-sm text-[#FF5C3A]">{error}</p>}
               <button
                 onClick={checkout}

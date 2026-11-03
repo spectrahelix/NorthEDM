@@ -13,6 +13,8 @@ import { Bebas_Neue, DM_Sans, DM_Mono } from "next/font/google";
 
 import { UsernamePrompt } from "./components/UsernamePrompt";
 import { suggestUsername } from "@/utils/username";
+import { viewerCurrency } from "@/utils/viewerCurrency";
+import { CurrencyProvider } from "./components/CurrencyContext";
 const bebasNeue = Bebas_Neue({
   weight: "400",
   subsets: ["latin"],
@@ -119,12 +121,14 @@ export default async function RootLayout({
     forumRole === "warden" ||
     (user?.email === ADMIN_EMAIL);
 
+  const viewCurrency = await viewerCurrency();
   return (
     <html
       lang="en"
       className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable}`}
     >
       <body className="bg-[#030303] text-neutral-100">
+        <CurrencyProvider initial={viewCurrency}>
         <Analytics />
         <PageViewTracker />
         <ServiceWorkerRegister />
@@ -268,6 +272,7 @@ export default async function RootLayout({
           </div>
         </footer>
         </div>
+        </CurrencyProvider>
       </body>
     </html>
   );
