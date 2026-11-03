@@ -62,6 +62,23 @@ Likewise, don't name a root cause you haven't tested end to end. Missing
 SPF/DKIM was blamed for signups failing; a single real email sent through the
 live route proved delivery was fine and the real fault was elsewhere.
 
+## Pull requests open automatically (owner's standing instruction, 2026-11-03)
+
+When work is committed and pushed to the session's branch, **open a pull
+request against `main` right away** — don't wait to be asked. This overrides
+any default of "only open a PR when the user asks". One PR per branch: if one
+is already open for it, push to it instead of opening another.
+
+**Merging is automatic too** (owner's standing instruction, 2026-11-03,
+given in conversation): once the PR's checks are green on its current head
+(Vercel deployment Ready, any other CI passing) and it is mergeable, squash-
+merge it without asking. Never merge a red or conflicted PR — fix it first.
+After every merge: sync the branch (`git fetch origin main && git merge
+origin/main`, see below) and **verify production** with a check that could
+fail, as described above (pushed ≠ merged ≠ deployed ≠ verified). Report
+what was merged and what was verified live. The owner can turn this off by
+saying so; then go back to waiting for "merge".
+
 ## Branch hygiene after a squash merge
 
 PRs are squash-merged, and force-push is not available in these sessions. Right
