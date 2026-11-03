@@ -15,7 +15,7 @@ type Coordinator = {
   wave_number: string | null; qmoney_number: string | null; afrimoney_number: string | null;
   whatsapp_number: string | null; remitly_name: string | null;
 };
-type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number };
+type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number; bundle_fee_cents?: number };
 type Shop = {
   id: number; name: string | null; category: string | null; currency: string | null; whatsapp_number: string | null;
   suspended: boolean; festdash_active: boolean; paid_through: string | null; fee_current: boolean;
@@ -54,7 +54,7 @@ export default function PursePage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [wallets, setWallets] = useState<WalletForm>({ wave_number: "", qmoney_number: "", afrimoney_number: "", whatsapp_number: "", remitly_name: "" });
-  const [fee, setFee] = useState<{ vendorId: string; kind: "festdash" | "store"; months: number; collectedAmount: string; collectedCurrency: string; method: LocalMethod; reference: string }>(
+  const [fee, setFee] = useState<{ vendorId: string; kind: "festdash" | "store" | "bundle"; months: number; collectedAmount: string; collectedCurrency: string; method: LocalMethod; reference: string }>(
     { vendorId: "", kind: "festdash", months: 1, collectedAmount: "", collectedCurrency: "GMD", method: "wave", reference: "" }
   );
   const [send, setSend] = useState({ amount: "", currency: "GMD", method: "remitly", reference: "", note: "" });
@@ -149,7 +149,7 @@ export default function PursePage() {
   const totals = data.totals ?? {};
   const s = data.settings;
   const feeMonths = fee.months;
-  const feeCents = (s?.subscription_fee_cents ?? 3000) * feeMonths;
+  const feeCents = (fee.kind === "bundle" ? (s?.bundle_fee_cents ?? 4500) : (s?.subscription_fee_cents ?? 3000)) * feeMonths;
 
   return (
     <main className="min-h-screen p-4">
@@ -256,9 +256,10 @@ export default function PursePage() {
               </div>
               <div className="sm:col-span-2">
                 <span className={label}>What for</span>
-                <select value={fee.kind} onChange={(e) => setFee({ ...fee, kind: e.target.value as "festdash" | "store" })} className={input}>
+                <select value={fee.kind} onChange={(e) => setFee({ ...fee, kind: e.target.value as "festdash" | "store" | "bundle" })} className={input}>
                   <option value="festdash">FestDash listing (monthly)</option>
                   <option value="store">Embedded online store (monthly)</option>
+                  <option value="bundle">Bundle — FestDash + store (monthly, buy one get one half off)</option>
                 </select>
               </div>
               <div>
@@ -286,7 +287,7 @@ export default function PursePage() {
                 <input value={fee.reference} onChange={(e) => setFee({ ...fee, reference: e.target.value })} placeholder="wallet transaction ID or receipt no." className={input} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-neutral-500">Books {formatMoney(feeCents, "USD")} ({feeMonths} month{feeMonths === 1 ? "" : "s"}) and {fee.kind === "store" ? "switches the shop&apos;s online store on" : "extends the shop&apos;s listing"}.</p>
+            <p className="mt-2 text-xs text-neutral-500">Books {formatMoney(feeCents, "USD")} ({feeMonths} month{feeMonths === 1 ? "" : "s"}) and {fee.kind === "store" ? "switches the shop&apos;s online store on" : fee.kind === "bundle" ? "extends the listing and switches the store on" : "extends the shop&apos;s listing"}.</p>
             <button onClick={logFee} disabled={busy === "fee"} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400 disabled:opacity-50">{busy === "fee" ? "Logging…" : "Log fee"}</button>
           </div>
         </div>

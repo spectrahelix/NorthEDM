@@ -38,7 +38,7 @@ export async function PATCH(
   if (action === "approve") {
     const { data: app } = await adminClient
       .from("festdash_promoter_applications")
-      .select("user_id, display_name")
+      .select("user_id, display_name, invited_by")
       .eq("id", id)
       .single();
 
@@ -48,6 +48,7 @@ export async function PATCH(
         user_id: app.user_id,
         display_name: app.display_name ?? "",
         is_active: true,
+        ...(app.invited_by ? { invited_by: app.invited_by } : {}),
       }, { onConflict: "user_id" });
 
       // Mint their referral code (idempotent — skips if already set)

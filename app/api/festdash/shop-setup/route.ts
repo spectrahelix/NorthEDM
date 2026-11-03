@@ -2,6 +2,7 @@ import { shieldForm } from "@/utils/botSignals";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { requireVerifiedUser } from "@/utils/authGate";
+import { resolveCode } from "@/utils/discountCodes";
 import { serviceClient, loadSplitSettings } from "@/utils/coordinator";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { notifyNewApplication } from "@/utils/alerts";
@@ -36,6 +37,11 @@ async function resolveCoordinator(admin: ReturnType<typeof serviceClient>, code:
     .eq("is_active", true)
     .maybeSingle();
   return data;
+}
+
+async function resolveCoordinatorByUser(admin: ReturnType<typeof serviceClient>, userId: string) {
+  const { data } = await admin.from("festdash_promoters").select("user_id, display_name, region, referral_code").eq("user_id", userId).eq("is_coordinator", true).eq("is_active", true).maybeSingle();
+  return data ?? null;
 }
 
 async function myVendor(admin: ReturnType<typeof serviceClient>, userId: string) {
@@ -121,9 +127,18 @@ export async function POST(req: Request) {
   if (body.agree !== true) return NextResponse.json({ error: "Please tick the box to accept the fee and the split." }, { status: 400 });
 
   let coordinator: Awaited<ReturnType<typeof resolveCoordinator>> = null;
+  let signupCode: string | null = null;
   if (code) {
     coordinator = await resolveCoordinator(admin, code);
-    if (!coordinator) return NextResponse.json({ error: "That coordinator code isn't recognised. Check it with the person who signed you up, or leave it blank." }, { status: 400 });
+    if (!coordinator) {
+      // Not a coordinator's code: a discount code (owner-made or minted by a
+      // promoter) is kept for the shop's first fee; a minted one links the shop
+      // to its minter when that person is a coordinator here.
+      const d = await resolveCode(admin, code, 1000);
+      if (d?.kind !== "discount") return NextResponse.json({ error: "That code isn't recognised. Check it with the person who signed you up, or leave it blank." }, { status: 400 });
+      signupCode = d.code;
+      if (d.promoter_user_id) coordinator = await resolveCoordinatorByUser(admin, d.promoter_user_id);
+    }
   }
 
   const { data: vendor, error } = await admin.from("vendors").insert({
@@ -135,6 +150,7 @@ export async function POST(req: Request) {
     payout_wallets: wallets,
     coordinator_user_id: coordinator?.user_id ?? null,
     coordinator_code: coordinator?.referral_code ?? null,
+    signup_code: signupCode,
     region: coordinator?.region ?? DEFAULT_REGION,
     currency: DEFAULT_CURRENCY,
     terms_accepted_at: new Date().toISOString(),

@@ -60,6 +60,9 @@ export type SplitSettings = {
   sale_coordinator_bps: number;
   subscription_fee_cents: number;
   subscription_coordinator_bps: number;
+  bundle_fee_cents?: number;
+  mint_max_percent_off?: number;
+  mint_max_amount_off_cents?: number;
 };
 export const DEFAULT_SPLITS: SplitSettings = {
   sale_owner_bps: 1000,

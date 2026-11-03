@@ -13,6 +13,8 @@ type Application = {
   why: string | null;
   status: string;
   created_at: string;
+  invite_code?: string | null;
+  invited_by_name?: string | null;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -130,6 +132,9 @@ function ApplicationCard({
           {app.status}
         </span>
       </div>
+      {app.invite_code && (
+        <p className="text-sm text-orange-300"><span className="text-neutral-500">Invited with code</span> <span className="font-dm-mono">{app.invite_code}</span>{app.invited_by_name ? <> <span className="text-neutral-500">minted by</span> {app.invited_by_name}</> : null}</p>
+      )}
       {app.promote_vendor && (
         <p className="text-sm text-neutral-300"><span className="text-neutral-500">Wants to promote:</span> {app.promote_vendor}</p>
       )}

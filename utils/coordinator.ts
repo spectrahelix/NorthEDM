@@ -23,7 +23,7 @@ export async function isSiteAdminUser(admin: SupabaseClient, user: User): Promis
 export async function loadSplitSettings(admin: SupabaseClient): Promise<SplitSettings> {
   const { data } = await admin
     .from("coordinator_program_settings")
-    .select("sale_owner_bps, sale_coordinator_bps, subscription_fee_cents, subscription_coordinator_bps")
+    .select("sale_owner_bps, sale_coordinator_bps, subscription_fee_cents, subscription_coordinator_bps, bundle_fee_cents, mint_max_percent_off, mint_max_amount_off_cents")
     .eq("id", 1)
     .maybeSingle();
   return (data as SplitSettings | null) ?? DEFAULT_SPLITS;

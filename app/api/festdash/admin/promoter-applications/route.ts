@@ -31,6 +31,8 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ applications: data ?? [] });
+  const inviters = [...new Set((data ?? []).map((a) => a.invited_by).filter(Boolean))] as string[];
+  const { data: names } = inviters.length ? await admin.from("user_profiles").select("id, display_name").in("id", inviters) : { data: [] };
+  const nameOf = new Map((names ?? []).map((n) => [n.id, n.display_name]));
+  return NextResponse.json({ applications: (data ?? []).map((a) => ({ ...a, invited_by_name: a.invited_by ? nameOf.get(a.invited_by) ?? null : null })) });
 }

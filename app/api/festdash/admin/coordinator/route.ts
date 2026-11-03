@@ -102,6 +102,8 @@ export async function PATCH(req: Request) {
     const so = n(body.sale_owner_bps, 0, 5000), sc = n(body.sale_coordinator_bps, 0, 5000), fee = n(body.subscription_fee_cents, 0, 1_000_000), sub = n(body.subscription_coordinator_bps, 0, 10000);
     if (so != null) patch.sale_owner_bps = so; if (sc != null) patch.sale_coordinator_bps = sc;
     if (fee != null) patch.subscription_fee_cents = fee; if (sub != null) patch.subscription_coordinator_bps = sub;
+    const bundle = n(body.bundle_fee_cents, 0, 1_000_000), mp = n(body.mint_max_percent_off, 0, 100), ma = n(body.mint_max_amount_off_cents, 0, 1_000_000);
+    if (bundle != null) patch.bundle_fee_cents = bundle; if (mp != null) patch.mint_max_percent_off = mp; if (ma != null) patch.mint_max_amount_off_cents = ma;
     if (!Object.keys(patch).length) return NextResponse.json({ error: "nothing to change" }, { status: 400 });
     const { data, error } = await admin.from("coordinator_program_settings").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", 1).select("*").single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
