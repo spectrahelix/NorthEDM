@@ -6,6 +6,10 @@ import { formatMoney } from "@/utils/money";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { PaymentPaths } from "@/app/components/festdash/PaymentPaths";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
+import { COUNTRIES } from "@/utils/shipping";
+import { currencyForCountry } from "@/utils/currencies";
+import { currencyName } from "@/utils/money";
+import { PriceField } from "@/app/components/PriceField";
 
 // The shop owner's walkthrough for a coordinator region (The Gambia). One page
 // takes someone from a QR code to a live shop: account → application →
@@ -13,7 +17,7 @@ import { Honeypot, useFormShield } from "@/app/components/FormShield";
 // /api/festdash/shop-setup so the page always shows the right step.
 
 type Wallets = { wave: string | null; qmoney: string | null; afrimoney: string | null; preferred: string | null };
-type Vendor = { pickup_location?: string | null; fulfillment_modes?: string | null;
+type Vendor = { pickup_location?: string | null; fulfillment_modes?: string | null; country?: string | null; currency?: string | null;
   id: number; name: string | null; category: string | null; area: string | null; status: string | null;
   is_public: boolean | null; suspended_at: string | null; coordinator_user_id: string | null; coordinator_code: string | null;
   whatsapp_number: string | null; payout_wallets: Wallets | null; enrolled: boolean; fee_current: boolean;
@@ -44,10 +48,11 @@ export default function ShopSetupPage() {
   const [ref, setRef] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [form, setForm] = useState({
-    shopName: "", category: CATEGORIES[0], description: "", area: "", whatsapp: "",
+    shopName: "", category: CATEGORIES[0], description: "", area: "", whatsapp: "", country: "GM",
     wave: "", qmoney: "", afrimoney: "", preferred: "wave", coordinatorCode: "", agree: false,
   });
-  const [wallets, setWallets] = useState({ wave: "", qmoney: "", afrimoney: "", preferred: "wave", whatsapp: "", area: "", pickupLocation: "", fulfillmentModes: "both" });
+  const [wallets, setWallets] = useState({ wave: "", qmoney: "", afrimoney: "", preferred: "wave", whatsapp: "", area: "", country: "GM", pickupLocation: "", fulfillmentModes: "both" });
+  const [tryPrice, setTryPrice] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
@@ -64,7 +69,7 @@ export default function ShopSetupPage() {
       if (r) setForm((f) => ({ ...f, coordinatorCode: f.coordinatorCode || r }));
       if (j.vendor) {
         const w = j.vendor.payout_wallets;
-        setWallets({ wave: w?.wave ?? "", qmoney: w?.qmoney ?? "", afrimoney: w?.afrimoney ?? "", preferred: w?.preferred ?? "wave", whatsapp: j.vendor.whatsapp_number ?? "", area: j.vendor.area ?? "", pickupLocation: j.vendor.pickup_location ?? "", fulfillmentModes: j.vendor.fulfillment_modes ?? "both" });
+        setWallets({ wave: w?.wave ?? "", qmoney: w?.qmoney ?? "", afrimoney: w?.afrimoney ?? "", preferred: w?.preferred ?? "wave", whatsapp: j.vendor.whatsapp_number ?? "", area: j.vendor.area ?? "", country: j.vendor.country ?? "GM", pickupLocation: j.vendor.pickup_location ?? "", fulfillmentModes: j.vendor.fulfillment_modes ?? "both" });
       }
       setState(j);
     })();
@@ -82,7 +87,7 @@ export default function ShopSetupPage() {
     const res = await fetch("/api/festdash/shop-setup", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        shopName: form.shopName, category: form.category, description: form.description, area: form.area, whatsapp: form.whatsapp,
+        shopName: form.shopName, category: form.category, description: form.description, area: form.area, whatsapp: form.whatsapp, country: form.country,
         wallets: { wave: form.wave, qmoney: form.qmoney, afrimoney: form.afrimoney, preferred: form.preferred },
         coordinatorCode: form.coordinatorCode, agree: form.agree, ...shield(),
       }),
@@ -98,7 +103,7 @@ export default function ShopSetupPage() {
     setBusy("wallets");
     const res = await fetch("/api/festdash/shop-setup", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallets: { wave: wallets.wave, qmoney: wallets.qmoney, afrimoney: wallets.afrimoney, preferred: wallets.preferred }, whatsapp: wallets.whatsapp, area: wallets.area, pickupLocation: wallets.pickupLocation, fulfillmentModes: wallets.fulfillmentModes }),
+      body: JSON.stringify({ wallets: { wave: wallets.wave, qmoney: wallets.qmoney, afrimoney: wallets.afrimoney, preferred: wallets.preferred }, whatsapp: wallets.whatsapp, area: wallets.area, country: wallets.country, pickupLocation: wallets.pickupLocation, fulfillmentModes: wallets.fulfillmentModes }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(null);
@@ -195,6 +200,11 @@ export default function ShopSetupPage() {
                   <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
                 <div><span className={label}>Your area / town *</span><input className={input} value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} placeholder="e.g. Serrekunda" required /></div>
               </div>
+              <div>
+                <span className={label}>Country *</span>
+                <select className={input} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select>
+                <p className="mt-1 text-xs text-neutral-600">Your shop sells in {currencyName(currencyForCountry(form.country))} ({currencyForCountry(form.country)}). When you add items you can type a price in dollars and see it in {currencyName(currencyForCountry(form.country))} as you type, or the other way round.</p>
+              </div>
               <div><span className={label}>Describe your shop *</span><textarea className={input} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What people come to you for, opening hours, anything a customer should know." required /></div>
               <div><span className={label}>WhatsApp number *</span><input className={input} value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+220 …" required /><p className="mt-1 text-xs text-neutral-600">Customers can send orders here too.</p></div>
 
@@ -247,12 +257,19 @@ export default function ShopSetupPage() {
           <div className="mb-2 flex items-center justify-between"><p className="font-semibold text-white">4 · Add your items and sell</p><Chip kind={v?.live ? "now" : "later"}>{v?.live ? "You're live" : "Later"}</Chip></div>
           {v?.status === "approved" ? (
             <div className="flex flex-wrap gap-3">
-              <Link href="/vendor/dashboard" className="rounded-2xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-400">Add items (prices in dalasi) →</Link>
+              <Link href="/vendor/dashboard" className="rounded-2xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-400">Add items (prices in {currencyName(v.currency || "GMD")}) →</Link>
               <Link href="/festdash/vendor-dashboard" className="rounded-2xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-white/5">Your orders</Link>
               <Link href={v.store_slug ? `/${v.store_slug}` : `/marketplace/${v.id}`} className="rounded-2xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-white/5">Your shop page</Link>
             </div>
           ) : (
-            <p className="text-sm text-neutral-500">Once approved you add items with a photo and a price in dalasi. Customers order and pay your coordinator&apos;s wallet; once the payment is confirmed, a runner delivers. You hand over with a 4-digit code.</p>
+            <p className="text-sm text-neutral-500">Once approved you add items with a photo and a price in {currencyName(v?.currency || currencyForCountry(form.country))}. Customers order and pay your coordinator&apos;s wallet; once the payment is confirmed, a runner delivers. You hand over with a 4-digit code.</p>
+          )}
+          {(v?.currency || currencyForCountry(form.country)) !== "USD" && (
+            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+              <p className={label}>Try a price</p>
+              <p className="mb-2 text-xs text-neutral-500">Type in dollars or in {currencyName(v?.currency || currencyForCountry(form.country))} and watch the other figure. This is exactly the box you get when adding an item.</p>
+              <PriceField value={tryPrice} onChange={setTryPrice} currency={v?.currency || currencyForCountry(form.country)} />
+            </div>
           )}
         </div>
 
@@ -267,6 +284,7 @@ export default function ShopSetupPage() {
               <div><span className={label}>Preferred</span><select className={input} value={wallets.preferred} onChange={(e) => setWallets({ ...wallets, preferred: e.target.value })}><option value="wave">Wave</option><option value="qmoney">QMoney</option><option value="afrimoney">Afrimoney</option></select></div>
               <div><span className={label}>WhatsApp</span><input className={input} value={wallets.whatsapp} onChange={(e) => setWallets({ ...wallets, whatsapp: e.target.value })} /></div>
               <div><span className={label}>Area</span><input className={input} value={wallets.area} onChange={(e) => setWallets({ ...wallets, area: e.target.value })} /></div>
+              <div><span className={label}>Country · sets your currency</span><select className={input} value={wallets.country} onChange={(e) => setWallets({ ...wallets, country: e.target.value })}>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name} · {currencyForCountry(c.code)}</option>)}</select></div>
               <div className="sm:col-span-2"><span className={label}>Pickup location — where customers collect</span><input className={input} value={wallets.pickupLocation} onChange={(e) => setWallets({ ...wallets, pickupLocation: e.target.value })} placeholder="e.g. Stall 12, Serrekunda market, opposite the mosque" /></div>
               <div className="sm:col-span-2"><span className={label}>How customers get their order</span><select className={input} value={wallets.fulfillmentModes} onChange={(e) => setWallets({ ...wallets, fulfillmentModes: e.target.value })}><option value="both">Delivery by runner or pickup — customer chooses</option><option value="pickup">Pickup only — customers collect from me</option><option value="delivery">Delivery only</option></select></div>
             </div>

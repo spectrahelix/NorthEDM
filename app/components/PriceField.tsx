@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { formatMoney } from "@/utils/money";
+import { WHOLE_UNIT } from "@/utils/currencies";
 
 /**
  * Price box for the product forms. Prices are stored in the shop's currency
@@ -18,8 +19,8 @@ export function PriceField({ value, onChange, currency = "USD", className = "" }
     if (!foreign) return;
     fetch(`/api/fx?from=USD&to=${cur}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.rate && setFx({ rate: j.rate, date: j.date, fallback: j.fallback })).catch(() => {});
   }, [cur, foreign]);
-  const decimals = cur === "GMD" ? 0 : 2;
-  const example = cur === "GMD" ? "e.g. 935" : "e.g. 12.50";
+  const decimals = WHOLE_UNIT.has(cur) ? 0 : 2;
+  const example = fx ? `e.g. ${(12.5 * fx.rate).toFixed(decimals)}` : cur === "GMD" ? "e.g. 935" : "e.g. 12.50";
   const n = Number(value);
   const usdN = Number(usd);
   const shopFromUsd = fx && usdN > 0 ? usdN * fx.rate : null;
