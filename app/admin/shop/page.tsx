@@ -4,8 +4,24 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { SpecsEditor, EMPTY_SPECS_FORM, specsFormFrom, specsPayload } from "@/app/components/SpecsEditor";
+import type { SpecsColumns } from "@/utils/specs";
+import { GuidedTour, tourPending, type TourStep } from "@/app/components/GuidedTour";
 
-type Product = {
+// First-visit walkthrough of the product editor (anchored by data-tour attributes).
+const TOUR_STEPS: TourStep[] = [
+  { target: "name", title: "Name the product", body: "What a customer would search for, e.g. \"NorthEDM Logo Tee\" or \"Festival Poster 18×24\"." },
+  { target: "price", title: "Price in dollars", body: "e.g. 25.00. Shipping is added at checkout from the item's weight, so this is the item price only." },
+  { target: "stock", title: "Inventory", body: "How many you have on hand. Each paid order counts one down; at zero it shows Sold out." },
+  { target: "category", title: "Category", body: "Optional grouping shown on the card, e.g. Apparel, Prints, Stickers." },
+  { target: "description", title: "Description", body: "A sentence or two: material, sizing, what's in the box." },
+  { target: "images", title: "Photos", body: "Tap + add and pick photos. The first one is the cover on the shop grid. HEIC from an iPhone is converted automatically." },
+  { target: "specs", title: "Weight and specifications", body: "Weight sets the shipping quote (300 g is assumed if blank). Specs appear as a table on the item page, like a product spec sheet." },
+  { target: "active", title: "Active", body: "Ticked = on the public shop. Untick to hide an item without deleting it." },
+  { target: "save", title: "Save", body: "Press Add product. It appears on /shop immediately; come back here to edit or hide it." },
+];
+
+type Product = Partial<SpecsColumns> & {
   id: string; name: string; slug: string; description: string;
   price_cents: number; inventory_count: number; image_urls: string[];
   category: string | null; active: boolean; created_at: string;
@@ -15,8 +31,9 @@ export default function AdminShopPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
+  const [tourOpen, setTourOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const [form, setForm] = useState({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [] as string[], active: true });
+  const [form, setForm] = useState({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [] as string[], active: true, specs: EMPTY_SPECS_FORM });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -28,6 +45,8 @@ export default function AdminShopPage() {
     const j = await res.json();
     setProducts(j.products ?? []);
     setLoading(false);
+    // First visit to an empty shop: open the walkthrough (once per device).
+    if ((j.products ?? []).length === 0 && tourPending("admin_shop")) setTourOpen(true);
   }, [router]);
 
   useEffect(() => {
@@ -40,7 +59,7 @@ export default function AdminShopPage() {
   }, [supabase, router, load]);
 
   function resetForm() {
-    setForm({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [], active: true });
+    setForm({ id: "", name: "", description: "", priceDollars: "", inventoryCount: "", category: "", imageUrls: [], active: true, specs: EMPTY_SPECS_FORM });
     setEditingId(null);
   }
   function edit(p: Product) {
@@ -49,6 +68,7 @@ export default function AdminShopPage() {
       id: p.id, name: p.name, description: p.description,
       priceDollars: (p.price_cents / 100).toFixed(2),
       inventoryCount: String(p.inventory_count),
+      specs: specsFormFrom(p),
       category: p.category ?? "", imageUrls: p.image_urls ?? [], active: p.active,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -77,6 +97,7 @@ export default function AdminShopPage() {
       name: form.name, description: form.description, priceCents,
       inventoryCount: parseInt(form.inventoryCount || "0", 10),
       category: form.category, imageUrls: form.imageUrls, active: form.active,
+      ...specsPayload(form.specs),
     };
     const res = editingId
       ? await fetch(`/api/admin/shop/products/${editingId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
@@ -108,9 +129,13 @@ export default function AdminShopPage() {
             <span className="text-neutral-800">|</span>
             <Link href="/admin/shop/orders" className="font-dm-mono text-xs text-neutral-400 hover:text-white">Orders →</Link>
           </div>
-          <h1 className="mt-2 font-bebas text-4xl tracking-wide">NorthEDM Store</h1>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="font-bebas text-4xl tracking-wide">NorthEDM Store</h1>
+            <button type="button" onClick={() => setTourOpen(true)} className="text-xs text-[#39FF14] underline-offset-2 hover:underline">Show me how to add a product</button>
+          </div>
         </div>
       </div>
+      <GuidedTour id="admin_shop" steps={TOUR_STEPS} open={tourOpen} onClose={() => setTourOpen(false)} accent="#39FF14" />
 
       <div className="mx-auto max-w-5xl px-6 py-8">
         {error && <div className="mb-4 rounded-xl border border-[#FF5C3A]/20 bg-[#FF5C3A]/5 px-4 py-3 text-sm text-[#FF5C3A]">{error}</div>}
@@ -123,31 +148,31 @@ export default function AdminShopPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Name</label>
-              <input className={inp} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Product name" />
+              <input data-tour="name" className={inp} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Product name" />
             </div>
             <div>
               <label className="mb-1 block font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Price (USD)</label>
-              <input className={inp} value={form.priceDollars} onChange={(e) => setForm({ ...form, priceDollars: e.target.value })} inputMode="decimal" placeholder="0.00" />
+              <input data-tour="price" className={inp} value={form.priceDollars} onChange={(e) => setForm({ ...form, priceDollars: e.target.value })} inputMode="decimal" placeholder="0.00" />
             </div>
             <div>
               <label className="mb-1 block font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Inventory (stock)</label>
-              <input className={inp} value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} inputMode="numeric" placeholder="0" />
+              <input data-tour="stock" className={inp} value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} inputMode="numeric" placeholder="0" />
             </div>
             <div>
               <label className="mb-1 block font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Category</label>
-              <input className={inp} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Apparel" />
+              <input data-tour="category" className={inp} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Apparel" />
             </div>
-            <label className="flex items-end gap-2 pb-2 text-sm text-neutral-300">
+            <label className="flex items-end gap-2 pb-2 text-sm text-neutral-300" data-tour="active">
               <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="h-4 w-4 accent-[#39FF14]" />
               Active (visible in store)
             </label>
             <div className="sm:col-span-2">
               <label className="mb-1 block font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Description</label>
-              <textarea className={inp} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe the product…" />
+              <textarea data-tour="description" className={inp} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe the product…" />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">Images</label>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3" data-tour="images">
                 {form.imageUrls.map((u) => (
                   <div key={u} className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -162,9 +187,10 @@ export default function AdminShopPage() {
                 </label>
               </div>
             </div>
+            <div className="sm:col-span-2" data-tour="specs"><SpecsEditor value={form.specs} onChange={(specs) => setForm({ ...form, specs })} /></div>
           </div>
           <div className="mt-5 flex gap-3">
-            <button onClick={save} disabled={saving} className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50">
+            <button data-tour="save" onClick={save} disabled={saving} className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50">
               {saving ? "Saving…" : editingId ? "Save changes" : "Add product"}
             </button>
             {editingId && <button onClick={resetForm} className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-neutral-400 hover:text-white">Cancel</button>}

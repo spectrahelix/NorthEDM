@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { festdashListingActive } from "@/utils/billing";
 import { emailUser, notifyUserInApp, userEmailById } from "@/utils/notifyEmail";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { formatMoney } from "@/utils/money";
@@ -51,7 +52,10 @@ export async function runSubscriptionReminders(admin: SupabaseClient, today = ne
 
   const coordCache = new Map<string, { email: string | null; name: string | null }>();
 
+  const stripePaid = await festdashListingActive(admin, local.map((v) => v.id));
   for (const v of local) {
+    // Paying by card now: Stripe handles its own reminders.
+    if (stripePaid.has(v.id)) continue;
     const s = latest.get(v.id);
     if (!s) { counts.no_period++; continue; }
     const left = daysUntil(today, s.period_end);

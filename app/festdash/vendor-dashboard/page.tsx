@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 
@@ -17,8 +18,11 @@ type Order = {
   status: "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
   currency?: string;
   payment_method?: string;
+  fulfillment?: string;
   created_at: string;
 };
+const statusLabel = (o: Pick<Order, "status" | "fulfillment">) =>
+  o.fulfillment === "pickup" && o.status === "in_transit" ? "Ready for pickup" : o.fulfillment === "pickup" && o.status === "delivered" ? "Collected" : STATUS_LABELS[o.status];
 
 const STATUS_LABELS: Record<Order["status"], string> = {
   awaiting_confirmation: "Awaiting payment",
@@ -190,9 +194,9 @@ export default function VendorDashboard() {
           <div className="mb-4 text-4xl">🎪</div>
           <h2 className="mb-2 font-bebas text-3xl tracking-wide text-white">Not Yet Enrolled</h2>
           <p className="mb-6 text-neutral-500">Your account isn&apos;t linked to a FestDash vendor profile. Apply to join the network or contact an admin to be directly enrolled.</p>
-          <a href="/festdash/vendor-signup" className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
+          <Link href="/festdash/vendor-signup" className="inline-block rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-400">
             Apply to FestDash
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -209,10 +213,10 @@ export default function VendorDashboard() {
             </h1>
             <div className="flex flex-wrap items-center gap-3">
               <p className="font-dm-mono text-xs text-neutral-500">Vendor Dashboard</p>
-              <a href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Runner View →</a>
-              <a href="/vendor" className="font-dm-mono text-xs text-neutral-500 hover:text-neutral-300">Manage Products →</a>
-              <a href="/promote/codes" className="font-dm-mono text-xs text-[#39FF14] hover:text-[#39FF14]/80">Referral Codes →</a>
-              <a href="/festdash/commission-codes" className="font-dm-mono text-xs text-orange-400 hover:text-orange-300">Commission Codes →</a>
+              <Link href="/festdash/driver" className="font-dm-mono text-xs text-purple-400 hover:text-purple-300">Runner View →</Link>
+              <Link href="/vendor/dashboard" className="font-dm-mono text-xs text-[#00D4FF] hover:text-[#00D4FF]/80">Add / edit items →</Link>
+              <Link href="/promote/codes" className="font-dm-mono text-xs text-[#39FF14] hover:text-[#39FF14]/80">Referral Codes →</Link>
+              <Link href="/festdash/commission-codes" className="font-dm-mono text-xs text-orange-400 hover:text-orange-300">Commission Codes →</Link>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5">
@@ -327,7 +331,7 @@ export default function VendorDashboard() {
                     <span className="ml-2 text-xs text-neutral-600">{order.campground_zone}</span>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[order.status]}`}>
-                    {STATUS_LABELS[order.status]}
+                    {statusLabel(order)}
                   </span>
                 </div>
               ))}
@@ -383,7 +387,7 @@ export default function VendorDashboard() {
               </div>
 
               <div className={`rounded-full px-3 py-1 text-center font-dm-mono text-xs ${STATUS_COLORS[selected.status]}`}>
-                {STATUS_LABELS[selected.status]}
+                {statusLabel(selected)}
               </div>
 
               {selected.status === "pending" && (
@@ -496,7 +500,7 @@ function OrderCard({
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${STATUS_COLORS[order.status]}`}>
-            {STATUS_LABELS[order.status]}
+            {statusLabel(order)}
           </span>
           <span className="text-sm font-semibold text-orange-400">
             {formatMoney(order.total_cents, order.currency)}{order.payment_method === "cash" ? " · cash on delivery" : ""}

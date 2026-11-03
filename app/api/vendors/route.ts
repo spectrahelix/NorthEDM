@@ -4,6 +4,7 @@ import { vendorApplicationFields } from "@/utils/vendorApplication";
 import { createClient } from "@/utils/supabase/server";
 import { clientIp, clientContradictsItself, overRateLimit, recordAttempt } from "@/utils/botSignals";
 import { resolveCode } from "@/utils/discountCodes";
+import { selfReferral } from "@/utils/coordinator";
 
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 // Per-IP throttle. This was an in-memory Map, which on serverless is close to
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
     // A promoter's referral code attributes the shop to them. A discount code
     // (owner-made or promoter-minted) is kept as signup_code so it applies
     // itself at the first checkout; a minted one attributes the minter too.
-    type Referrer = { user_id: string; referral_code: string };
+    type Referrer = { user_id: string; referral_code: string | null };
     let referrer: Referrer | null = null;
     let signupCode: string | null = null;
     if (promoterCode) {
@@ -130,6 +131,7 @@ export async function POST(req: Request) {
         if (resolved.promoter_user_id) referrer = { user_id: resolved.promoter_user_id, referral_code: resolved.code };
       }
     }
+    if (!referrer && applicant?.id) referrer = await selfReferral(svc, applicant.id);
     const { data: created, error } = await svc.from("vendors").insert([
       {
         name,

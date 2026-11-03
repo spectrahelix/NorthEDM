@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isLocalRail } from "@/utils/gambiaPay";
-import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
-import { chargeIdForPaymentIntent, payStoreOrder, reverseStorePayouts } from "@/utils/storePayouts";
+import { recordSaleSplit } from "@/utils/coordinator";
+import { reverseStorePayouts } from "@/utils/storePayouts";
+import { adjustStock, settleStoreOrder } from "@/utils/storeSettle";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
 import { handleSubscriptionEvent } from "@/utils/billing";
+import { sendOrderEmails } from "@/utils/orderEmails";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
 // completed Checkout means the card is AUTHORIZED (funds held in escrow), not
@@ -129,68 +131,29 @@ export async function POST(req: Request) {
       // Idempotent: a replayed event must not decrement stock twice.
       if (order && order.status === "pending") {
         const ship = session.customer_details;
+        const held = session.metadata?.hold === "1";
         await checkWrite(
-          `store order ${order.id} -> paid`,
+          `store order ${order.id} -> ${held ? "authorized" : "paid"}`,
           await db.from("store_orders").update({
-            status: "paid",
+            status: held ? "authorized" : "paid",
             stripe_payment_intent: (session.payment_intent as string) ?? null,
             email: ship?.email ?? order.email,
             ship_name: ship?.name ?? null,
             ship_address: ship?.address ?? null,
+            ship_country: (ship?.address?.country as string | undefined) ?? order.ship_country ?? null,
+            paid_at: held ? null : new Date().toISOString(),
+            authorized_at: held ? new Date().toISOString() : null,
             updated_at: new Date().toISOString(),
           }).eq("id", order.id).eq("status", "pending"),
           { critical: true }
         );
-
-        const items = (order.items ?? []) as { product_id: number; qty: number }[];
-        for (const it of items) {
-          // products.inventory_count is the marketplace vendor's stock.
-          const { data: p } = await db
-            .from("products").select("inventory_count").eq("id", it.product_id).maybeSingle();
-          if (p) {
-            await db.from("products")
-              .update({ inventory_count: Math.max(0, (p.inventory_count ?? 0) - it.qty) })
-              .eq("id", it.product_id);
-          }
-        }
-
-        // The promoter who signed the store's operator up earns the coordinator
-        // share of store sales too (owner's decision, 2026-11-02). Booked as a
-        // held commission; the cron pays it through Connect. Never to an archon.
-        const { data: st } = await db.from("stores").select("owner_user_id").eq("id", order.store_id).maybeSingle();
-        if (st?.owner_user_id) {
-          const { data: op } = await db.from("user_profiles").select("vendor_id").eq("id", st.owner_user_id).maybeSingle();
-          const { data: vend } = op?.vendor_id ? await db.from("vendors").select("id, coordinator_user_id, currency").eq("id", op.vendor_id).maybeSingle() : { data: null };
-          const promoter = (vend?.coordinator_user_id as string | null) ?? null;
-          if (vend && isLocalRail(vend) && promoter) {
-            // Card on a Gambian shop's store: the money is with NorthEDM, so the
-            // shop's 80% and the coordinator's 10% are owed BY the owner and
-            // sent to the coordinator to disburse. No Connect commission.
-            const settings = await loadSplitSettings(db);
-            await recordSaleSplit(db, {
-              id: String(order.id), vendor_id: Number(vend.id), total_cents: Number(order.subtotal_cents ?? order.total_cents), runner_fee_cents: 0,
-              currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: (session.payment_intent as string) ?? null,
-              source: "store", collected_by: "owner",
-            }, promoter, settings, null);
-          } else {
-            // Card store sale in USD: pay each selling vendor (and the operator's
-            // cut, if any) from this charge. No account yet → 'owed', swept by
-            // the commissions cron once they connect. See utils/storePayouts.ts.
-            const pi = (session.payment_intent as string) ?? null;
-            const chargeId = pi ? await chargeIdForPaymentIntent(pi).catch(() => null) : null;
-            await payStoreOrder(db, String(order.id), chargeId);
-          }
-          if (!(vend && isLocalRail(vend)) && promoter) {
-            const { data: prof } = await db.from("user_profiles").select("role").eq("id", promoter).maybeSingle();
-            if (prof?.role !== "archon") {
-              const { data: split } = await db.from("coordinator_program_settings").select("sale_coordinator_bps").eq("id", 1).maybeSingle();
-              const { holdDays } = await commissionTerms(db, "store_order");
-              await recordCommission(db, {
-                promoterUserId: promoter, referredUserId: st.owner_user_id, source: "store_order", sourceId: String(order.id),
-                baseCents: Number(order.subtotal_cents ?? 0), rateBps: split?.sale_coordinator_bps ?? 1000, holdDays,
-              });
-            }
-          }
+        // Stock is reserved either way; a released hold puts it back.
+        await adjustStock(db, (order.items ?? []) as { product_id: number; qty: number }[], -1);
+        // Payouts, ledger split and commission happen when the money is final:
+        // now for a captured card, at handover for a held one (orders/[id]/fulfill).
+        if (!held) {
+          await settleStoreOrder(db, String(order.id));
+          await sendOrderEmails(db, "store", String(order.id)).catch((e) => console.error("order emails failed:", e));
         }
       }
     }
@@ -234,6 +197,15 @@ export async function POST(req: Request) {
     event.type === "payment_intent.payment_failed"
   ) {
     const pi = event.data.object as Stripe.PaymentIntent;
+    const storeOrderId = pi.metadata?.store_order_id;
+    if (storeOrderId && event.type === "payment_intent.canceled") {
+      // A store hold released outside our routes (expired at Stripe, cancelled in the dashboard): mark it and restore stock.
+      const { data: so } = await db.from("store_orders").select("id, status, items").eq("id", storeOrderId).eq("stripe_payment_intent", pi.id).maybeSingle();
+      if (so && so.status === "authorized") {
+        await db.from("store_orders").update({ status: "canceled", updated_at: new Date().toISOString() }).eq("id", so.id).eq("status", "authorized");
+        await adjustStock(db, (so.items ?? []) as { product_id: number; qty: number }[], 1);
+      }
+    }
     const orderId = pi.metadata?.festdash_order_id;
     if (orderId) {
       const status = event.type === "payment_intent.canceled" ? "canceled" : "failed";

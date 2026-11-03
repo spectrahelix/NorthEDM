@@ -7,6 +7,9 @@ import { ProductGallery } from "@/app/components/ProductGallery";
 import { accentOr } from "@/utils/accent";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
+import { SpecsTable } from "@/app/components/SpecsTable";
+import { Price, CurrencyPill } from "@/app/components/CurrencyContext";
+import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +22,12 @@ async function load(id: string, itemId: string) {
   const supabase = await createClient();
   const { data: product } = await supabase
     .from("products")
-    .select("id, vendor_id, name, category, description, price, inventory_count, image_url, status, is_public")
+    .select("id, vendor_id, name, category, description, price, inventory_count, image_url, status, is_public, weight_g, length_cm, width_cm, height_cm, origin_country, specs")
     .eq("id", Number(itemId)).eq("vendor_id", Number(id)).maybeSingle();
   if (!product) return null;
   const [{ data: gallery }, { data: vendor }] = await Promise.all([
     supabase.from("product_images").select("url").eq("product_id", product.id).order("position").order("id"),
-    supabase.from("vendors").select("id, name, accent_color, user_id").eq("id", product.vendor_id).maybeSingle(),
+    supabase.from("vendors").select("id, name, accent_color, user_id, currency").eq("id", product.vendor_id).maybeSingle(),
   ]);
   const images = (gallery ?? []).map((g) => g.url as string);
   if (images.length === 0 && product.image_url) images.push(product.image_url as string);
@@ -58,6 +61,7 @@ export default async function ItemPage({ params }: Params) {
   const live = p.is_public && p.status === "published";
   const vendorName = (vendor?.name as string) || "Vendor";
 
+  const vendorCurrency = String((vendor as { currency?: string | null } | null)?.currency || "USD");
   return (
     <main className="min-h-screen px-6 py-12 text-white" style={{ background: brand.theme.background }}>
       <div className="mx-auto max-w-5xl">
@@ -72,12 +76,13 @@ export default async function ItemPage({ params }: Params) {
           <div>
             {p.category && <p className="font-dm-mono text-xs uppercase tracking-[0.25em]" style={{ color: accent }}>{p.category as string}</p>}
             <h1 className={`mt-2 break-words leading-none tracking-wide ${display ? "text-4xl" : "font-bebas text-5xl"}`} style={display}>{p.name as string}</h1>
-            <p className={`mt-4 text-4xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }}>${Number(p.price ?? 0).toFixed(2)}</p>
+            <Price cents={Math.round(Number(p.price ?? 0) * 100)} currency={vendorCurrency} className={`mt-4 block text-4xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }} />
             <p className="mt-1 font-dm-mono text-xs text-neutral-500">
               {Number(p.inventory_count ?? 0) > 0 ? `${p.inventory_count} in stock` : "Out of stock"}
             </p>
             {p.description && <p className="mt-6 whitespace-pre-line leading-7 text-neutral-300">{p.description as string}</p>}
-            {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-6" />}
+            <SpecsTable className="mt-6" product={p as unknown as Parameters<typeof SpecsTable>[0]["product"]} />
+            <div className="mt-6 flex flex-wrap gap-2">{brand.hasFont && <ShopFontToggle enabled={viewerFonts} />}<CurrencyPill options={VIEW_CURRENCIES} /></div>
             <br />
             <Link href={`/marketplace/${p.vendor_id}`}
               className="mt-8 inline-block rounded-xl border border-white/15 px-5 py-2.5 text-sm text-neutral-200 transition hover:bg-white/5">

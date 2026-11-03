@@ -403,6 +403,14 @@ export default async function MarketplacePage() {
                         Order on FestDash
                       </Link>
                     ) : null}
+                    {festdashIds.has(vendor.id) ? (
+                      <Link
+                        href={storeFor.has(vendor.id) ? `/${storeFor.get(vendor.id)}` : `/marketplace/${vendor.id}`}
+                        className="pointer-events-auto rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/10"
+                      >
+                        {storeFor.has(vendor.id) ? "Open store" : "View market"}
+                      </Link>
+                    ) : null}
                     {vendor.website ? (
                       <a
                         href={normalizeUrl(vendor.website)}

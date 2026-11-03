@@ -21,10 +21,13 @@ export async function POST(req: Request) {
     campsitePhotoUrl, deliveryWindow, items, customerName,
     customerPhone, campground, subCampground, campsiteRow, tent,
     licensePlate, carPhotoUrl, customerLat, customerLng,
-    promoCode, paymentMethod, runnerFeeCents,
+    promoCode, paymentMethod, runnerFeeCents, fulfillment,
   } = body;
 
-  if (!vendorId || !eventName || !campgroundZone || !deliveryWindow || !items?.length) {
+  // Pickup (2026-11-03): the customer collects at the shop. No campsite, no
+  // runner, no runner fee; the 4-digit code is given at the counter.
+  const pickup = fulfillment === "pickup";
+  if (!vendorId || !items?.length || (!pickup && (!eventName || !campgroundZone || !deliveryWindow))) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
 
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
   // ("lights out") one — this is the check that actually enforces it.
   const vid = Number(vendorId);
   const [{ data: vendorRow }, { data: fdRow }] = await Promise.all([
-    admin.from("vendors").select("id, status, is_public, suspended_at, coordinator_user_id, currency").eq("id", vid).maybeSingle(),
+    admin.from("vendors").select("id, status, is_public, suspended_at, coordinator_user_id, currency, fulfillment_modes").eq("id", vid).maybeSingle(),
     admin.from("festdash_vendors").select("vendor_id").eq("vendor_id", vid).eq("is_active", true).maybeSingle(),
   ]);
   if (!vendorRow || vendorRow.status !== "approved" || !vendorRow.is_public || vendorRow.suspended_at || !fdRow) {
@@ -52,6 +55,10 @@ export async function POST(req: Request) {
   // current. A USD vendor with a coordinator stays on card checkout. The wallet
   // number is snapshotted onto the order so the customer always sees the number
   // that was current when they ordered.
+  // The shop decides which fulfilment it offers (both | pickup | delivery).
+  const modes = String(vendorRow.fulfillment_modes ?? "both");
+  if (pickup && modes === "delivery") return NextResponse.json({ error: "This shop delivers only." }, { status: 400 });
+  if (!pickup && modes === "pickup") return NextResponse.json({ error: "This shop is pickup only right now." }, { status: 400 });
   const local = isLocalRail(vendorRow);
   const currency = String(vendorRow.currency || "USD");
   // A card on a local-rail shop (2026-11-03): charged in the shop's currency
@@ -172,7 +179,7 @@ export async function POST(req: Request) {
   const creditCents = 0;
   // Runner fee: the customer's pick, never below 10% of the items. It rides on
   // top of the items and goes to the runner in full (utils/runnerPay.ts).
-  const runnerFee = Math.max(minRunnerFeeCents(discountedCents), Math.floor(Number(runnerFeeCents) || 0));
+  const runnerFee = pickup ? 0 : Math.max(minRunnerFeeCents(discountedCents), Math.floor(Number(runnerFeeCents) || 0));
   const netCents = discountedCents + runnerFee;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
@@ -188,8 +195,8 @@ export async function POST(req: Request) {
       customer_id: user.id,
       customer_name: customerName || user.email?.split("@")[0] || "Guest",
       customer_email: user.email,
-      event_name: eventName,
-      campground_zone: campgroundZone,
+      event_name: pickup ? (eventName || "Pickup") : eventName,
+      campground_zone: pickup ? "Pick up at the shop" : campgroundZone,
       campsite_notes: campsiteNotes || null,
       campsite_photo_url: campsitePhotoUrl || null,
       campground: campground || null,
@@ -202,7 +209,8 @@ export async function POST(req: Request) {
       confirmation_code: confirmationCode,
       customer_lat: typeof customerLat === "number" ? customerLat : null,
       customer_lng: typeof customerLng === "number" ? customerLng : null,
-      delivery_window: deliveryWindow,
+      delivery_window: pickup ? (deliveryWindow || "ASAP") : deliveryWindow,
+      fulfillment: pickup ? "pickup" : "delivery",
       items: lines,
       total_cents: netCents,
       runner_fee_cents: runnerFee,

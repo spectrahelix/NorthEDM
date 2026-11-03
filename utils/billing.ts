@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
 import { applyCode, describeCode, redeemCode, resolveCode, type ResolvedCode } from "@/utils/discountCodes";
+import { selfReferral } from "@/utils/coordinator";
 
 /**
  * Card-paid monthly subscriptions (owner's model, 2026-11-02):
@@ -40,8 +41,10 @@ async function settings(admin: SupabaseClient): Promise<Settings> {
 /** The promoter who referred this vendor and the code it signed up with, if any. */
 async function vendorReferral(admin: SupabaseClient, vendorId: number | null): Promise<{ promoter: string | null; signupCode: string | null }> {
   if (!vendorId) return { promoter: null, signupCode: null };
-  const { data } = await admin.from("vendors").select("coordinator_user_id, signup_code").eq("id", vendorId).maybeSingle();
-  return { promoter: (data?.coordinator_user_id as string | null) ?? null, signupCode: (data?.signup_code as string | null) ?? null };
+  const { data } = await admin.from("vendors").select("user_id, coordinator_user_id, signup_code").eq("id", vendorId).maybeSingle();
+  // A promoter's own shop counts as referred by them (10% off, they keep the share).
+  const promoter = (data?.coordinator_user_id as string | null) ?? (await selfReferral(admin, data?.user_id as string | null))?.user_id ?? null;
+  return { promoter, signupCode: (data?.signup_code as string | null) ?? null };
 }
 
 /**
@@ -90,6 +93,7 @@ export async function createSubscriptionCheckout(
   }
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
+    adaptive_pricing: { enabled: true },
     customer_email: args.email ?? undefined,
     line_items: [{
       quantity: 1,

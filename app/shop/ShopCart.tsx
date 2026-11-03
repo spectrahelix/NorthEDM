@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "./useCart";
+import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
+import { Price, ConversionNote } from "@/app/components/CurrencyContext";
 
 // Floating cart button + slide-out drawer. The button shows the item count and
 // opens the drawer; the drawer also pops open whenever an item is added.
@@ -11,6 +13,8 @@ export function ShopCart() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ship, setShip] = useState<ShipChoice>({ country: "US", service: null });
+  const [shipCents, setShipCents] = useState(0);
 
   useEffect(() => {
     const onAdd = () => setOpen(true);
@@ -31,7 +35,7 @@ export function ShopCart() {
     const res = await fetch("/api/shop/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: cart.map((c) => ({ id: c.id, qty: c.qty })) }),
+      body: JSON.stringify({ items: cart.map((c) => ({ id: c.id, qty: c.qty })), country: ship.country, shippingService: ship.service }),
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.url) {
@@ -102,10 +106,20 @@ export function ShopCart() {
             </div>
 
             <div className="border-t border-white/10 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Subtotal</span>
-                <span className="font-bebas text-2xl text-[#39FF14]">${(subtotal / 100).toFixed(2)}</span>
+              {cart.length > 0 && (
+                <div className="mb-3"><ShipTo kind="shop" items={cart.map((c) => ({ id: c.id, qty: c.qty }))} value={ship} onChange={(v, cents) => { setShip(v); setShipCents(cents); }} /></div>
+              )}
+              <div className="mb-1 flex items-center justify-between text-sm text-neutral-400">
+                <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Subtotal</span><span>${(subtotal / 100).toFixed(2)}</span>
               </div>
+              <div className="mb-1 flex items-center justify-between text-sm text-neutral-400">
+                <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Shipping</span><span>{ship.service ? `$${(shipCents / 100).toFixed(2)}` : "—"}</span>
+              </div>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Total</span>
+                <Price cents={subtotal + shipCents} currency="USD" className="font-bebas text-2xl text-[#39FF14]" />
+              </div>
+              <ConversionNote shopCurrency="USD" className="mb-3" />
               {error && <p className="mb-2 text-sm text-[#FF5C3A]">{error}</p>}
               <button
                 onClick={checkout}

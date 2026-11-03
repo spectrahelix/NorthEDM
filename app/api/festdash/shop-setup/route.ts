@@ -7,6 +7,8 @@ import { serviceClient, loadSplitSettings } from "@/utils/coordinator";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { notifyNewApplication } from "@/utils/alerts";
 import { vendorApplicationFields } from "@/utils/vendorApplication";
+import { currencyForCountry } from "@/utils/currencies";
+import { COUNTRIES } from "@/utils/shipping";
 
 // The shop owner's self-service path for a coordinator region. One
 // application creates the vendor record, links it to its coordinator by code,
@@ -15,7 +17,6 @@ import { vendorApplicationFields } from "@/utils/vendorApplication";
 // FestDash in one click (see /api/vendors/update).
 
 const DEFAULT_REGION = "gambia";
-const DEFAULT_CURRENCY = "GMD";
 const WALLET_KEYS = ["wave", "qmoney", "afrimoney"] as const;
 
 type Wallets = { wave: string | null; qmoney: string | null; afrimoney: string | null; preferred: string | null };
@@ -48,7 +49,7 @@ async function myVendor(admin: ReturnType<typeof serviceClient>, userId: string)
   // The approved link lives on the profile; a pending application only has
   // vendors.user_id. Check both so the walkthrough shows the right step.
   const { data: prof } = await admin.from("user_profiles").select("vendor_id").eq("id", userId).maybeSingle();
-  const cols = "id, name, category, description, area, status, is_public, suspended_at, user_id, coordinator_user_id, coordinator_code, region, currency, whatsapp_number, payout_wallets, terms_accepted_at, created_at";
+  const cols = "id, name, category, description, area, country, pickup_location, fulfillment_modes, status, is_public, suspended_at, user_id, coordinator_user_id, coordinator_code, region, currency, whatsapp_number, payout_wallets, terms_accepted_at, created_at";
   if (prof?.vendor_id) {
     const { data } = await admin.from("vendors").select(cols).eq("id", prof.vendor_id).maybeSingle();
     if (data) return data;
@@ -120,6 +121,10 @@ export async function POST(req: Request) {
   const area = str(body.area, 80);
   const whatsapp = str(body.whatsapp, 40);
   const code = str(body.coordinatorCode, 40);
+  // Country sets the shop's currency: Gambia → dalasi, US → dollars, and so on.
+  const country = str(body.country, 2).toUpperCase() || "GM";
+  if (!COUNTRIES.some((c) => c.code === country)) return NextResponse.json({ error: "Pick your country from the list." }, { status: 400 });
+  const currency = currencyForCountry(country);
   const wallets = cleanWallets(body.wallets);
   if (!name || !category || !description || !area || !whatsapp) {
     return NextResponse.json({ error: "Shop name, what you sell, a description, your area and a WhatsApp number are all needed." }, { status: 400 });
@@ -141,6 +146,8 @@ export async function POST(req: Request) {
     }
   }
 
+  // A promoter opening their own shop is their own coordinator when nobody else is.
+  if (!coordinator) coordinator = await resolveCoordinatorByUser(admin, user.id);
   const { data: vendor, error } = await admin.from("vendors").insert({
     name, category, description, area,
     email: user.email ?? null,
@@ -152,7 +159,8 @@ export async function POST(req: Request) {
     coordinator_code: coordinator?.referral_code ?? null,
     signup_code: signupCode,
     region: coordinator?.region ?? DEFAULT_REGION,
-    currency: DEFAULT_CURRENCY,
+    country,
+    currency,
     terms_accepted_at: new Date().toISOString(),
     is_public: false,
     wants_public: true,
@@ -171,7 +179,7 @@ export async function POST(req: Request) {
     fields: vendorApplicationFields({
       id: vendor.id, name, category, description, email: user.email ?? null, business_email: user.email ?? null,
       first_name: null, last_name: null, phone: null, website: null, capacity: null, wants_public: true,
-      area, region: coordinator?.region ?? DEFAULT_REGION, currency: DEFAULT_CURRENCY, whatsapp_number: whatsapp,
+      area, region: coordinator?.region ?? DEFAULT_REGION, currency, whatsapp_number: whatsapp,
       coordinator_code: coordinator?.referral_code ?? null, coordinator_user_id: coordinator?.user_id ?? null,
       payout_wallets: wallets, terms_accepted_at: new Date().toISOString(), created_at: new Date().toISOString(),
     }, coordinator?.display_name ?? null),
@@ -196,6 +204,12 @@ export async function PATCH(req: Request) {
   if (body.wallets !== undefined) patch.payout_wallets = cleanWallets(body.wallets);
   if (typeof body.whatsapp === "string") patch.whatsapp_number = body.whatsapp.trim().slice(0, 40) || null;
   if (typeof body.area === "string") patch.area = body.area.trim().slice(0, 80) || null;
+  if (typeof body.country === "string" && COUNTRIES.some((c) => c.code === body.country.toUpperCase())) {
+    patch.country = body.country.toUpperCase();
+    patch.currency = currencyForCountry(patch.country as string);
+  }
+  if (typeof body.pickupLocation === "string") patch.pickup_location = body.pickupLocation.trim().slice(0, 160) || null;
+  if (["both", "pickup", "delivery"].includes(body.fulfillmentModes)) patch.fulfillment_modes = body.fulfillmentModes;
   if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
 
   const { data, error } = await admin.from("vendors").update(patch).eq("id", vendor.id).select("id, whatsapp_number, area, payout_wallets").single();

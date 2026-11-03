@@ -37,7 +37,7 @@ export async function chargeIdForPaymentIntent(paymentIntentId: string): Promise
  */
 export async function payStoreOrder(admin: SupabaseClient, orderId: string, chargeId: string | null) {
   const { data: order } = await admin.from("store_orders")
-    .select("id, store_id, items, currency, status, stripe_payment_intent").eq("id", orderId).maybeSingle();
+    .select("id, store_id, items, currency, status, stripe_payment_intent, shipping_cents").eq("id", orderId).maybeSingle();
   if (!order || order.status !== "paid") return { ok: false as const, reason: "order not paid" };
   if (String(order.currency || "USD") !== "USD") return { ok: false as const, reason: "wallet-rail order — settled through the coordinator ledger" };
   const { data: store } = await admin.from("stores").select("owner_user_id, operator_fee_bps").eq("id", order.store_id).maybeSingle();
@@ -61,6 +61,14 @@ export async function payStoreOrder(admin: SupabaseClient, orderId: string, char
     operatorTotal += opFee;
     const share = lines - platform - opFee;
     if (share > 0) payees.push({ vendor_id: vendorId, kind: "vendor", amount_cents: share });
+  }
+  // Shipping the customer paid goes in full to whoever boxes it: the operator,
+  // or the only selling vendor when the store has no operator vendor.
+  const shippingCents = Math.max(0, Number(order.shipping_cents ?? 0));
+  const shipper = operatorVendorId ?? (byVendor.size === 1 ? [...byVendor.keys()][0] : null);
+  if (shipper && shippingCents > 0) {
+    const vendorRow = payees.find((p) => p.vendor_id === shipper && p.kind === "vendor");
+    if (vendorRow) vendorRow.amount_cents += shippingCents; else operatorTotal += shippingCents;
   }
   if (operatorVendorId && operatorTotal > 0) payees.push({ vendor_id: operatorVendorId, kind: "operator", amount_cents: operatorTotal });
 

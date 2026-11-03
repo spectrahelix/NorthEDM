@@ -41,6 +41,7 @@ export async function GET() {
     .from("festdash_orders")
     .select(POOL_COLUMNS)
     .eq("status", "accepted")
+    .eq("fulfillment", "delivery")
     .is("driver_id", null)
     .order("created_at", { ascending: true });
 

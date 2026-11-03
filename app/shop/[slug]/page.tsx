@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import AddToCart from "./AddToCart";
+import { SpecsTable } from "@/app/components/SpecsTable";
+import type { SpecsColumns } from "@/utils/specs";
+import { Price } from "@/app/components/CurrencyContext";
 
-type P = {
+type P = Partial<SpecsColumns> & {
   id: string; slug: string; name: string; description: string;
   price_cents: number; image_urls: string[]; category: string | null; inventory_count: number;
 };
@@ -46,8 +49,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div>
             {p.category && <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600">{p.category}</p>}
             <h1 className="mt-1 font-bebas text-4xl tracking-wide">{p.name}</h1>
-            <p className="mt-3 font-bebas text-3xl text-[#39FF14]">${(p.price_cents / 100).toFixed(2)}</p>
+            <Price cents={p.price_cents} currency="USD" className="mt-3 block font-bebas text-3xl text-[#39FF14]" />
             {p.description && <p className="mt-5 whitespace-pre-line text-sm leading-7 text-neutral-300">{p.description}</p>}
+            <SpecsTable className="mt-5" product={p} />
             <div className="mt-7">
               <AddToCart
                 product={{ id: p.id, slug: p.slug, name: p.name, price_cents: p.price_cents, image: images[0] }}

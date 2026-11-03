@@ -254,7 +254,15 @@ session (admins' sessions included) and the page renders empty:
 
 The service role reads everything. `npm run check` (section 5) fails on a
 `select("*")` against either table unless the receiver is a service-role
-client. Direct inserts into `vendors` are closed too: applications arrive only
+client.
+
+⚠️ **Every new column on `vendors` or `user_profiles` is invisible to
+ordinary sessions until you `grant select (col) ... to anon, authenticated`.**
+Column-level grants mean a new column has no grant at all, and any query that
+names it fails with "permission denied" — the FestDash vendor list went empty
+site-wide for an hour on 2026-11-03 after `pickup_location` shipped without
+one. Put the grant in the same migration as the column (private columns
+excepted), and probe the live REST API with the publishable key afterwards. Direct inserts into `vendors` are closed too: applications arrive only
 through `/api/vendors`, which writes with the service role after its bot
 checks.
 
@@ -456,6 +464,30 @@ through the site; it records what moved and who confirmed it.** Full design in
   admin card shows who minted it. Wallet rail: the purse logs a `bundle` fee
   as a festdash period plus a store period. Approval email lists the three
   plans (the "invoice"); nothing is charged until the shop picks one.
+  **Pickup orders (2026-11-03).** `festdash_orders.fulfillment` =
+  `delivery` | `pickup`. A pickup order has no campsite, no runner and no
+  runner fee; `campground_zone` reads "Pick up at the shop", the runner pool
+  skips it, and `in_transit` means "ready for pickup" (labels only — the
+  state machine is unchanged, and the 4-digit code is given at the counter).
+  The shop sets `vendors.pickup_location` and `vendors.fulfillment_modes`
+  (`both` | `pickup` | `delivery`) on /festdash/shop-setup; the order page
+  offers Deliver / Pick up only when both are allowed and the order route
+  refuses a mode the shop doesn't offer. Gee's shop is pickup-only for now.
+  **Business-safe routing (2026-11-03).** Every shop, wallet-rail included,
+  can pay its fee by card (`/api/billing/*` no longer refuses the local rail;
+  `activeSubscription` / `paidLocalVendorIds` count a Stripe listing or
+  bundle as a current period; the reminders job skips card payers). Paying
+  the coordinator in dalasi stays as the fallback. The coordinators admin
+  page shows a **Settle net** line per coordinator and currency: what you owe
+  them (owner-collected card sales + held commissions) minus what they owe
+  you (wallet sales/fees), so money crosses the border once, in the direction
+  that works (US → Gambia).
+  **A promoter's own shop (2026-11-03)** is a shop that promoter referred:
+  10% off the fee automatically and they keep the promoter share of its sales
+  and fee payments (90% to them, 10% to the owner). `selfReferral()` in
+  `utils/coordinator.ts`; applications set it as `coordinator_user_id` when no
+  other code is given, `quote()` and the purse fee fall back to it. Gee's shop
+  is the first case.
   **Store payouts (2026-11-03)** — `utils/storePayouts.ts`. A paid USD store
   order pays each selling vendor their lines minus the platform share
   (`platformShareBps`, 20%) minus the store's `operator_fee_bps` (member
@@ -478,6 +510,16 @@ through the site; it records what moved and who confirmed it.** Full design in
   'payout'`); the page shows both directions. `payRunnerFee` and the Connect
   commission are skipped for these orders. Store sale rows use
   `store_order_id`, never `order_id` (which is a FestDash FK).
+  **Held cards on Gambian stores (2026-11-03).** A card order on a wallet-rail
+  store is authorised, not charged (`capture_method: manual`, session
+  `hold=1`): the webhook marks it `authorized`, reserves stock and books
+  nothing. The operator's **Handed over** on /<slug>/manage
+  (`/api/store/orders/[id]/fulfill`) captures the card, marks it `paid` and
+  runs `settleStoreOrder()` (`utils/storeSettle.ts`, the one place store
+  money is finalised — the webhook uses it too for US stores captured at
+  purchase). **Cancel** releases the hold and restores stock; the commissions
+  cron releases holds untouched for six days; a hold cancelled at Stripe
+  comes back through `payment_intent.canceled`. US stores are unchanged.
   **Store checkout follows the shop's rail** (`utils/storeRail.ts`): a store
   whose operator is a wallet-rail vendor sells for Wave / QMoney / Afrimoney in
   the shop's currency, paid to the coordinator; the order waits in
@@ -485,6 +527,55 @@ through the site; it records what moved and who confirmed it.** Full design in
   customer's reference, `…/confirm-payment` for the coordinator, who sees it in
   /festdash/purse next to FestDash orders). Confirming marks it paid, takes
   stock down and books the 80/10/10 sale split. Card stores are unchanged.
+- **Shipping, specs and order documents (2026-11-03)** — one process for every
+  parcel shop (NorthEDM's shop and US vendor stores). `utils/shipping.ts`:
+  destination → zone (us / na / eu / wafrica incl. GM, SN / world), services
+  priced base + per-kg from the products' `weight_g` (300 g assumed when blank,
+  +10% and 60 g packaging) with an ETA string; the table is a **reference
+  estimate modelled on USPS retail**, overridable in **/admin/shipping**
+  (`shipping_settings.rates`, plus `ship_from` and a handling fee). The cart's
+  `ShipTo` picker calls `/api/shipping/quote`; both checkouts re-quote
+  server-side and charge it as a Stripe `shipping_options` line, so the Stripe
+  receipt matches ours; `allowed_countries` is the chosen country. Store
+  shipping is paid in full to the operator (`payStoreOrder`). Wallet-rail
+  (Gambian) stores hand over locally: no shipping line. **Documents**:
+  `/orders/<shop|store>/<id>/<invoice|receipt|label>` render from one
+  `OrderDoc` (`utils/orderDocs.ts`); the label is 4×6 with a CN22 customs
+  block when the destination differs from the ship-from country. Access: HMAC
+  `?t=` token (in the emails), buyer, operator or admin. `sendOrderEmails`
+  (`utils/orderEmails.ts`) sends the buyer a receipt and the seller a pack
+  sheet when money is final (shop webhook, store webhook, held-card
+  handover). **Specs**: `products`/`shop_products` carry `weight_g`, dims,
+  `hs_code`, `origin_country`, `specs` jsonb (`utils/specs.ts`, `SpecsEditor`
+  on the vendor dashboard and /admin/shop, `SpecsTable` on item pages).
+  Postage is bought at the counter; the site never buys labels.
+- **My Shop hub (2026-11-03)** — `/vendor` is every marketplace vendor's own
+  admin page (the nav's "My Shop"): profile (`VendorEditForm`, accent), links
+  to inventory (`/vendor/dashboard`), storefront/manage, FestDash orders,
+  payouts, and **metrics**. `/api/vendor/me` resolves the caller's vendor
+  (profile link or `vendors.user_id`) and store; `/api/vendor/metrics` returns
+  **counts only** — views/visitors per day for the shop's own pages
+  (`page_views`, admins excluded), most-viewed items, referrer hosts, order
+  counts and the shop's own revenue. Never add visitor ids, accounts, emails,
+  addresses or order lines to it: a shop owner is not a site admin (owner's
+  rule). The old `/vendor` was a second copy of the inventory dashboard; it is
+  gone.
+- **Currencies (2026-11-03).** A shop's `vendors.country` (picked on shop
+  setup) sets `vendors.currency` (`utils/currencies.ts`); every price of that
+  shop is stored and charged in it. Buyers never need to hold it: a card is
+  charged in the shop's currency and the buyer's bank converts. Two helpers on
+  top, neither of which changes what is charged: (1) **display** — `Price`
+  from `app/components/CurrencyContext.tsx` shows "≈" in the visitor's
+  currency (cookie `ne_currency`, else Vercel's country header, picked with
+  the "Show prices ≈ in" pill) using `/api/fx` (open.er-api.com, cached 1h,
+  fallback constants); (2) **Stripe Adaptive Pricing** — `adaptive_pricing:
+  { enabled: true }` on every Checkout session except held-card (manual
+  capture) Gambian store orders and FestDash holds, so a foreign buyer may
+  choose their own currency at Stripe and **Stripe adds its 2–4% conversion
+  charge to the buyer's total; we still receive the shop's currency**. The
+  `ConversionNote` beside each checkout says exactly that (owner's decision:
+  the buyer carries the conversion fee). Prices in USD at Stripe are
+  eligible; GMD sessions are presented as GMD.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays

@@ -255,6 +255,18 @@ export default async function AdminPage() {
                 </p>
               </Link>
               <Link
+                href="/admin/shipping"
+                className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/25 hover:bg-white/[0.06]"
+              >
+                <div className="mb-3 text-2xl">📦</div>
+                <h2 className="font-bebas text-2xl tracking-wide text-white">
+                  Shipping
+                </h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Your ship-from address, handling fee and the rate table every shop quotes from
+                </p>
+              </Link>
+              <Link
                 href="/admin/promoter-payouts"
                 className="group rounded-2xl border border-[#E8FF47]/20 bg-[#E8FF47]/[0.06] p-6 transition hover:border-[#E8FF47]/40 hover:bg-[#E8FF47]/[0.12]"
               >

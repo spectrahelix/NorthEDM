@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { serviceClient, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
+import { serviceClient, coordinatorFor, loadSplitSettings, selfReferral } from "@/utils/coordinator";
 import { isLocalMethod, splitSubscription } from "@/utils/gambiaPay";
 import { emailUser, notifyUserInApp, userEmailById } from "@/utils/notifyEmail";
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 200) || null : null;
   if (!vendorId) return NextResponse.json({ error: "Pick a shop." }, { status: 400 });
 
-  const { data: vendor } = await admin.from("vendors").select("id, coordinator_user_id").eq("id", vendorId).maybeSingle();
+  const { data: vendor } = await admin.from("vendors").select("id, user_id, coordinator_user_id").eq("id", vendorId).maybeSingle();
   if (!vendor || vendor.coordinator_user_id !== user.id) {
     return NextResponse.json({ error: "That shop isn't one of yours." }, { status: 403 });
   }
@@ -45,7 +45,9 @@ export async function POST(req: Request) {
   const { data: ownerRows } = await admin.from("user_profiles").select("id").eq("role", "archon");
   const ownerReferred = !!vendor.coordinator_user_id && (ownerRows ?? []).some((r) => r.id === vendor.coordinator_user_id);
   const listCents = kind === "bundle" ? (settings.bundle_fee_cents ?? Math.round(settings.subscription_fee_cents * 1.5)) : settings.subscription_fee_cents;
-  const feeCents = Math.round(listCents * months * (ownerReferred ? 0.9 : 1));
+  // A promoter's own shop gets the referral 10% off automatically.
+  const ownShop = vendor.coordinator_user_id === vendor.user_id || !!(await selfReferral(admin, vendor.user_id as string | null));
+  const feeCents = Math.round(listCents * months * (ownerReferred || ownShop ? 0.9 : 1));
   const split = splitSubscription(feeCents, settings);
 
   const rowKind = kind === "bundle" ? "festdash" : kind;

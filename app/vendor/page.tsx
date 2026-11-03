@@ -1,560 +1,177 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import Link from "next/link";
-import { isUndisplayableImage } from "@/utils/webImage";
-import { GalleryManager } from "@/app/components/vendor/GalleryManager";
-import { ProductThumb } from "@/app/components/ProductThumb";
-import { PhotoLibrary } from "@/app/components/vendor/PhotoLibrary";
-import { useUnsavedDraft } from "@/utils/useUnsavedDraft";
+import { BackBar } from "@/app/components/BackBar";
+import { PayoutsCard } from "@/app/components/PayoutsCard";
+import { AccentPicker } from "@/app/components/AccentPicker";
+import { formatMoney } from "@/utils/money";
+import { VendorEditForm } from "@/app/marketplace/[id]/components/VendorEditForm";
 
-type Product = {
-  id: number;
-  vendor_id: number;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  inventory_count: number;
-  image_url: string | null;
-  is_public: boolean;
-  status: string;
+/**
+ * My Shop — the one admin page every marketplace vendor gets: profile, shop
+ * links, inventory, orders, payouts and visit/sales metrics. Metrics are
+ * counts only (see /api/vendor/metrics); shop owners never see who visited.
+ */
+type Me = {
+  vendor: { id: number; name: string; category: string | null; description: string | null; contact: string | null; business_email: string | null; website: string | null; phone: string | null; show_phone: boolean | null; accent_color: string | null; is_public: boolean; status: string; suspended_at: string | null; currency: string | null };
+  store: { slug: string; name: string; active: boolean; billing_status: string; is_operator: boolean } | null;
+  festdash: boolean; products: { total: number; live: number };
+};
+type Metrics = {
+  days: number; views: { last7: number; last30: number; visitors7: number; visitors30: number; by_day: { day: string; views: number }[] };
+  top_items: { id: number; name: string; views: number }[]; top_referrers: { host: string; views: number }[];
+  sales: { currency: string; festdash: { delivered: number; open: number; revenue_cents: number }; store: { orders: number; revenue_cents: number } };
 };
 
-type FormState = {
-  name: string;
-  category: string;
-  description: string;
-  price: string;
-  inventoryCount: string;
-  imageUrl: string;
-  isPublic: boolean;
-  status: string;
-};
-
-const EMPTY_FORM: FormState = {
-  name: "",
-  category: "Holistic Goods",
-  description: "",
-  price: "",
-  inventoryCount: "",
-  imageUrl: "",
-  isPublic: true,
-  status: "draft",
-};
-
-const CATEGORIES = [
-  "Holistic Goods",
-  "Essential Oils",
-  "Healing Balms",
-  "Skincare",
-  "Bath & Body",
-  "Pet Products",
-  "Mushrooms",
-  "Art & Crafts",
-  "Other",
-];
-
-export default function VendorDashboard() {
+export default function MyShopPage() {
   const router = useRouter();
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [vendorName, setVendorName] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [notice, setNotice] = useState("");
-  const [photoVersion, setPhotoVersion] = useState(0);
-
-  // Survive a reload mid-form (photo picker, new deploy) — see the hook.
-  useUnsavedDraft(
-    userId ? `festdash-product-draft:${userId}` : null,
-    { form, editId },
-    showForm && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM),
-    (d) => { setForm({ ...EMPTY_FORM, ...d.form }); setEditId(d.editId ?? null); setShowForm(true); },
-  );
+  const supabase = useMemo(() => createClient(), []);
+  const [me, setMe] = useState<Me | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [state, setState] = useState<"loading" | "none" | "ok">("loading");
+  const [accent, setAccent] = useState<string>("#3AFFD4");
+  const [accentMsg, setAccentMsg] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { router.push("/login"); return; }
-      setUserId(user.id);
-
-      // Check vendor linkage
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("vendor_id")
-        .eq("id", user.id)
-        .single();
-
-      if (!profile?.vendor_id) {
-        router.push("/");
-        return;
-      }
-
-      // Get vendor name
-      const { data: vendor } = await supabase
-        .from("vendors")
-        .select("name")
-        .eq("id", profile.vendor_id)
-        .single();
-      setVendorName(vendor?.name ?? null);
-
-      loadProducts();
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    (async () => {
+      const r = await fetch("/api/vendor/me");
+      if (r.status === 401) { router.push("/login?next=/vendor"); return; }
+      if (!r.ok) { setState("none"); return; }
+      const j = (await r.json()) as Me;
+      setMe(j); setAccent(j.vendor.accent_color || "#3AFFD4"); setState("ok");
+      fetch("/api/vendor/metrics").then((m) => (m.ok ? m.json() : null)).then((m) => m && setMetrics(m)).catch(() => {});
+    })();
   }, [router]);
 
-  async function loadProducts() {
-    const res = await fetch("/api/vendor/products");
-    if (res.status === 401 || res.status === 403) { router.push("/"); return; }
-    const json = await res.json();
-    setProducts(json.products ?? []);
-    setPhotoVersion((v) => v + 1);
-    setLoading(false);
+  async function saveAccent(hex: string) {
+    setAccent(hex); setAccentMsg("");
+    if (!me) return;
+    const { data, error } = await supabase.from("vendors").update({ accent_color: hex }).eq("id", me.vendor.id).select("id");
+    setAccentMsg(error ? error.message : data?.length ? "Saved." : "Not saved — no permission.");
   }
 
-  function openAdd() {
-    setNotice("");
-    setEditId(null);
-    setForm(EMPTY_FORM);
-    setFormError("");
-    setShowForm(true);
-  }
-
-  function openEdit(p: Product) {
-    setNotice("");
-    setEditId(p.id);
-    setForm({
-      name: p.name,
-      category: p.category,
-      description: p.description,
-      price: String(p.price),
-      inventoryCount: String(p.inventory_count),
-      imageUrl: p.image_url ?? "",
-      isPublic: p.is_public,
-      status: p.status,
-    });
-    setFormError("");
-    setShowForm(true);
-  }
-
-  // Called by GalleryManager in the tap that opens the photo picker, for an
-  // item that isn't saved yet: the typed details go to the server first,
-  // because phones can discard the page while the picker is open.
-  function ensureSaved(): Promise<number | null> | null {
-    setFormError("");
-    if (!form.name.trim()) {
-      setFormError("Type the item's name first — it's saved before your photos open, so nothing you've typed can be lost.");
-      return null;
-    }
-    return saveTextNow();
-  }
-
-  async function saveTextNow(): Promise<number | null> {
-    const text = {
-      name: form.name, category: form.category, description: form.description,
-      price: form.price, inventoryCount: form.inventoryCount,
-    };
-    try {
-      if (editId) {
-        await fetch(`/api/vendor/products/${editId}`, {
-          method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(text),
-        });
-        return editId;
-      }
-      const res = await fetch("/api/vendor/products", {
-        method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...text, isPublic: false, status: "draft" }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.product?.id) return null;
-      setEditId(j.product.id as number);
-      setProducts((prev) => [j.product, ...prev]);
-      setNotice("Saved as a hidden draft so nothing gets lost. Press “Save Changes” when it's ready.");
-      return j.product.id as number;
-    } catch {
-      return editId;
-    }
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name.trim()) { setFormError("Product name is required."); return; }
-    if (!form.price || isNaN(Number(form.price))) { setFormError("A valid price is required."); return; }
-    setSaving(true);
-    setFormError("");
-
-    const method = editId ? "PATCH" : "POST";
-    const url = editId ? `/api/vendor/products/${editId}` : "/api/vendor/products";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      // imageUrl is left out on purpose: the gallery owns the main photo, and a
-      // stale copy from this form would overwrite it.
-      body: JSON.stringify((({ imageUrl: _ignored, ...rest }) => rest)(form)),
-    });
-
-    const json = await res.json();
-    setSaving(false);
-
-    if (!res.ok) {
-      setFormError(json.error ?? "Save failed.");
-      return;
-    }
-
-    if (editId) {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === editId ? json.product : p))
-      );
-    } else {
-      setProducts((prev) => [json.product, ...prev]);
-    }
-    setShowForm(false);
-    setEditId(null);
-    setNotice("");
-  }
-
-  async function handleDelete(id: number) {
-    if (!window.confirm("Delete this item?")) return;
-    setDeletingId(id);
-    await fetch(`/api/vendor/products/${id}`, { method: "DELETE" });
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    setDeletingId(null);
-  }
-
-  async function togglePublic(p: Product) {
-    const res = await fetch(`/api/vendor/products/${p.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: p.name,
-        category: p.category,
-        description: p.description,
-        price: String(p.price),
-        inventoryCount: String(p.inventory_count),
-        isPublic: !p.is_public,
-        status: p.status,
-      }),
-    });
-    const json = await res.json();
-    if (res.ok) {
-      setProducts((prev) => prev.map((x) => (x.id === p.id ? json.product : x)));
-    }
-  }
-
-  const published = products.filter((p) => p.status === "published" && p.is_public).length;
-  const drafts = products.filter((p) => p.status === "draft").length;
-
-  if (loading) {
+  if (state === "loading") return <main className="flex min-h-screen items-center justify-center font-dm-mono text-sm text-neutral-500">Loading your shop…</main>;
+  if (state === "none" || !me) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="font-dm-mono text-sm text-neutral-500">Loading…</p>
+      <main className="flex min-h-screen items-center justify-center px-6 text-neutral-100">
+        <div className="max-w-md text-center">
+          <h1 className="font-bebas text-4xl tracking-wide">No shop on this account yet</h1>
+          <p className="mt-3 text-sm text-neutral-400">Apply for a NorthEDM Marketplace and this page becomes your shop&apos;s admin: profile, items, orders, payouts and visit counts.</p>
+          <Link href="/vendors/apply" className="mt-6 inline-block rounded-xl bg-[#3AFFD4] px-5 py-2.5 text-sm font-semibold text-black">Apply for a Marketplace →</Link>
+        </div>
       </main>
     );
   }
+  const v = me.vendor;
+  const hidden = !!v.suspended_at || !v.is_public || v.status !== "approved";
+  const storeHref = me.store ? `/${me.store.slug}` : null;
+  const money = (c: number) => formatMoney(c, metrics?.sales.currency ?? v.currency ?? "USD");
+  const maxDay = Math.max(1, ...(metrics?.views.by_day.map((d) => d.views) ?? [1]));
 
   return (
-    <main className="min-h-screen text-neutral-100">
-      {/* Header */}
-      <div className="border-b border-white/10 bg-neutral-950/90">
-        <div className="mx-auto max-w-5xl px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-[#3AFFD4]">
-                Vendor Dashboard
-              </p>
-              <h1 className="mt-1 font-bebas text-4xl tracking-wide">
-                {vendorName ?? "My Vendor"}
-              </h1>
-            </div>
-            <button
-              onClick={openAdd}
-              className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
-            >
-              + Add Product
-            </button>
+    <main className="min-h-screen px-6 py-14 text-neutral-100">
+      <div className="mx-auto max-w-4xl">
+        <BackBar crumbs={[{ label: "Marketplace", href: "/marketplace" }]} fallback="/marketplace" />
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-dm-mono text-xs uppercase tracking-[0.3em]" style={{ color: accent }}>My Shop · admin</p>
+            <h1 className="mt-2 font-bebas text-5xl tracking-wide">{v.name}</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              {hidden ? "Not visible to the public yet" : "Live on the marketplace"} · {me.products.live} of {me.products.total} item{me.products.total === 1 ? "" : "s"} published
+              {me.store ? ` · store ${me.store.active && me.store.billing_status === "active" ? "open" : "draft"}` : ""}{me.festdash ? " · on FestDash" : ""}
+            </p>
           </div>
-
-          {/* Stats */}
-          <div className="mt-4 flex flex-wrap gap-6 text-sm">
-            <div>
-              <span className="font-dm-mono font-semibold text-[#E8FF47]">{products.length}</span>
-              <span className="ml-2 text-neutral-400">total products</span>
-            </div>
-            <div>
-              <span className="font-dm-mono font-semibold text-[#3AFFD4]">{published}</span>
-              <span className="ml-2 text-neutral-400">live</span>
-            </div>
-            <div>
-              <span className="font-dm-mono font-semibold text-neutral-500">{drafts}</span>
-              <span className="ml-2 text-neutral-400">drafts</span>
-            </div>
-            <Link
-              href={`/marketplace`}
-              className="font-dm-mono text-xs uppercase tracking-widest text-neutral-600 hover:text-neutral-300 transition"
-            >
-              View public listing →
-            </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/vendor/dashboard" className="rounded-xl px-4 py-2 text-sm font-semibold text-black" style={{ background: accent }}>{me.products.total === 0 ? "Add items" : "Inventory"} →</Link>
+            <Link href={`/marketplace/${v.id}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-200 hover:bg-white/5">Market page →</Link>
+            {storeHref && <Link href={storeHref} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-200 hover:bg-white/5">Storefront →</Link>}
           </div>
         </div>
-      </div>
 
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        {/* Add / Edit form */}
-        {showForm && (
-          <div className="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-bebas text-2xl tracking-wide">
-                {editId ? "Edit Product" : "New Product"}
-              </h2>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-neutral-500 hover:text-white transition"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="space-y-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                    Product Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. Everything Balm 4oz"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                    Category
-                  </label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-neutral-900 px-4 py-3 text-sm text-neutral-100 focus:outline-none"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                    Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    required
-                    value={form.price}
-                    onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                    placeholder="14.99"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                    Stock / Inventory
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.inventoryCount}
-                    onChange={(e) => setForm((f) => ({ ...f, inventoryCount: e.target.value }))}
-                    placeholder="50"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Describe your product…"
-                  className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
-                />
-              </div>
-
-              {/* Photos — saved the moment they're added */}
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                <GalleryManager productId={editId} ensureProductId={ensureSaved} onChanged={() => loadProducts()} />
-                {notice && <p className="mt-2 text-sm text-[#3AFFD4]">{notice}</p>}
-              </div>
-
-              {/* Status + Visibility */}
-              <div className="flex flex-wrap items-center gap-6">
-                <div>
-                  <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                    Status
-                  </label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                    className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-2.5 text-sm text-neutral-100 focus:outline-none"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                  </select>
-                </div>
-
-                <label className="flex cursor-pointer items-center gap-3 pt-5">
-                  <div
-                    onClick={() => setForm((f) => ({ ...f, isPublic: !f.isPublic }))}
-                    className={`relative h-6 w-11 rounded-full transition-colors ${
-                      form.isPublic ? "bg-[#3AFFD4]" : "bg-white/10"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
-                        form.isPublic ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </div>
-                  <span className="text-sm text-neutral-300">
-                    {form.isPublic ? "Publicly visible" : "Hidden from marketplace"}
-                  </span>
-                </label>
-              </div>
-
-              {formError && (
-                <p className="rounded-xl border border-[#FF5C3A]/20 bg-[#FF5C3A]/5 px-4 py-2.5 text-sm text-[#FF5C3A]">
-                  {formError}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-neutral-400 transition hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
-                >
-                  {saving ? "Saving…" : editId ? "Save Changes" : "Add Product"}
-                </button>
-              </div>
-            </form>
+        {/* Metrics */}
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Visitors · last {metrics?.days ?? 30} days</p>
+            <p className="text-[11px] text-neutral-600">Counts only. Who visited is never shown.</p>
           </div>
-        )}
-
-        {/* Product list */}
-        {products.length === 0 && !showForm ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] py-16 text-center">
-            <p className="text-3xl mb-3">🌿</p>
-            <p className="text-neutral-400">No products yet.</p>
-            <button
-              onClick={openAdd}
-              className="mt-5 rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90"
-            >
-              Add your first product
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {products.map((p) => (
-              <div
-                key={p.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-              >
-                <div className="flex flex-wrap items-start gap-4">
-                  {/* Image */}
-                  <div className="w-16 shrink-0 overflow-hidden rounded-xl"><ProductThumb src={p.image_url} alt={p.name} /></div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">{p.name}</h3>
-                      <span
-                        className={`rounded-full px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest ${
-                          p.status === "published"
-                            ? "bg-[#3AFFD4]/10 text-[#3AFFD4]"
-                            : "bg-white/5 text-neutral-500"
-                        }`}
-                      >
-                        {p.status}
-                      </span>
-                      {!p.is_public && (
-                        <span className="rounded-full bg-[#FF5C3A]/10 px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest text-[#FF5C3A]">
-                          hidden
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-neutral-500">{p.category}</p>
-                    {p.description && (
-                      <p className="mt-2 text-sm text-neutral-400 line-clamp-2">{p.description}</p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-3 font-dm-mono text-xs text-neutral-500">
-                      <span>${p.price}</span>
-                      <span>stock: {p.inventory_count}</span>
-                    </div>
-                    {!p.image_url ? (
-                      <p className="mt-1 font-dm-mono text-[11px] text-[#FFC93C]">No photo yet</p>
-                    ) : isUndisplayableImage(p.image_url.split("?")[0], "") ? (
-                      <p className="mt-1 font-dm-mono text-[11px] text-orange-300">Main photo is iPhone format — most phones can&apos;t show it. Edit to replace it.</p>
-                    ) : null}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex shrink-0 flex-wrap items-start gap-3">
-                    <button
-                      onClick={() => togglePublic(p)}
-                      className={`rounded-lg border px-3 py-1.5 font-dm-mono text-xs transition ${
-                        p.is_public
-                          ? "border-[#3AFFD4]/20 text-[#3AFFD4] hover:bg-[#3AFFD4]/10"
-                          : "border-white/10 text-neutral-500 hover:text-white"
-                      }`}
-                    >
-                      {p.is_public ? "Public" : "Hidden"}
-                    </button>
-                    <button
-                      onClick={() => openEdit(p)}
-                      className="rounded-lg border border-white/10 px-3 py-1.5 font-dm-mono text-xs text-neutral-400 transition hover:text-white"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      disabled={deletingId === p.id}
-                      className="rounded-lg border border-[#FF5C3A]/20 px-3 py-1.5 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10 disabled:opacity-50"
-                    >
-                      {deletingId === p.id ? "…" : "Delete"}
-                    </button>
-                  </div>
+          {!metrics ? <p className="mt-3 text-sm text-neutral-500">Loading…</p> : (
+            <>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[["Views · 7 days", metrics.views.last7], ["Views · 30 days", metrics.views.last30], ["Visitors · 7 days", metrics.views.visitors7], ["Visitors · 30 days", metrics.views.visitors30]].map(([l, n]) => (
+                  <div key={String(l)} className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">{l}</p><p className="mt-1 font-bebas text-3xl" style={{ color: accent }}>{n}</p></div>
+                ))}
+              </div>
+              <div className="mt-4 flex h-16 items-end gap-[2px]" aria-label="Views per day">
+                {metrics.views.by_day.map((d) => (
+                  <div key={d.day} title={`${d.day}: ${d.views}`} className="flex-1 rounded-t-sm bg-white/15" style={{ height: `${Math.max(2, (d.views / maxDay) * 100)}%`, background: d.views ? accent : undefined, opacity: d.views ? 0.85 : 1 }} />
+                ))}
+              </div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Most viewed items</p>
+                  {metrics.top_items.length === 0 ? <p className="mt-1 text-sm text-neutral-600">No item views yet.</p> : metrics.top_items.map((i) => (
+                    <div key={i.id} className="mt-1 flex justify-between text-sm"><Link href={`/marketplace/${v.id}/item/${i.id}`} className="truncate text-neutral-200 hover:underline">{i.name}</Link><span className="ml-3 font-dm-mono text-neutral-400">{i.views}</span></div>
+                  ))}
+                </div>
+                <div>
+                  <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Where visitors came from</p>
+                  {metrics.top_referrers.length === 0 ? <p className="mt-1 text-sm text-neutral-600">Direct and in-site only so far.</p> : metrics.top_referrers.map((r) => (
+                    <div key={r.host} className="mt-1 flex justify-between text-sm"><span className="truncate text-neutral-200">{r.host}</span><span className="ml-3 font-dm-mono text-neutral-400">{r.views}</span></div>
+                  ))}
+                </div>
+                <div>
+                  <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Sales · last {metrics.days} days</p>
+                  {me.festdash && <p className="mt-1 text-sm text-neutral-200">FestDash: {metrics.sales.festdash.delivered} delivered · {metrics.sales.festdash.open} open · <span style={{ color: accent }}>{money(metrics.sales.festdash.revenue_cents)}</span></p>}
+                  <p className="mt-1 text-sm text-neutral-200">Store: {metrics.sales.store.orders} order{metrics.sales.store.orders === 1 ? "" : "s"} · <span style={{ color: accent }}>{money(metrics.sales.store.revenue_cents)}</span></p>
+                  <p className="mt-1 text-[11px] text-neutral-600">Your items only, before fees.</p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </>
+          )}
+        </section>
 
-        <PhotoLibrary products={products} onChanged={loadProducts} version={photoVersion} />
+        {/* Shop controls */}
+        <section className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Card title="Inventory" body={`${me.products.total} item${me.products.total === 1 ? "" : "s"}, ${me.products.live} published. Add photos, prices, stock and specifications.`} href="/vendor/dashboard" cta={me.products.total === 0 ? "Add your first item" : "Manage items"} accent={accent} />
+          {me.store ? (
+            <Card title={`Store · /${me.store.slug}`} body={me.store.is_operator ? `Your storefront is ${me.store.active && me.store.billing_status === "active" ? "open" : "in draft"}. Theme, logo, orders, hand-overs and billing live on the manage page.` : `You sell in ${me.store.name}. Its operator manages the storefront.`} href={me.store.is_operator ? `/${me.store.slug}/manage` : `/${me.store.slug}`} cta={me.store.is_operator ? "Manage store" : "Open store"} accent={accent} />
+          ) : (
+            <Card title="Store" body="No storefront yet. A store gives you your own page at northedm.com/your-name with checkout. Ask the owner to set one up, or buy the bundle on FestDash." href="/festdash/vendor-dashboard" cta="See plans" accent={accent} />
+          )}
+          {me.festdash && <Card title="FestDash orders" body="Live orders, pickups and deliveries, your listing fee and runner hand-overs." href="/festdash/vendor-dashboard" cta="Open FestDash dashboard" accent={accent} />}
+          <Card title="Market page" body="Your public listing on the marketplace: name, category, description, contact and website. Edit it below or on the page itself." href={`/marketplace/${v.id}`} cta="View market page" accent={accent} />
+        </section>
+
+        {/* Profile */}
+        <section className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p className="font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Shop profile</p>
+          <p className="mt-1 text-sm text-neutral-400">What customers read about you. Your personal details stay on your account profile, not here.</p>
+          <div className="mt-3">
+            <VendorEditForm vendorId={v.id} initial={{ name: v.name ?? "", description: v.description ?? "", category: v.category ?? "", contact: v.contact ?? "", email: v.business_email ?? "", website: v.website ?? "", phone: v.phone ?? "", showPhone: v.show_phone ?? false }} />
+          </div>
+          <div className="mt-5">
+            <p className="font-dm-mono text-[10px] uppercase tracking-widest text-neutral-500">Accent colour</p>
+            <p className="mb-2 text-xs text-neutral-500">Used for your name and prices on your market page.</p>
+            <AccentPicker value={accent} onChange={saveAccent} />
+            {accentMsg && <p className="mt-1 text-xs text-neutral-400">{accentMsg}</p>}
+          </div>
+        </section>
+
+        {/* Payouts */}
+        <div className="mt-4"><PayoutsCard returnTo="/vendor" /></div>
       </div>
     </main>
+  );
+}
+
+function Card({ title, body, href, cta, accent }: { title: string; body: string; href: string; cta: string; accent: string }) {
+  return (
+    <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+      <p className="font-semibold text-white">{title}</p>
+      <p className="mt-1 flex-1 text-sm text-neutral-400">{body}</p>
+      <Link href={href} className="mt-3 inline-block self-start rounded-xl border px-4 py-2 text-sm font-medium transition hover:bg-white/5" style={{ borderColor: `${accent}66`, color: accent }}>{cta} →</Link>
+    </div>
   );
 }
