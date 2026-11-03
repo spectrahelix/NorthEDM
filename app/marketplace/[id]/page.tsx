@@ -193,13 +193,27 @@ export default async function VendorDetailPage({
         </div>
 
         <section className="mt-10">
-          <div className="mb-6">
-            <p className="text-sm uppercase tracking-[0.3em]" style={{ color: accent }}>
-              Inventory
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold" style={display}>Available Products</h2>
-            {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-3" />}
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em]" style={{ color: accent }}>
+                Inventory
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold" style={display}>Available Products</h2>
+              {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-3" />}
+            </div>
+            {canEdit && (
+              <Link href="/vendor/dashboard" className="rounded-xl px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>
+                {products.length === 0 ? "Add items" : "Add / edit items"} →
+              </Link>
+            )}
           </div>
+          {canEdit && products.length === 0 && (
+            <div className="mb-6 rounded-2xl border border-white/15 bg-black/30 p-6">
+              <p className="font-semibold text-white">Your market is empty.</p>
+              <p className="mt-1 text-sm text-neutral-400">Only you see this note. Add your first item in your inventory dashboard; a short guide there points at each field. Shoppers see &ldquo;no products yet&rdquo; until something is published.</p>
+              <Link href="/vendor/dashboard" className="mt-4 inline-block rounded-xl px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>Add your first item →</Link>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.length > 0 ? (

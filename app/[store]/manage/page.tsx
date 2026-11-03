@@ -63,7 +63,10 @@ export default function StoreManagePage() {
             <p className="font-dm-mono text-xs uppercase tracking-[0.3em]" style={{ color: store?.accent_color }}>Store operator</p>
             <h1 className="mt-2 font-bebas text-5xl tracking-wide">Manage {store?.name}</h1>
           </div>
-          <Link href={`/${slug}`} className="shrink-0 rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">View storefront →</Link>
+          <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row">
+            <Link href="/vendor/dashboard" className="rounded-xl bg-[#00D4FF] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90">Add items →</Link>
+            <Link href={`/${slug}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">View storefront →</Link>
+          </div>
         </div>
 
         {/* Monthly store subscription — drives whether the store can take orders */}

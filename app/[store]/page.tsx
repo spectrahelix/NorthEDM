@@ -65,7 +65,9 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
   // The shop's identity on its own page: theme background + display font,
   // unless the operator or this visitor has switched custom fonts off.
-  const [viewerFonts, isAdmin] = await Promise.all([viewerWantsShopFonts(), viewerIsSiteAdmin()]);
+  const [viewerFonts, isAdmin, { data: { user: viewer } }] = await Promise.all([viewerWantsShopFonts(), viewerIsSiteAdmin(), supabase.auth.getUser()]);
+  // The operator (or an admin) gets the way in to stock and manage the store from its own page.
+  const canStock = isAdmin || (!!viewer && viewer.id === (storeData.owner_user_id as string | null));
   const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; accent_color: string };
   // A NorthEDM admin can preview other looks live (AdminLookPill); the preview
   // cookie is ignored for everyone else, so it never changes what they see.
@@ -143,6 +145,14 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             {vendors.length} vendor{vendors.length === 1 ? "" : "s"} · {products.length} product{products.length === 1 ? "" : "s"}
           </p>
           {brand.hasFont && <ShopFontToggle enabled={viewerFonts} className="mt-5" />}
+          {canStock && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link href="/vendor/dashboard" className="rounded-xl px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>
+                {products.length === 0 ? "Add items" : "Add / edit items"} →
+              </Link>
+              <Link href={`/${store.slug}/manage`} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-neutral-200 transition hover:bg-white/5">Manage store →</Link>
+            </div>
+          )}
           {isAdmin && (
             <div>
               <AdminLookPill slug={store.slug} savedTheme={saved.theme} savedFont={saved.font} theme={look.theme} font={look.font} />
@@ -173,9 +183,17 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
 
         <h2 className={`mb-4 text-3xl tracking-wide ${display ? "" : "font-bebas"}`} style={display}>Products</h2>
         {products.length === 0 ? (
-          <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-neutral-500">
-            No products in this store yet.
-          </p>
+          canStock ? (
+            <div className="rounded-2xl border border-white/15 bg-black/30 p-6">
+              <p className="font-semibold text-white">Your store is empty.</p>
+              <p className="mt-1 text-sm text-neutral-400">Only you see this note. Items you add in your inventory dashboard and publish appear here automatically; a short guide there points at each field.</p>
+              <Link href="/vendor/dashboard" className="mt-4 inline-block rounded-xl px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>Add your first item →</Link>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-neutral-500">
+              No products in this store yet.
+            </p>
+          )
         ) : (
           <StoreCart
             slug={store.slug}
