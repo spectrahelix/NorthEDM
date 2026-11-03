@@ -34,6 +34,9 @@ alter table public.user_profiles
   add column if not exists is_site_moderator boolean not null default false,
   add column if not exists is_forum_moderator boolean not null default false,
   add column if not exists rank_locked boolean not null default false;
+-- user_profiles uses column-level grants: a new column is unreadable by
+-- ordinary sessions (and any query naming it fails) until granted. Public.
+grant select (is_site_moderator, is_forum_moderator, rank_locked) on public.user_profiles to anon, authenticated;
 
 -- End users can't set these on themselves (same guard as the other tag flags).
 create or replace function public.protect_role_flags()
