@@ -5,7 +5,7 @@ import { formatMoney } from "@/utils/money";
 type Status = {
   not_applicable?: boolean; active?: boolean; status?: string | null; current_period_end?: string | null; active_kind?: string | null;
   amount_cents?: number; recurring_cents?: number; list_cents?: number; discounted?: boolean; discount_label?: string | null; invalid_code?: boolean; has_customer?: boolean;
-  bundle_available?: boolean; bundle_cents?: number; single_cents?: number;
+  bundle_available?: boolean; bundle_cents?: number; single_cents?: number; wallet_rail?: boolean; coordinator_paid_through?: string | null;
 };
 
 /**
@@ -30,6 +30,8 @@ export function BillingCard({ kind, storeSlug, what, returnPath }: { kind: "fest
   }
   useEffect(() => { load(""); fetch("/api/vouchers/mine").then((r) => (r.ok ? r.json() : null)).then((j) => setMine(j?.vouchers ?? [])).catch(() => {}); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [kind, storeSlug]);
   if (!s || s.not_applicable) return null;
+  // A wallet-rail shop whose coordinator has logged its fee is paid up; the card is an alternative, not a nag.
+  const paidByCoordinator = !s.active && !!s.coordinator_paid_through && new Date(s.coordinator_paid_through) >= new Date(new Date().toDateString());
 
   async function apply() {
     setErr("");
@@ -50,12 +52,15 @@ export function BillingCard({ kind, storeSlug, what, returnPath }: { kind: "fest
   const bundleFirst = applied && s.bundle_cents != null && s.list_cents === s.bundle_cents ? s.amount_cents : null;
 
   return (
-    <div className={`mb-4 rounded-2xl border px-5 py-4 ${s.active ? "border-green-500/30 bg-green-950/20" : "border-orange-500/30 bg-orange-950/20"}`}>
+    <div className={`mb-4 rounded-2xl border px-5 py-4 ${s.active || paidByCoordinator ? "border-green-500/30 bg-green-950/20" : "border-orange-500/30 bg-orange-950/20"}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className={`font-semibold ${s.active ? "text-green-300" : "text-orange-300"}`}>
-            {s.active ? `✓ ${viaBundle ? "FestDash + Store bundle" : what} active` : `${what} — ${price}/month`}
+          <p className={`font-semibold ${s.active || paidByCoordinator ? "text-green-300" : "text-orange-300"}`}>
+            {s.active ? `✓ ${viaBundle ? "FestDash + Store bundle" : what} active` : paidByCoordinator ? `✓ ${what} paid through your coordinator` : `${what} — ${price}/month`}
           </p>
+          {s.wallet_rail && !s.active && (
+            <p className="text-sm text-neutral-400">{paidByCoordinator ? `Paid up to ${new Date(s.coordinator_paid_through!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}. ` : ""}Pay by card here, or pay your coordinator in dalasi — either works.</p>
+          )}
           <p className="text-sm text-neutral-400">
             {s.active
               ? `Paid through ${through ?? "the current period"}. Renews automatically; manage your card or cancel any time.`

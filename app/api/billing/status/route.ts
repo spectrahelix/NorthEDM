@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { serviceClient } from "@/utils/coordinator";
 import { asKind, isActiveRow, quote } from "@/utils/billing";
 import { isLocalRail } from "@/utils/gambiaPay";
+import { activeSubscription } from "@/utils/coordinator";
 
 // GET ?kind=festdash|store|bundle&storeSlug=&code= → what the dashboard card shows.
 export async function GET(req: Request) {
@@ -17,13 +18,15 @@ export async function GET(req: Request) {
   const vendorId = (prof?.vendor_id as number | null) ?? null;
 
   let filter: { column: "vendor_id" | "store_id"; value: string | number } | null = null;
-  let cardRail = false;
+  // Every shop can pay by card; wallet-rail shops may also pay their coordinator in dalasi.
+  let cardRail = false, walletRail = false;
   if (vendorId) {
     const { data: vendor } = await admin.from("vendors").select("id, coordinator_user_id, currency").eq("id", vendorId).maybeSingle();
     cardRail = !!vendor && !isLocalRail(vendor);
+    walletRail = !!vendor && isLocalRail(vendor);
   }
   if (kind === "festdash" || kind === "bundle") {
-    if (!vendorId || !cardRail) return NextResponse.json({ not_applicable: true });
+    if (!vendorId) return NextResponse.json({ not_applicable: true });
     filter = { column: "vendor_id", value: vendorId };
   } else {
     const slug = url.searchParams.get("storeSlug") ?? "";
@@ -43,6 +46,8 @@ export async function GET(req: Request) {
     active: isActiveRow(row), status: row?.status ?? null, current_period_end: row?.current_period_end ?? null, active_kind: row?.kind ?? null,
     amount_cents: q.amount_cents, recurring_cents: q.recurring_cents, list_cents: q.list_cents, discounted: q.discounted, discount_label: q.discount_label,
     invalid_code: q.invalid_code, has_customer: !!row?.stripe_customer_id,
-    bundle_available: cardRail && !!vendorId, bundle_cents: q.bundle_cents, single_cents: q.single_cents,
+    bundle_available: !!vendorId && (cardRail || walletRail), bundle_cents: q.bundle_cents, single_cents: q.single_cents, wallet_rail: walletRail,
+    // A wallet-rail shop may already be paid up through its coordinator.
+    coordinator_paid_through: walletRail && vendorId ? (await activeSubscription(admin, vendorId))?.period_end ?? null : null,
   });
 }

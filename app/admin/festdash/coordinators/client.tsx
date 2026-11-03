@@ -17,7 +17,8 @@ type LedgerRow = {
   note: string | null; created_at: string; received_at: string | null; received_usd_cents: number | null;
 };
 type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; subscription_fee_cents: number; subscription_coordinator_bps: number; bundle_fee_cents?: number; mint_max_percent_off?: number; mint_max_amount_off_cents?: number };
-type Data = { promoters: Promoter[]; vendors: Vendor[]; ledger: LedgerRow[]; settings: Settings | null };
+type Data = {
+  held_commissions?: Record<string, number>; promoters: Promoter[]; vendors: Vendor[]; ledger: LedgerRow[]; settings: Settings | null };
 
 const input = "rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none";
 const label = "mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500";
@@ -67,6 +68,7 @@ export default function CoordinatorsClient() {
   if (!data) return <main className="flex min-h-screen items-center justify-center"><span className="h-2 w-2 animate-pulse rounded-full bg-orange-400" /></main>;
 
   const coordinators = data.promoters.filter((p) => p.is_coordinator);
+  void coordinators;
   const nameOf = new Map(data.promoters.map((p) => [p.user_id, p.display_name ?? p.user_id.slice(0, 8)]));
   const vendorName = new Map(data.vendors.map((v) => [v.id, v.name ?? `Vendor #${v.id}`]));
   const pendingRemits = data.ledger.filter((r) => r.kind === "remittance" && !r.received_at);
@@ -163,6 +165,25 @@ export default function CoordinatorsClient() {
                       They owe you · {Object.entries(owed[p.user_id]).map(([cur, t]) => `${cur}: share ${formatMoney(t.share, cur)} · sent ${formatMoney(t.sent, cur)} · owed ${formatMoney(t.share - t.sent, cur)}`).join("  |  ")}
                     </p>
                   )}
+                  {p.is_coordinator && (() => {
+                    // Net per currency: what you owe them (card sales + held commissions) minus what they owe you (wallet sales/fees).
+                    const curs = new Set([...Object.keys(youOwe[p.user_id] ?? {}), ...Object.keys(owed[p.user_id] ?? {})]);
+                    const held = data.held_commissions?.[p.user_id] ?? 0;
+                    if (held > 0) curs.add("USD");
+                    const lines = [...curs].map((cur) => {
+                      const theyOwe = (owed[p.user_id]?.[cur]?.share ?? 0) - (owed[p.user_id]?.[cur]?.sent ?? 0);
+                      const youOweThem = (youOwe[p.user_id]?.[cur]?.due ?? 0) - (youOwe[p.user_id]?.[cur]?.paid ?? 0) + (cur === "USD" ? held : 0);
+                      const net = youOweThem - theyOwe;
+                      return { cur, net };
+                    }).filter((l) => l.net !== 0);
+                    if (!lines.length) return null;
+                    return (
+                      <p className="mt-1 rounded-lg bg-white/5 px-2 py-1 font-dm-mono text-[11px] text-white">
+                        Settle net · {lines.map((l) => `${l.cur}: ${l.net > 0 ? `you send ${formatMoney(l.net, l.cur)}` : `they send ${formatMoney(-l.net, l.cur)}`}`).join("  |  ")}
+                        <span className="text-neutral-500"> — one transfer, one direction; held commissions included in USD.</span>
+                      </p>
+                    );
+                  })()}
                   {p.is_coordinator && youOwe[p.user_id] && Object.entries(youOwe[p.user_id]).map(([cur, t]) => (
                     <p key={cur} className="font-dm-mono text-[11px] text-orange-300">
                       You owe them (card sales) · {cur}: due {formatMoney(t.due, cur)} · sent {formatMoney(t.paid, cur)} · <span className="font-semibold">owed {formatMoney(t.due - t.paid, cur)}</span>

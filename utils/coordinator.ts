@@ -82,7 +82,30 @@ export async function activeSubscription(admin: SupabaseClient, vendorId: number
     .order("period_end", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data;
+  if (data) return data;
+  // Since 2026-11-03 a wallet-rail shop may pay its fee by card instead.
+  const { data: stripeRow } = await admin.from("stripe_subscriptions").select("status, current_period_end")
+    .in("kind", ["festdash", "bundle"]).eq("vendor_id", vendorId).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (stripeRow && ["active", "trialing"].includes(stripeRow.status) && (!stripeRow.current_period_end || new Date(stripeRow.current_period_end).getTime() + 3 * 86400000 > Date.now())) {
+    return { id: "stripe", period_start: today, period_end: stripeRow.current_period_end ? String(stripeRow.current_period_end).slice(0, 10) : today };
+  }
+  return null;
+}
+
+/** Wallet-rail vendors among these ids that hold a current period from either source. */
+export async function paidLocalVendorIds(admin: SupabaseClient, vendorIds: number[]): Promise<Set<number>> {
+  const out = new Set<number>();
+  if (!vendorIds.length) return out;
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: periods }, { data: stripeRows }] = await Promise.all([
+    admin.from("vendor_subscriptions").select("vendor_id").eq("kind", "festdash").in("vendor_id", vendorIds).gte("period_end", today),
+    admin.from("stripe_subscriptions").select("vendor_id, status, current_period_end").in("kind", ["festdash", "bundle"]).in("vendor_id", vendorIds),
+  ]);
+  for (const p of periods ?? []) out.add(Number(p.vendor_id));
+  for (const r of stripeRows ?? []) {
+    if (["active", "trialing"].includes(r.status) && (!r.current_period_end || new Date(r.current_period_end).getTime() + 3 * 86400000 > Date.now())) out.add(Number(r.vendor_id));
+  }
+  return out;
 }
 
 /**
