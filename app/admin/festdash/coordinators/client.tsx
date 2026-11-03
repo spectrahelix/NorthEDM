@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatMoney } from "@/utils/money";
+import { BridgeReview } from "@/app/components/festdash/BridgeReview";
 
 type Promoter = {
   id: string; user_id: string; display_name: string | null; is_active: boolean; is_coordinator: boolean; region: string | null;
@@ -147,6 +148,8 @@ export default function CoordinatorsClient() {
             </div>
           )}
         </section>
+
+        <BridgeReview />
 
         {/* Coordinators */}
         <section className={card}>

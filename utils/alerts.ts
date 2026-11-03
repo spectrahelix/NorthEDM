@@ -208,3 +208,14 @@ export async function notifyFeedback(opts: { message: string; category?: string;
   ]);
 }
 
+/** A coordinator submitted their payment-bridge details (business, bank, provider) for review. */
+export async function notifyBridgeSubmitted(opts: { name: string; provider: string }) {
+  const path = "/admin/festdash/coordinators";
+  const reviewUrl = SITE_URL ? `${SITE_URL}${path}` : path;
+  const message = `${opts.name} submitted their payment-bridge details (${opts.provider === "modempay" ? "Modem Pay" : "Waychit"}). Review them under Payment bridge intake.`;
+  await Promise.allSettled([
+    notifyAdminsInApp("bridge_submitted", message, path),
+    emailOwner(`🌉 Payment bridge details from ${opts.name}`, `${message}\n\nReview: ${reviewUrl}`),
+    pushOwner("Payment bridge details submitted", opts.name, reviewUrl),
+  ]);
+}
