@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { canManageInventory } from "@/utils/marketplace";
+import { specsPatch } from "@/utils/specs";
 
 async function getVendorId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number | null> {
   const { data } = await supabase
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
         image_url: body.imageUrl || null,
         is_public: body.isPublic ?? false,
         status: body.status || "draft",
+        ...specsPatch(body),
       },
     ])
     .select()

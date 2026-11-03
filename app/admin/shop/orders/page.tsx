@@ -9,6 +9,7 @@ type Order = {
   id: string; email: string | null; items: OrderItem[];
   total_cents: number; status: string; ship_name: string | null;
   ship_address: Record<string, string> | null; created_at: string;
+  shipping_cents?: number | null; shipping_service?: string | null; shipping_eta?: string | null; ship_country?: string | null; tracking_number?: string | null;
 };
 
 const STATUS = ["pending", "paid", "fulfilled", "cancelled", "refunded"];
@@ -40,6 +41,11 @@ export default function ShopOrdersPage() {
       load();
     });
   }, [supabase, router, load]);
+
+  async function setTracking(id: string, tracking_number: string) {
+    const res = await fetch(`/api/admin/shop/orders/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tracking_number }) });
+    if (res.ok) setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, tracking_number } : o)));
+  }
 
   async function setStatus(id: string, status: string) {
     setBusy(id);
@@ -96,8 +102,18 @@ export default function ShopOrdersPage() {
                 </div>
                 {o.ship_name && (
                   <p className="mt-2 font-dm-mono text-[11px] text-neutral-600">
-                    Ship to: {o.ship_name}{o.ship_address ? ` · ${[o.ship_address.line1, o.ship_address.city, o.ship_address.state, o.ship_address.postal_code].filter(Boolean).join(", ")}` : ""}
+                    Ship to: {o.ship_name}{o.ship_address ? ` · ${[o.ship_address.line1, o.ship_address.city, o.ship_address.state, o.ship_address.postal_code, o.ship_address.country].filter(Boolean).join(", ")}` : ""}
+                    {o.shipping_service ? ` · ${o.shipping_service} ($${((o.shipping_cents ?? 0) / 100).toFixed(2)}${o.shipping_eta ? `, est. ${o.shipping_eta}` : ""})` : ""}
                   </p>
+                )}
+                {o.status !== "pending" && o.status !== "cancelled" && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                    <a href={`/orders/shop/${o.id}/label`} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 px-2.5 py-1 text-[#3AFFD4] hover:bg-white/5">Shipping label</a>
+                    <a href={`/orders/shop/${o.id}/invoice`} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 px-2.5 py-1 text-[#3AFFD4] hover:bg-white/5">Invoice</a>
+                    <a href={`/orders/shop/${o.id}/receipt`} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 px-2.5 py-1 text-[#3AFFD4] hover:bg-white/5">Receipt</a>
+                    <input defaultValue={o.tracking_number ?? ""} placeholder="Tracking number" onBlur={(e) => e.target.value !== (o.tracking_number ?? "") && setTracking(o.id, e.target.value)}
+                      className="w-48 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 font-dm-mono text-xs text-neutral-200 placeholder:text-neutral-600 outline-none" />
+                  </div>
                 )}
               </div>
             ))}

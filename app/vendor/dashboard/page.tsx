@@ -10,8 +10,10 @@ import { useUnsavedDraft } from "@/utils/useUnsavedDraft";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
+import { SpecsEditor, EMPTY_SPECS_FORM, specsFormFrom, specsPayload } from "@/app/components/SpecsEditor";
+import type { SpecsColumns } from "@/utils/specs";
 
-type Product = {
+type Product = Partial<SpecsColumns> & {
   id: number;
   name: string;
   category: string | null;
@@ -33,7 +35,7 @@ type SquareStatus = {
 };
 
 const EMPTY = {
-  name: "", category: "", description: "", price: "", inventoryCount: "", isPublic: true,
+  name: "", category: "", description: "", price: "", inventoryCount: "", isPublic: true, specs: EMPTY_SPECS_FORM,
 };
 
 export default function VendorDashboard() {
@@ -186,6 +188,7 @@ export default function VendorDashboard() {
       name: form.name, category: form.category, description: form.description,
       price: form.price, inventoryCount: form.inventoryCount,
       isPublic: form.isPublic, status: form.isPublic ? "published" : "draft",
+      ...specsPayload(form.specs),
     };
     const res = editingId
       ? await fetch(`/api/vendor/products/${editingId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) })
@@ -202,7 +205,7 @@ export default function VendorDashboard() {
     setForm({
       name: p.name, category: p.category || "", description: p.description || "",
       price: String(p.price ?? ""), inventoryCount: String(p.inventory_count ?? ""),
-      isPublic: p.is_public,
+      isPublic: p.is_public, specs: specsFormFrom(p),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -325,6 +328,7 @@ export default function VendorDashboard() {
           </div>
           <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Description"
             className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
+          <div className="mt-4"><SpecsEditor value={form.specs} onChange={(specs) => setForm({ ...form, specs })} /></div>
           <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
             {/* Photos are saved the moment they're added — they don't wait for the button below. */}
             <GalleryManager productId={editingId} ensureProductId={ensureSaved} onChanged={() => loadProducts()} />

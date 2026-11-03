@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { storeAdminClient } from "@/utils/store";
 import { storeRail } from "@/utils/storeRail";
 import { isWalletMethod, orderRef, walletNumberFor } from "@/utils/gambiaPay";
+import { loadShippingSettings, quoteShipping } from "@/utils/shipping";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -45,7 +46,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const ids = items.map((i) => Number(i.id)).filter(Number.isFinite);
   const { data: products } = await admin
     .from("products")
-    .select("id, vendor_id, name, price, inventory_count, is_public, status")
+    .select("id, vendor_id, name, price, inventory_count, is_public, status, weight_g")
     .in("id", ids);
   const byId = new Map((products ?? []).map((p) => [Number(p.id), p]));
 
@@ -117,6 +118,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ orderId: wo.id, payTo, method, reference: orderRef(wo.id), total_cents: subtotal, currency: rail.currency, coordinator: rail.coordinatorName });
   }
 
+  // Shipping (US card stores): destination + service from the cart, re-quoted
+  // here from the products' weights; paid inside Checkout as a shipping option
+  // and passed to the operator in full at settlement. A Gambian (wallet-rail)
+  // store hands over locally, so it ships nothing and charges no shipping.
+  const country = String(body.country || "US").toUpperCase().slice(0, 2);
+  let ship: { cents: number; name: string; eta: string; eta_days: [number, number]; zone: string; weight_g: number } | null = null;
+  if (!rail) {
+    const settings = await loadShippingSettings(admin);
+    const quote = quoteShipping({ items: orderItems.map((i) => ({ weight_g: byId.get(Number(i.product_id))?.weight_g ?? null, qty: i.qty })), country, rates: settings.rates, handlingCents: settings.handling_cents });
+    const svc = quote.options.find((o) => o.id === body.shippingService) ?? quote.options[0];
+    if (!svc) return NextResponse.json({ error: "This store can't ship to that country yet." }, { status: 400 });
+    ship = { cents: svc.cents, name: svc.name, eta: svc.eta, eta_days: svc.eta_days, zone: quote.zone, weight_g: quote.weight_g };
+  }
+
   const { data: order, error: orderErr } = await admin.from("store_orders").insert({
     store_id: store.id,
     customer_id: user?.id ?? null,
@@ -125,7 +140,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     subtotal_cents: subtotal,
     platform_fee_cents: platformFee,
     operator_fee_cents: operatorFee,
-    total_cents: subtotal,
+    total_cents: subtotal + (ship?.cents ?? 0),
+    ...(ship ? { shipping_cents: ship.cents, ship_country: country, shipping_zone: ship.zone, shipping_service: ship.name, shipping_eta: ship.eta, package_weight_g: ship.weight_g } : {}),
     status: "pending",
     // Card on a wallet-rail store: priced and charged in the shop's currency;
     // the webhook books the split as owed by the owner (collected_by = 'owner').
@@ -141,7 +157,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     line_items: lineItems,
     success_url: `${origin}/${store.slug}?order=${order.id}`,
     cancel_url: `${origin}/${store.slug}`,
-    shipping_address_collection: { allowed_countries: rail ? ["GM", "US", "GB", "SN"] : ["US"] },
+    shipping_address_collection: { allowed_countries: rail ? ["GM", "US", "GB", "SN"] : [country as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry] },
+    ...(ship ? { shipping_options: [{ shipping_rate_data: { type: "fixed_amount" as const, fixed_amount: { amount: ship.cents, currency: "usd" }, display_name: ship.name, delivery_estimate: { minimum: { unit: "day" as const, value: ship.eta_days[0] }, maximum: { unit: "day" as const, value: ship.eta_days[1] } } } }] } : {}),
     customer_email: user?.email ?? undefined,
     metadata: { kind: "store_order", store_order_id: order.id, store_slug: store.slug, hold: rail ? "1" : "0" },
     client_reference_id: order.id,
