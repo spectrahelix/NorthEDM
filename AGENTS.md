@@ -254,7 +254,15 @@ session (admins' sessions included) and the page renders empty:
 
 The service role reads everything. `npm run check` (section 5) fails on a
 `select("*")` against either table unless the receiver is a service-role
-client. Direct inserts into `vendors` are closed too: applications arrive only
+client.
+
+⚠️ **Every new column on `vendors` or `user_profiles` is invisible to
+ordinary sessions until you `grant select (col) ... to anon, authenticated`.**
+Column-level grants mean a new column has no grant at all, and any query that
+names it fails with "permission denied" — the FestDash vendor list went empty
+site-wide for an hour on 2026-11-03 after `pickup_location` shipped without
+one. Put the grant in the same migration as the column (private columns
+excepted), and probe the live REST API with the publishable key afterwards. Direct inserts into `vendors` are closed too: applications arrive only
 through `/api/vendors`, which writes with the service role after its bot
 checks.
 
