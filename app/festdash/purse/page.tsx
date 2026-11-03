@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BackBar } from "@/app/components/BackBar";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, LOCAL_METHODS, orderRef, type LocalMethod } from "@/utils/gambiaPay";
+import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 
 // The purse keeper's console. A regional coordinator collects shop fees and
 // customers' wallet / cash payments, confirms wallet payments here, pays the
@@ -309,6 +310,9 @@ export default function PursePage() {
           </div>
           <button onClick={logSend} disabled={busy === "send" || !send.amount} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400 disabled:opacity-50">{busy === "send" ? "Logging…" : "Log what I sent"}</button>
         </div>
+
+        {/* Payment bridge intake (stage two) */}
+        <BridgeIntake />
 
         {/* Wallets */}
         <div className={card}>

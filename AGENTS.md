@@ -423,7 +423,17 @@ through the site; it records what moved and who confirmed it.** Full design in
   confirm, shop + coordinator shares are paid out locally from the settled
   funds, the owner's share stays in the Gambian account for the bank wire.
   The ledger's data model does not change. The final wire out of the country
-  is a bank operation, not an API — it stays manual.
+  is a bank operation, not an API — it stays manual. **Intake is built
+  (2026-11-03):** the coordinator enters business, bank and provider details
+  in the **Payment bridge** card on /festdash/purse (`BridgeIntake`,
+  `/api/festdash/purse/bridge`), saves as they go and presses *Submit to
+  NorthEDM* (owner alerted); the owner reviews them under **Payment bridge
+  intake** on /admin/festdash/coordinators (`BridgeReview`,
+  `/api/festdash/admin/bridge`) and sets draft → submitted → verified → live.
+  Table `coordinator_bridge`: no end-user grant at all, service role only;
+  API keys, webhook secret, account number and TIN leave the server masked
+  to their last four characters. Status *live* is a label until the provider
+  integration is written.
 - **Gee's two-day grace (owner's instruction, 2026-11-03).** Gee keeps 100% of
   his own shop's sales for two days — through **2026-11-05** — while his Wave
   number is the only rail. The ledger still books the normal 90/5/5 on those
