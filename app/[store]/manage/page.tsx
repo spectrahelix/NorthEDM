@@ -64,6 +64,7 @@ export default function StoreManagePage() {
             <h1 className="mt-2 font-bebas text-5xl tracking-wide">Manage {store?.name}</h1>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row">
+            <Link href="/vendor" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">My Shop admin</Link>
             <Link href="/vendor/dashboard" className="rounded-xl bg-[#00D4FF] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90">Add items →</Link>
             <Link href={`/${slug}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5">View storefront →</Link>
           </div>
