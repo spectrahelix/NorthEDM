@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserProfile } from "@/utils/supabase/user-profiles";
 import { RankBadge } from "@/app/components/RankBadge";
 import { getRoleColor } from "@/app/components/roleColors";
-import { AvatarBorder } from "@/app/components/AvatarBorder";
+import { ProfileHeader } from "@/app/components/ProfileHeader";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
 import { ProfileCTAs } from "@/app/components/ProfileCTAs";
 import { profileTags, currentShow } from "@/utils/supabase/user-profiles";
@@ -125,7 +125,6 @@ export default async function ProfilePage({
   }
 
   const roleColor = getRoleColor(profile.role);
-  const initials = profile.display_name.slice(0, 2).toUpperCase() || "??";
 
   const bannerGradient = `linear-gradient(135deg, ${roleColor}22 0%, transparent 60%)`;
 
@@ -152,60 +151,35 @@ export default async function ProfilePage({
       />
 
       <div className="mx-auto max-w-3xl px-6">
-        {/* Avatar + header */}
-        <div className="-mt-14 mb-6 flex items-end justify-between">
-          <AvatarBorder border={profile.avatar_border} size={88}>
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.display_name}
-                className="h-22 w-22 rounded-full object-cover"
-                style={{ width: 88, height: 88 }}
-              />
-            ) : (
-              <div
-                className="flex items-center justify-center rounded-full bg-neutral-800 font-bebas text-3xl tracking-wide"
-                style={{
-                  width: 88,
-                  height: 88,
-                  color: roleColor,
-                  border: `2px solid ${roleColor}30`,
-                }}
-              >
-                {initials}
-              </div>
-            )}
-          </AvatarBorder>
-
-          <div className="flex gap-2 pb-2">
-            {isOwn ? (
-              <Link
-                href="/profile/edit"
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"
-              >
-                Edit Profile
-              </Link>
-            ) : currentUser ? (
-              <Link
-                href={`/messages?to=${id}`}
-                className="rounded-xl bg-[#3AFFD4]/10 px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/20"
-              >
-                Send Message
-              </Link>
-            ) : (
-              <Link
-                href="/signup"
-                className="rounded-xl bg-[#3AFFD4]/10 px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/20"
-              >
-                Send Message
-              </Link>
-            )}
-          </div>
+        {/* Header — same component as the edit page */}
+        <div className="-mt-12 mb-6">
+          <ProfileHeader
+            avatarUrl={profile.avatar_url}
+            avatarBorder={profile.avatar_border}
+            displayName={profile.display_name}
+            role={profile.role}
+            tags={profileTags(profile)}
+            username={profile.username ?? null}
+            accent={roleColor}
+            meta={
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-dm-mono text-xs text-neutral-500">
+                {profile.pronouns && <span>{profile.pronouns}</span>}
+                {profile.home_city && <span>📍 {profile.home_city}</span>}
+                <span>Member since {memberSince(profile.created_at)}</span>
+              </span>
+            }
+            actions={
+              isOwn ? (
+                <Link href="/profile/edit" className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white">Edit profile</Link>
+              ) : (
+                <Link href={currentUser ? `/messages?to=${id}` : "/signup"} className="rounded-xl bg-[#3AFFD4]/10 px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/20">Send message</Link>
+              )
+            }
+          />
         </div>
 
-        {/* Name + bio */}
+        {/* Bio */}
         <div className="mb-6">
-          <RankBadge role={profile.role} name={profile.display_name} size="lg" tags={profileTags(profile)} />
           {isArtisan && profile.stage_name && (
             <p className="mt-1 font-bebas text-2xl tracking-wide" style={{ color: "#FFC93C" }}>
               {profile.stage_name}

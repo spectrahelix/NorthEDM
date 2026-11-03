@@ -2,13 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import {
-  AvatarBorder,
-  BORDER_OPTIONS,
-  BorderPreview,
-  type BorderKey,
-} from "@/app/components/AvatarBorder";
-import { RankBadge } from "@/app/components/RankBadge";
+import { BORDER_OPTIONS, BorderPreview, type BorderKey } from "@/app/components/AvatarBorder";
+import { ProfileHeader } from "@/app/components/ProfileHeader";
 import { PROFILE_COLUMNS, profileTags, type UserProfile } from "@/utils/supabase/user-profiles";
 import { TAG_CONFIG, type TagKey } from "@/app/components/roleColors";
 import { VendorEditor } from "./VendorEditor";
@@ -171,68 +166,44 @@ export default function EditProfilePage() {
     );
   }
 
-  const initials = displayName.slice(0, 2).toUpperCase() || "??";
-
   return (
     <main className="min-h-screen text-neutral-100">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <p className="mb-2 font-dm-mono text-sm uppercase tracking-[0.3em] text-[#3AFFD4]">
           Profile
         </p>
-        <h1 className="mb-2 font-bebas text-5xl tracking-wide">Edit Profile</h1>
-        <p className="mb-8 text-sm text-neutral-500">
-          Signed in as <span className="text-neutral-300">{accountEmail ?? "…"}</span>
-        </p>
+        <h1 className="mb-6 font-bebas text-5xl tracking-wide">Edit Profile</h1>
 
-        {/* Avatar */}
-        <div className="mb-8 flex items-center gap-6">
-          <AvatarBorder border={avatarBorder} size={80}>
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Avatar"
-                className="rounded-full object-cover"
-                style={{ width: 80, height: 80 }}
-              />
-            ) : (
-              <div
-                className="flex items-center justify-center rounded-full bg-neutral-800 font-bebas text-2xl tracking-wide text-[#3AFFD4]"
-                style={{ width: 80, height: 80 }}
-              >
-                {initials}
-              </div>
-            )}
-          </AvatarBorder>
-          <div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 disabled:opacity-50"
-            >
-              {uploading ? "Uploading…" : "Change Avatar"}
-            </button>
-            <button
-              onClick={() => router.push("/avatar/builder")}
-              className="ml-2 rounded-xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.06] px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/10"
-            >
-              Build Avatar →
-            </button>
-            <p className="mt-1.5 font-dm-mono text-xs text-neutral-600">
-              JPG, PNG, WEBP · max 5MB
-            </p>
-            {profile && (
-              <div className="mt-2">
-                <RankBadge role={profile.role} name={displayName || "Your Name"} tags={profileTags(profile)} />
-              </div>
-            )}
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={ACCEPT_WEB_IMAGES}
-            className="hidden"
-            onChange={handleAvatarUpload}
+        {/* Header — same component as the public profile */}
+        <div className="mb-8">
+          <ProfileHeader
+            avatarUrl={avatarUrl}
+            avatarBorder={avatarBorder}
+            displayName={displayName || "Your Name"}
+            role={profile?.role ?? "drifter"}
+            tags={profile ? profileTags(profile) : []}
+            username={profile?.username ?? null}
+            meta={<span className="font-dm-mono text-xs text-neutral-500">Signed in as {accountEmail ?? "…"}</span>}
+            actions={
+              <>
+                <button
+                  onClick={() => router.push("/avatar/builder")}
+                  className="rounded-xl border border-[#3AFFD4]/30 bg-[#3AFFD4]/[0.06] px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/10"
+                >
+                  Build avatar →
+                </button>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 disabled:opacity-50"
+                >
+                  {uploading ? "Uploading…" : "Upload a photo"}
+                </button>
+                <span className="self-center font-dm-mono text-[11px] text-neutral-600">JPG, PNG, WEBP · max 5MB</span>
+              </>
+            }
           />
+          <input ref={fileRef} type="file" accept={ACCEPT_WEB_IMAGES} className="hidden" onChange={handleAvatarUpload} />
         </div>
 
         <div className="space-y-5">
