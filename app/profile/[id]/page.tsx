@@ -190,13 +190,8 @@ export default async function ProfilePage({
               )}
             </p>
           )}
+          {/* City and pronouns live in the header now; only the website link stays here. */}
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-            {profile.home_city && (
-              <p className="font-dm-mono text-sm text-neutral-500">📍 {profile.home_city}</p>
-            )}
-            {profile.pronouns && (
-              <p className="font-dm-mono text-sm text-neutral-600">{profile.pronouns}</p>
-            )}
             {profile.website && (
               <a
                 href={profile.website}
