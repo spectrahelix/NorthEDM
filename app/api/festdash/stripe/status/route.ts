@@ -36,10 +36,12 @@ export async function GET() {
   }
 
   // The platform's share, so the dashboard quotes the live number, not a constant.
-  const platform_bps = platformShareBps(await loadSplitSettings(admin));
+  const splits = await loadSplitSettings(admin);
+  const platform_bps = platformShareBps(splits, true); // delivered orders
+  const pickup_bps = platformShareBps(splits, false);
 
   if (!vendor.stripe_account_id) {
-    return NextResponse.json({ connected: false, onboarded: false, platform_bps });
+    return NextResponse.json({ connected: false, onboarded: false, platform_bps, pickup_bps });
   }
 
   const stripe = getStripe();
@@ -52,5 +54,6 @@ export async function GET() {
     charges_enabled: !!acct.charges_enabled,
     details_submitted: !!acct.details_submitted,
     platform_bps,
+    pickup_bps,
   });
 }

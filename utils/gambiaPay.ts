@@ -58,6 +58,8 @@ export function orderRef(orderId: string): string {
 export type SplitSettings = {
   sale_owner_bps: number;
   sale_coordinator_bps: number;
+  /** Extra platform share on FestDash DELIVERY orders (the network pays for delivery). */
+  delivery_extra_bps?: number;
   subscription_fee_cents: number;
   subscription_coordinator_bps: number;
   bundle_fee_cents?: number;
@@ -67,28 +69,32 @@ export type SplitSettings = {
 export const DEFAULT_SPLITS: SplitSettings = {
   sale_owner_bps: 1000, // the platform's whole share of a sale; the shop keeps the rest
   sale_coordinator_bps: 500, // the promoter's part OF that share (never on top of it)
+  delivery_extra_bps: 1000, // FestDash delivery orders: shop keeps 80% instead of 90%
   subscription_fee_cents: 3000,
   subscription_coordinator_bps: 1000,
 };
 
 /**
- * A sale. The shop ALWAYS keeps the same share (100% − sale_owner_bps, 90% by
- * default) whether or not a promoter signed it up. The platform's share is
- * split between NorthEDM and the promoter who referred the shop
+ * A sale. The shop keeps the same share whether or not a promoter signed it
+ * up: 100% − sale_owner_bps (90%) on store, marketplace and FestDash PICKUP
+ * sales; a FestDash DELIVERY order adds delivery_extra_bps on top (shop keeps
+ * 80%) because the network pays for delivery. The platform's share is split
+ * between NorthEDM and the promoter who referred the shop
  * (sale_coordinator_bps of the sale, out of the platform's part — never on
  * top of it); with no promoter NorthEDM keeps the whole share.
- * Owner's rule, 2026-11-03: a shop must not earn less for having been referred.
+ * Owner's rules, 2026-11-03.
  */
-export function splitSale(totalCents: number, s: SplitSettings, hasCoordinator = true) {
-  const platform = Math.round((totalCents * s.sale_owner_bps) / 10000);
+export function splitSale(totalCents: number, s: SplitSettings, hasCoordinator = true, delivery = false) {
+  const platform = Math.round((totalCents * platformShareBps(s, delivery)) / 10000);
   const coordinator = hasCoordinator ? Math.min(platform, Math.round((totalCents * s.sale_coordinator_bps) / 10000)) : 0;
   return { owner: platform - coordinator, coordinator, shop: totalCents - platform };
 }
 /** The platform's total share of a sale in basis points — what the shop does
  *  NOT keep. On a card order this is the Stripe application fee; on a wallet
- *  sale it is what the purse keeper holds back. The promoter is paid out of it. */
-export function platformShareBps(s: SplitSettings): number {
-  return s.sale_owner_bps;
+ *  sale it is what the purse keeper holds back. The promoter is paid out of it.
+ *  `delivery` = a FestDash order a runner delivers (adds delivery_extra_bps). */
+export function platformShareBps(s: SplitSettings, delivery = false): number {
+  return s.sale_owner_bps + (delivery ? (s.delivery_extra_bps ?? 1000) : 0);
 }
 
 /**

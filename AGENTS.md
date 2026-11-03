@@ -379,8 +379,11 @@ through the site; it records what moved and who confirmed it.** Full design in
   (`paid_cash`) when the delivery code is entered. Both book a `sale` row in
   `coordinator_ledger` with the split; the booking is idempotent per order.
 - **Splits are settings, not code**: `coordinator_program_settings`. Since
-  2026-11-03 (owner's rule): **every shop keeps 90% of a sale, referred or
-  not**. `sale_owner_bps` (1000) is the platform's whole share; the promoter /
+  2026-11-03 (owner's rule): **every shop keeps 90% of a store, marketplace
+  or FestDash PICKUP sale, referred or not; a FestDash order a runner delivers
+  takes `delivery_extra_bps` (1000) more, so the shop keeps 80% of those** —
+  the network pays for delivery (the runner fee itself stays a customer-paid
+  add-on, outside the split). `sale_owner_bps` (1000) is the platform's base share; the promoter /
   coordinator who signed the shop up gets `sale_coordinator_bps` (500) of the
   sale **out of that share**, NorthEDM the rest; with no promoter NorthEDM
   keeps all of it. `splitSale()` / `platformShareBps()` in `utils/gambiaPay.ts`
