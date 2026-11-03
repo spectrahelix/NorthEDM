@@ -33,14 +33,22 @@ export const SLOT_COLOR: Partial<Record<Slot, ColorSlot>> = {
 };
 
 export const COLOR_OPTIONS: Record<ColorSlot, { id: string; name: string; hex: string }[]> = {
+  // Ordered light → deep. Real undertones, not one hue darkened: cool pinks at
+  // the light end, olive and golden in the middle, warm reds and neutral
+  // mahoganies through brown, then cool deep browns. The swatch IS the mid
+  // tone of the rendered face (see head()), so what you tap is what you get.
   skin: [
-    { id: "porcelain", name: "Porcelain", hex: "#f7e4d3" }, { id: "ivory", name: "Ivory", hex: "#f1d6bf" },
-    { id: "sand", name: "Sand", hex: "#e8c4a0" }, { id: "beige", name: "Beige", hex: "#dfb08c" },
-    { id: "honey", name: "Honey", hex: "#d49c74" }, { id: "caramel", name: "Caramel", hex: "#c48760" },
-    { id: "amber", name: "Amber", hex: "#b3734f" }, { id: "bronze", name: "Bronze", hex: "#a0603f" },
-    { id: "sienna", name: "Sienna", hex: "#8a5235" }, { id: "chestnut", name: "Chestnut", hex: "#74432b" },
-    { id: "umber", name: "Umber", hex: "#5e3622" }, { id: "cocoa", name: "Cocoa", hex: "#4a2a1b" },
-    { id: "espresso", name: "Espresso", hex: "#3a2016" }, { id: "ebony", name: "Ebony", hex: "#2b1811" },
+    { id: "porcelain", name: "Porcelain", hex: "#f8e7dc" }, { id: "ivory", name: "Ivory", hex: "#f3dcc8" },
+    { id: "fair", name: "Fair", hex: "#edcdb3" }, { id: "sand", name: "Light", hex: "#e6c1a3" },
+    { id: "beige", name: "Beige", hex: "#dcb393" }, { id: "olive", name: "Olive", hex: "#cfae86" },
+    { id: "golden", name: "Golden", hex: "#d4a373" }, { id: "honey", name: "Honey", hex: "#c99466" },
+    { id: "tan", name: "Tan", hex: "#be8a5c" }, { id: "caramel", name: "Caramel", hex: "#b07a4e" },
+    { id: "amber", name: "Amber", hex: "#a56b42" }, { id: "bronze", name: "Bronze", hex: "#935b36" },
+    { id: "copper", name: "Copper", hex: "#8c5a3c" }, { id: "sienna", name: "Sienna", hex: "#7e4f33" },
+    { id: "chestnut", name: "Brown", hex: "#6f452c" }, { id: "mahogany", name: "Mahogany", hex: "#643d28" },
+    { id: "umber", name: "Deep brown", hex: "#573524" }, { id: "cocoa", name: "Cocoa", hex: "#4b2e20" },
+    { id: "espresso", name: "Espresso", hex: "#40281c" }, { id: "ebony", name: "Ebony", hex: "#352218" },
+    { id: "onyx", name: "Deep", hex: "#2b1c14" },
   ],
   hair: [
     { id: "black", name: "Black", hex: "#1a1416" }, { id: "darkbrown", name: "Dark brown", hex: "#3b2a21" },
@@ -99,12 +107,30 @@ export function shade(hex: string, amt: number): string {
   r = Math.round(r + (t - r) * p); g = Math.round(g + (t - g) * p); b = Math.round(b + (t - b) * p);
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
-type P = { skin: string; hair: string; eyes: string; top: string; hat: string; lips: string };
+type P = { skin: string; hair: string; eyes: string; top: string; hat: string; lips: string; line: string; deep: boolean };
+/** 0 (black) … 1 (white). */
+export function luminance(hex: string): number {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
+function mix(a: string, b: string, t: number): string {
+  const A = parseInt(a.replace("#", ""), 16), B = parseInt(b.replace("#", ""), 16);
+  const ch = (s: number) => Math.round(((A >> s) & 255) + ((((B >> s) & 255) - ((A >> s) & 255)) * t));
+  return `#${((1 << 24) + (ch(16) << 16) + (ch(8) << 8) + ch(0)).toString(16).slice(1)}`;
+}
 function palette(c: Colors): P {
   const skin = hexOf("skin", c.skin);
+  const lum = luminance(skin);
+  const deep = lum < 0.3;
+  // Feature lines (nose, mouth crease, lids) must read on every tone: a darker
+  // tint of the skin on light and medium skin, a gentler one on deep skin so
+  // the face doesn't collapse into black.
+  const line = deep ? shade(skin, -0.22) : lum < 0.5 ? shade(skin, -0.35) : shade(skin, -0.45);
+  // Natural lips: a rosier tint on light skin, a deeper brown-rose on deep skin.
+  const naturalLips = deep ? mix(skin, "#6e3a3a", 0.45) : lum < 0.5 ? mix(skin, "#8a4a4a", 0.45) : mix(skin, "#c66b74", 0.45);
   const lipsId = c.lips in { natural: 1 } ? "natural" : c.lips;
-  const lips = lipsId === "natural" ? shade(skin, -0.32) : hexOf("lips", lipsId) || shade(skin, -0.32);
-  return { skin, hair: hexOf("hair", c.hair), eyes: hexOf("eyes", c.eyes), top: hexOf("top", c.top), hat: hexOf("hat", c.hat), lips };
+  const lips = lipsId === "natural" ? naturalLips : hexOf("lips", lipsId) || naturalLips;
+  return { skin, hair: hexOf("hair", c.hair), eyes: hexOf("eyes", c.eyes), top: hexOf("top", c.top), hat: hexOf("hat", c.hat), lips, line, deep };
 }
 
 // ---- items --------------------------------------------------------------
@@ -134,21 +160,27 @@ const FACE: Record<string, string> = {
   diamond:"M128 46 C160 46 184 86 186 118 C182 152 158 184 128 188 C98 184 74 152 70 118 C72 86 96 46 128 46 Z",
 };
 function head(shape: string, p: P): string {
-  const dark = shade(p.skin, -0.22), ear = shade(p.skin, -0.12);
-  return `<defs><radialGradient id="skn" cx="0.45" cy="0.35" r="0.75"><stop offset="0" stop-color="${shade(p.skin, 0.08)}"/><stop offset="1" stop-color="${dark}"/></radialGradient></defs>
-  <rect x="110" y="156" width="36" height="40" rx="10" fill="${shade(p.skin, -0.16)}"/>
+  // Gentle shading so the swatch colour stays the face's mid tone: a small lift
+  // at the cheekbone, a small fall at the jaw. Deep tones get a touch more
+  // highlight (that is how they read in life) and less darkening.
+  const hi = shade(p.skin, p.deep ? 0.12 : 0.06), lo = shade(p.skin, p.deep ? -0.1 : -0.14);
+  const neck = shade(p.skin, -0.12), ear = shade(p.skin, -0.06);
+  // The gradient id carries the tone so several avatars inlined in one document never share one.
+  const gid = `skn${p.skin.slice(1)}`;
+  return `<defs><radialGradient id="${gid}" cx="0.42" cy="0.32" r="0.8"><stop offset="0" stop-color="${hi}"/><stop offset=".55" stop-color="${p.skin}"/><stop offset="1" stop-color="${lo}"/></radialGradient></defs>
+  <rect x="110" y="156" width="36" height="40" rx="10" fill="${neck}"/>
   <ellipse cx="70" cy="122" rx="9" ry="13" fill="${ear}"/><ellipse cx="186" cy="122" rx="9" ry="13" fill="${ear}"/>
-  <path d="M67 118 q3 8 3 12" fill="none" stroke="${dark}" stroke-width="1.5" opacity=".6"/><path d="M189 118 q-3 8 -3 12" fill="none" stroke="${dark}" stroke-width="1.5" opacity=".6"/>
-  <path d="${FACE[shape]}" fill="url(#skn)"/>
-  <path d="M100 176 Q128 194 156 176" fill="none" stroke="${dark}" stroke-width="2" opacity=".25"/>`;
+  <path d="M67 118 q3 8 3 12" fill="none" stroke="${p.line}" stroke-width="1.5" opacity=".6"/><path d="M189 118 q-3 8 -3 12" fill="none" stroke="${p.line}" stroke-width="1.5" opacity=".6"/>
+  <path d="${FACE[shape]}" fill="url(#${gid})"/>
+  <path d="M100 176 Q128 194 156 176" fill="none" stroke="${p.line}" stroke-width="2" opacity=".25"/>`;
 }
 function torso(p: P, collar: string): string {
   const d = shade(p.top, -0.25), l = shade(p.top, 0.1);
-  return `<defs><linearGradient id="tp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></linearGradient></defs>
-  <path d="M22 256 V232 Q24 198 72 188 L104 180 Q128 196 152 180 L184 188 Q232 198 234 232 V256 Z" fill="url(#tp)"/>${collar}`;
+  return `<defs><linearGradient id="tp${p.top.slice(1)}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></linearGradient></defs>
+  <path d="M22 256 V232 Q24 198 72 188 L104 180 Q128 196 152 180 L184 188 Q232 198 234 232 V256 Z" fill="url(#tp${p.top.slice(1)})"/>${collar}`;
 }
 function eye(cx: number, shape: string, p: P): string {
-  const lid = shade(p.skin, -0.4), iris = p.eyes;
+  const lid = p.deep ? shade(p.skin, -0.35) : p.line, iris = p.eyes;
   const base = (whites: string) => `${whites}<circle cx="${cx}" cy="117" r="6.3" fill="${iris}"/><circle cx="${cx}" cy="117" r="6.3" fill="none" stroke="${shade(iris, -0.35)}" stroke-width="1"/><circle cx="${cx}" cy="117" r="3" fill="#120c0a"/><circle cx="${cx - 2}" cy="114.5" r="1.6" fill="#fff" opacity=".9"/>`;
   const W: Record<string, string> = {
     almond: `<path d="M${cx - 13} 117 Q${cx} 104 ${cx + 13} 117 Q${cx} 128 ${cx - 13} 117 Z" fill="#fbf7f2"/>`,
@@ -174,7 +206,7 @@ function eye(cx: number, shape: string, p: P): string {
 }
 function eyes(shape: string) { return (p: P) => eye(106, shape, p) + eye(150, shape, p); }
 function closedEyes(p: P) {
-  const lid = shade(p.skin, -0.4);
+  const lid = p.deep ? shade(p.skin, -0.35) : p.line;
   return `<path d="M93 118 Q106 126 119 118" fill="none" stroke="${lid}" stroke-width="2.6" stroke-linecap="round"/><path d="M137 118 Q150 126 163 118" fill="none" stroke="${lid}" stroke-width="2.6" stroke-linecap="round"/>`;
 }
 function brows(kind: string) {
@@ -194,7 +226,7 @@ function brows(kind: string) {
 }
 function nose(kind: string) {
   return (p: P) => {
-    const d = shade(p.skin, -0.3), s = shade(p.skin, -0.14);
+    const d = p.line, s = shade(p.skin, -0.1);
     const N: Record<string, string> = {
       soft:     `<path d="M124 124 Q120 136 118 140 Q124 146 132 144 Q138 142 136 138" fill="none" stroke="${d}" stroke-width="2" stroke-linecap="round" opacity=".7"/>`,
       straight: `<path d="M126 118 L122 140 Q128 146 136 141" fill="none" stroke="${d}" stroke-width="2" stroke-linecap="round" opacity=".75"/>`,
@@ -209,7 +241,7 @@ function nose(kind: string) {
 }
 function mouth(kind: string) {
   return (p: P) => {
-    const lip = p.lips, dk = shade(lip, -0.35), line = shade(p.skin, -0.45);
+    const lip = p.lips, dk = shade(lip, -0.35), line = p.deep ? shade(p.skin, -0.3) : p.line;
     const M: Record<string, string> = {
       smile:  `<path d="M110 160 Q128 176 146 160" fill="none" stroke="${line}" stroke-width="2.6" stroke-linecap="round"/><path d="M112 160 Q128 170 144 160 Q128 164 112 160 Z" fill="${lip}" opacity=".8"/>`,
       teeth:  `<path d="M108 159 Q128 182 148 159 Z" fill="${dk}"/><path d="M112 161 Q128 170 144 161 Z" fill="#fff"/><path d="M108 159 Q128 158 148 159" fill="none" stroke="${line}" stroke-width="2" stroke-linecap="round"/>`,
@@ -308,12 +340,12 @@ function top(kind: string) {
     const c = p.top, d = shade(p.top, -0.3), l = shade(p.top, 0.25);
     const T: Record<string, string> = {
       tee:     torso(p, `<path d="M104 180 Q128 198 152 180 Q140 192 128 194 Q116 192 104 180 Z" fill="${d}" opacity=".5"/>`),
-      vneck:   torso(p, `<path d="M104 180 L128 212 L152 180 Q128 196 104 180 Z" fill="${shade(p.skin, -0.16)}"/>`),
+      vneck:   torso(p, `<path d="M104 180 L128 212 L152 180 Q128 196 104 180 Z" fill="${shade(p.skin, -0.08)}"/>`),
       hoodie:  torso(p, `<path d="M96 178 Q128 206 160 178 L176 190 Q128 226 80 190 Z" fill="${d}"/><path d="M118 214 V250 M138 214 V250" stroke="${l}" stroke-width="3" stroke-linecap="round"/>`),
       jacket:  torso(p, `<path d="M106 180 L96 256 H160 L150 180 Q128 196 106 180 Z" fill="${shade(c, -0.1)}"/><path d="M106 180 L80 196 L96 256 M150 180 L176 196 L160 256" fill="none" stroke="${d}" stroke-width="3"/><path d="M128 198 V256" stroke="${d}" stroke-width="2"/>`),
       buttonup:torso(p, `<path d="M112 180 L128 200 L144 180 L152 190 L128 212 L104 190 Z" fill="#f1f1f1"/><path d="M128 212 V256" stroke="${d}" stroke-width="2"/><circle cx="128" cy="224" r="1.8" fill="${d}"/><circle cx="128" cy="240" r="1.8" fill="${d}"/>`),
-      tank:    `<defs><linearGradient id="tp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></linearGradient></defs><path d="M22 256 V232 Q24 198 72 188 L104 180 Q128 196 152 180 L184 188 Q232 198 234 232 V256 Z" fill="${shade(p.skin, -0.1)}"/><path d="M92 256 V210 Q100 186 110 182 Q128 198 146 182 Q156 186 164 210 V256 Z" fill="url(#tp)"/>`,
-      blouse:  torso(p, `<path d="M100 180 Q128 206 156 180 Q148 200 128 206 Q108 200 100 180 Z" fill="${shade(p.skin, -0.16)}"/><path d="M100 180 Q128 206 156 180" fill="none" stroke="${l}" stroke-width="2.5"/>`),
+      tank:    `<defs><linearGradient id="tk${p.top.slice(1)}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${l}"/><stop offset="1" stop-color="${d}"/></linearGradient></defs><path d="M22 256 V232 Q24 198 72 188 L104 180 Q128 196 152 180 L184 188 Q232 198 234 232 V256 Z" fill="${shade(p.skin, -0.06)}"/><path d="M92 256 V210 Q100 186 110 182 Q128 198 146 182 Q156 186 164 210 V256 Z" fill="url(#tk${p.top.slice(1)})"/>`,
+      blouse:  torso(p, `<path d="M100 180 Q128 206 156 180 Q148 200 128 206 Q108 200 100 180 Z" fill="${shade(p.skin, -0.08)}"/><path d="M100 180 Q128 206 156 180" fill="none" stroke="${l}" stroke-width="2.5"/>`),
       turtle:  torso(p, `<rect x="104" y="170" width="48" height="26" rx="10" fill="${shade(c, -0.08)}"/><path d="M108 176 H148 M108 184 H148" stroke="${d}" stroke-width="1.5" opacity=".6"/>`),
       suit:    torso(p, `<path d="M110 180 L128 214 L146 180 L150 186 L128 232 L106 186 Z" fill="#f1f1f1"/><path d="M128 196 l6 8 l-6 22 l-6 -22 Z" fill="#8a2a5a"/><path d="M104 180 L84 200 L104 256 H152 L172 200 L152 180 L128 232 Z" fill="none" stroke="${d}" stroke-width="2.5"/>`),
       mesh:    torso(p, `<g stroke="${l}" stroke-width="1" opacity=".55"><path d="M40 210 L220 250 M40 230 L220 270 M40 250 L200 290 M90 190 L30 260 M130 190 L70 260 M170 190 L110 260 M210 200 L150 270"/></g><path d="M104 180 Q128 198 152 180 Q140 192 128 194 Q116 192 104 180 Z" fill="${d}" opacity=".6"/>`),
@@ -355,7 +387,7 @@ function hat(kind: string) {
 }
 function extras(kind: string) {
   return (p: P) => {
-    const d = shade(p.skin, -0.35);
+    const d = p.deep ? shade(p.skin, -0.3) : shade(p.skin, -0.35);
     const X: Record<string, string> = {
       freckles: `<g fill="${d}" opacity=".55">${[[96,136],[104,142],[112,138],[100,148],[144,138],[152,142],[160,136],[156,148],[120,146],[136,146]].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="1.5"/>`).join("")}</g>`,
       blush:    `<ellipse cx="98" cy="140" rx="12" ry="7" fill="#e0567a" opacity=".22"/><ellipse cx="158" cy="140" rx="12" ry="7" fill="#e0567a" opacity=".22"/>`,
