@@ -206,7 +206,7 @@ export function NavBar({
       </nav>
 
       {/* ── Mobile right-side icons + hamburger ───────────────── */}
-      <div className="flex items-center gap-3 lg:hidden">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:hidden">
         <GlobalSearch userId={userId} />
         {userId && (
           <>
@@ -217,7 +217,7 @@ export function NavBar({
         <ShareButton
           compact
           label="Share NorthEDM"
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-neutral-300 transition hover:bg-white/5 hover:text-white"
+          className="hidden min-[360px]:flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-neutral-300 transition hover:bg-white/5 hover:text-white"
         />
         <button
           onClick={() => setOpen(true)}
