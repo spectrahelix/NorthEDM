@@ -149,7 +149,7 @@ export async function PATCH(
             .from("vendors").select("coordinator_user_id, user_id, currency").eq("id", order.vendor_id).maybeSingle();
           if (vend && isLocalRail(vend)) {
             // Card on a Gambian shop: the whole charge sits with NorthEDM.
-            // Stripe can't reach the shop or the runner, so book the 80/10/10
+            // Stripe can't reach the shop or the runner, so book the 90/10 split
             // plus the runner fee as owed BY the owner to the coordinator, who
             // pays the shop and runner locally. Settled by Remitly from
             // /admin/festdash/coordinators ("Sent by Remitly").

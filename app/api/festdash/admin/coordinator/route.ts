@@ -106,6 +106,12 @@ export async function PATCH(req: Request) {
     const patch: Record<string, number> = {};
     const so = n(body.sale_owner_bps, 0, 5000), sc = n(body.sale_coordinator_bps, 0, 5000), fee = n(body.subscription_fee_cents, 0, 1_000_000), sub = n(body.subscription_coordinator_bps, 0, 10000);
     if (so != null) patch.sale_owner_bps = so; if (sc != null) patch.sale_coordinator_bps = sc;
+    // The promoter's part comes OUT of the platform share; it can never exceed it.
+    {
+      const { data: cur } = await admin.from("coordinator_program_settings").select("sale_owner_bps, sale_coordinator_bps").eq("id", 1).maybeSingle();
+      const owner = so ?? Number(cur?.sale_owner_bps ?? 1000), coord = sc ?? Number(cur?.sale_coordinator_bps ?? 500);
+      if (coord > owner) return NextResponse.json({ error: "The promoter's part can't be more than the platform's share of the sale." }, { status: 400 });
+    }
     if (fee != null) patch.subscription_fee_cents = fee; if (sub != null) patch.subscription_coordinator_bps = sub;
     const bundle = n(body.bundle_fee_cents, 0, 1_000_000), mp = n(body.mint_max_percent_off, 0, 100), ma = n(body.mint_max_amount_off_cents, 0, 1_000_000);
     if (bundle != null) patch.bundle_fee_cents = bundle; if (mp != null) patch.mint_max_percent_off = mp; if (ma != null) patch.mint_max_amount_off_cents = ma;

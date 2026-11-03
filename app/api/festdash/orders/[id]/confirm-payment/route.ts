@@ -4,7 +4,7 @@ import { serviceClient, isSiteAdminUser, loadSplitSettings, recordSaleSplit } fr
 
 // POST — the purse keeper (the shop's coordinator) or an admin confirms that a
 // wallet payment arrived, or rejects it. Confirming moves the order into the
-// vendor's queue and books the 80/10/10 split in the ledger.
+// vendor's queue and books the 90/10 sale split in the ledger.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

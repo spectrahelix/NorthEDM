@@ -233,7 +233,7 @@ export default async function FestDashPage() {
             <h2 className="mt-1 font-bebas text-4xl tracking-wide text-white">Put your shop on FestDash</h2>
             <p className="mt-2 text-neutral-400">
               Create your account, tell us what you sell and where you want to be paid, and your local coordinator takes it from there.
-              Customers order on the site or WhatsApp and pay by Wave, QMoney or Afrimoney before anything is cooked or sent. You keep 80% of every sale.
+              Customers order on the site or WhatsApp and pay by Wave, QMoney or Afrimoney before anything is cooked or sent. You keep 90% of every sale.
             </p>
           </div>
           <Link

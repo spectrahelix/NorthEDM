@@ -130,7 +130,7 @@ export async function recordSaleSplit(
     .maybeSingle();
   if (existing) return existing;
 
-  // The runner's fee is the runner's; the 80/10/10 is on the items only.
+  // The runner's fee is the runner's; the 90/10 split is on the items only.
   const runner = Math.max(0, Math.min(Number(order.runner_fee_cents ?? 0), order.total_cents));
   const s = splitSale(order.total_cents - runner, settings);
   const { data, error } = await admin
