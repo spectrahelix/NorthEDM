@@ -549,6 +549,17 @@ through the site; it records what moved and who confirmed it.** Full design in
   `hs_code`, `origin_country`, `specs` jsonb (`utils/specs.ts`, `SpecsEditor`
   on the vendor dashboard and /admin/shop, `SpecsTable` on item pages).
   Postage is bought at the counter; the site never buys labels.
+- **My Shop hub (2026-11-03)** — `/vendor` is every marketplace vendor's own
+  admin page (the nav's "My Shop"): profile (`VendorEditForm`, accent), links
+  to inventory (`/vendor/dashboard`), storefront/manage, FestDash orders,
+  payouts, and **metrics**. `/api/vendor/me` resolves the caller's vendor
+  (profile link or `vendors.user_id`) and store; `/api/vendor/metrics` returns
+  **counts only** — views/visitors per day for the shop's own pages
+  (`page_views`, admins excluded), most-viewed items, referrer hosts, order
+  counts and the shop's own revenue. Never add visitor ids, accounts, emails,
+  addresses or order lines to it: a shop owner is not a site admin (owner's
+  rule). The old `/vendor` was a second copy of the inventory dashboard; it is
+  gone.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays
