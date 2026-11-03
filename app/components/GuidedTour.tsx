@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type TourStep = { target: string; title: string; body: string };
 
@@ -59,8 +60,10 @@ function TourBody({ id, steps, open, onClose, accent = "#00D4FF" }: { id: string
   const cardStyle: React.CSSProperties = rect && window.innerWidth >= 640
     ? { position: "fixed", left: Math.max(12, Math.min(rect.left, window.innerWidth - 352)), ...(below ? { top: rect.bottom + pad + 6 } : { bottom: window.innerHeight - rect.top + pad + 6 }), width: 340 }
     : { position: "fixed", left: 12, right: 12, bottom: 12 };
-  return (
-    <div className="fixed inset-0 z-[80]" role="dialog" aria-label={step.title}>
+  // Portal to <body>: a page wrapper with its own stacking context would
+  // otherwise trap the overlay under fixed widgets such as the report button.
+  return createPortal(
+    <div className="fixed inset-0 z-[9000]" role="dialog" aria-label={step.title}>
       {/* Spotlight: a transparent box with a huge shadow dims everything but the target. */}
       {rect ? (
         <div className="pointer-events-none fixed rounded-xl transition-all duration-300" style={{ left: rect.left - pad, top: rect.top - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: "0 0 0 9999px rgba(0,0,0,0.72)", border: `2px solid ${accent}` }} />
@@ -79,7 +82,8 @@ function TourBody({ id, steps, open, onClose, accent = "#00D4FF" }: { id: string
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
