@@ -332,6 +332,22 @@ archon` in both dropdowns. The **Promoter** tag goes through
 promoter row and referral code, the same path as approving an application, so
 a tag never exists without a code behind it.
 
+**Ranks: one primary + extra ranks (2026-11-04).** `user_profiles.role` is the
+primary rank (badge, and admin power for warden/archon); `extra_ranks text[]`
+holds more non-admin ranks (`wanderer | merchant | promoter`, DB check) whose
+abilities the person also has. One implementation, `utils/ranks.ts`:
+`hasRank()` (archon holds every rank), `canSell()` (seller tags, Merchant rank,
+archon, warden — used by `canManageInventory`, the inventory dashboard and the
+/marketplace CTA), `canEditRanks()`. Archons and wardens edit anyone's extra
+ranks (a warden not an archon's); **site moderators** (`is_site_moderator`,
+set only by an archon) edit non-admins' but never their own. UI: `RankEditor`
+on every profile page; API `/api/ranks` (service role — `protect_role_flags`
+discards both columns on every ordinary write, verified 2026-11-04). Giving
+the Promoter rank also creates the promoter row + code (`grantPromoter`).
+The owner's archon account (cjblue) holds a private shop, vendor 37
+"NorthEDM (Archon private shop)" (`is_public = false`), so My Shop, inventory
+and the FestDash dashboard open for it.
+
 **Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
 `usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`
 marks that the person picked or kept their name: the email signup form stamps

@@ -6,6 +6,7 @@ import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 import { publicVendorIds } from "@/utils/vendorVisibility";
 import { CountryCards } from "@/app/components/CountryCards";
+import { hasRank } from "@/utils/ranks";
 
 export const metadata: Metadata = {
   title: "Marketplace",
@@ -134,10 +135,10 @@ export default async function MarketplacePage() {
   if (user) {
     const { data: me } = await supabase
       .from("user_profiles")
-      .select("is_marketplace")
+      .select("is_marketplace, role, extra_ranks")
       .eq("id", user.id)
       .single();
-    hasMarketplace = !!me?.is_marketplace;
+    hasMarketplace = !!me?.is_marketplace || hasRank(me, "merchant");
   }
 
   return (
