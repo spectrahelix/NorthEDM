@@ -14,6 +14,7 @@ import { SpecsEditor, EMPTY_SPECS_FORM, specsFormFrom, specsPayload } from "@/ap
 import type { SpecsColumns } from "@/utils/specs";
 import { GuidedTour, tourPending, type TourStep } from "@/app/components/GuidedTour";
 import { PriceField } from "@/app/components/PriceField";
+import { canSell } from "@/utils/ranks";
 
 // First-visit walkthrough for a new shop owner: each step spotlights a part of
 // the add-product form (data-tour attributes below). Shown once per device when
@@ -111,12 +112,12 @@ export default function VendorDashboard() {
       if (!user) { setAccess("no-vendor"); return; }
       const [{ data: prof }, { data: me }] = await Promise.all([
         supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single(),
-        supabase.from("user_profiles").select("is_marketplace, is_festdash_vendor, role").eq("id", user.id).single(),
+        supabase.from("user_profiles").select("is_marketplace, is_festdash_vendor, role, extra_ranks").eq("id", user.id).single(),
       ]);
       if (!prof?.vendor_id) { setAccess("no-vendor"); return; }
       setVendorId(prof.vendor_id);
       const isAdmin = me?.role === "archon" || me?.role === "warden" || user.email === "cjblue27@gmail.com";
-      if (!me?.is_marketplace && !me?.is_festdash_vendor && !isAdmin) { setAccess("no-access"); return; }
+      if (!canSell(me) && !isAdmin) { setAccess("no-access"); return; }
       setAccess("ok");
       loadProducts();
       loadSquareStatus();
