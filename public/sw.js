@@ -48,7 +48,20 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api") || url.pathname.startsWith("/auth")) return;
+  // Sign-in links (/auth/callback, /auth/confirm) carry ONE-TIME codes. With
+  // navigation preload on, the browser has already sent this request before
+  // we run; returning without respondWith makes it send the request AGAIN.
+  // The first (preload) redeems the code and its Set-Cookie is thrown away,
+  // the second finds the code spent → "link expired" / back to /login. That
+  // is the double /auth/callback seen on 2026-11-02 and 2026-11-03. So a
+  // navigation to /auth or /api always answers with the preloaded response,
+  // never a second fetch, and is never cached.
+  if (url.pathname.startsWith("/api") || url.pathname.startsWith("/auth")) {
+    if (req.mode === "navigate") {
+      event.respondWith((async () => (await event.preloadResponse) || fetch(req))());
+    }
+    return;
+  }
 
   // Pages: network-first (prefer the preloaded response), fall back to cache,
   // then the offline page. Fresh HTML whenever there's a network.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { serviceClient, isSiteAdminUser, loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
+import { alertRejectedWithRef } from "@/utils/walletWatch";
 
 // POST — the purse keeper (the shop's coordinator) or an admin confirms that a
 // wallet payment arrived, or rejects it. Confirming moves the order into the
@@ -37,6 +38,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .update({ status: "declined", payment_status: "rejected", payment_confirmed_by: user.id, payment_confirmed_at: now, updated_at: now })
       .eq("id", id).eq("status", "awaiting_confirmation");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // The customer said they paid (gave a reference) and the coordinator says no: the owner hears now.
+    if (order.payment_ref) await alertRejectedWithRef(admin, "festdash", String(order.id)).catch(() => {});
     return NextResponse.json({ ok: true, status: "declined" });
   }
 

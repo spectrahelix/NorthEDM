@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { adminGuard } from "@/utils/admin";
 import { runSubscriptionReminders } from "@/utils/subscriptionReminders";
+import { escalateStaleWalletPayments } from "@/utils/walletWatch";
 
 // Daily fee reminders for coordinator shops (scheduled in vercel.json): a week
 // before the paid period ends, on its last day, and once after it lapses — to
@@ -29,5 +30,7 @@ export async function GET(req: Request) {
     admin = g.admin;
   }
   const result = await runSubscriptionReminders(admin);
-  return NextResponse.json(result);
+  // Same daily pass: wallet payments still unconfirmed 24h after the customer's reference.
+  const wallet = await escalateStaleWalletPayments(admin).catch((e) => ({ error: String(e) }));
+  return NextResponse.json({ ...result, wallet });
 }
