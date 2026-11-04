@@ -10,6 +10,7 @@ import { COUNTRIES } from "@/utils/shipping";
 import { currencyForCountry } from "@/utils/currencies";
 import { currencyName } from "@/utils/money";
 import { PriceField } from "@/app/components/PriceField";
+import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 
 // The shop owner's walkthrough for a coordinator region (The Gambia). One page
 // takes someone from a QR code to a live shop: account → application →
@@ -272,6 +273,9 @@ export default function ShopSetupPage() {
               <p className="mb-2 text-xs text-neutral-500">Type in dollars or in {currencyName(v?.currency || currencyForCountry(form.country))} and watch the other figure. This is exactly the box you get when adding an item.</p>
               <PriceField value={tryPrice} onChange={setTryPrice} currency={v?.currency || currencyForCountry(form.country)} />
             </div>
+          )}
+          {v?.status === "approved" && (v?.currency ?? "GMD") !== "USD" && (
+            <div className="mt-4"><BridgeIntake scope="shop" /></div>
           )}
         </div>
 

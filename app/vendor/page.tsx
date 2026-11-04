@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
 import { PayoutsCard } from "@/app/components/PayoutsCard";
+import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 import { AccentPicker } from "@/app/components/AccentPicker";
 import { formatMoney } from "@/utils/money";
 import { VendorEditForm } from "@/app/marketplace/[id]/components/VendorEditForm";
@@ -159,8 +160,9 @@ export default function MyShopPage() {
           </div>
         </section>
 
-        {/* Payouts */}
+        {/* Payouts: Stripe for US shops; the Gambian payment bridge for every other currency */}
         <div className="mt-4"><PayoutsCard returnTo="/vendor" /></div>
+        {(v.currency ?? "USD") !== "USD" && <div className="mt-4"><BridgeIntake scope="shop" /></div>}
       </div>
     </main>
   );

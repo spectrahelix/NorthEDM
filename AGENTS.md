@@ -430,6 +430,12 @@ through the site; it records what moved and who confirmed it.** Full design in
   NorthEDM* (owner alerted); the owner reviews them under **Payment bridge
   intake** on /admin/festdash/coordinators (`BridgeReview`,
   `/api/festdash/admin/bridge`) and sets draft → submitted → verified → live.
+  **Every shop gets the same intake** (owner's instruction, 2026-11-03): a
+  non-USD shop sees the card on /vendor (My Shop) and on step 4 of
+  /festdash/shop-setup once approved (`/api/vendor/bridge`, one row per
+  `vendor_id`); a coordinator's own row has `vendor_id` null. Both go through
+  `saveBridge()` in `utils/bridge.ts`. The owner's panel labels each row
+  "(shop)" or "(coordinator)". US shops use Stripe Connect instead.
   Table `coordinator_bridge`: no end-user grant at all, service role only;
   API keys, webhook secret, account number and TIN leave the server masked
   to their last four characters. Status *live* is a label until the provider
