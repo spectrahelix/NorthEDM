@@ -146,6 +146,17 @@ Built for the first real vendor and now the standard for anything new:
 - **Photo uploads:** `accept={ACCEPT_WEB_IMAGES}` and `await toWebImage(file)`
   from `utils/webImage.ts` before uploading. iPhones send HEIC, which only Safari
   can display. `npm run check` fails on a raw `accept="image/*"`.
+- **Studio product photos (2026-11-04):** the square cropper every item photo
+  goes through (`ImageCropper`) has **✨ Studio**: tap the item and it's cut out
+  of the photo, hand and floor included, and set on a backdrop
+  (`PhotoStudio`). It runs Segment Anything (SlimSAM) on the owner's own device
+  through transformers.js, loaded from jsDelivr only when Studio opens, with the
+  model kept in browser cache. The version is pinned in
+  `utils/productStudio/segment.ts` and must match `package.json`. One
+  implementation in `utils/productStudio/` serves the site and the agent skill
+  `.claude/skills/product-photo` (`scripts/product-photo.mjs`, agent
+  `product-photographer`). Backdrops come only from `BACKDROPS`. Fix cut-out
+  quality there, not in a one-off script.
 - **Long forms** (anything a person fills in for more than a minute, especially
   with a photo picker): `useUnsavedDraft` from `utils/useUnsavedDraft.ts` restores
   the draft if a phone reloads the tab. The service worker already refuses to

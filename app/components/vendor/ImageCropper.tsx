@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PhotoStudio } from "./PhotoStudio";
 
 /**
  * Square crop step for product photos. The vendor drags to frame the shot and
@@ -12,6 +13,9 @@ import { createPortal } from "react-dom";
  * means a tall phone photo and a wide one sit side by side evenly instead of
  * one stretching its card. Output is a JPEG of at most 1200×1200 (never
  * upscaled past the source's own detail).
+ *
+ * "✨ Studio" swaps in PhotoStudio: tap the item, it is cut out and set on a
+ * clean backdrop. Same output shape, same upload.
  */
 const OUT_MAX = 1200;
 
@@ -28,6 +32,7 @@ export function ImageCropper({ file, onDone, onCancel, remaining = 0 }: {
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
+  const [studio, setStudio] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; zoom: number } | null>(null);
@@ -37,7 +42,7 @@ export function ImageCropper({ file, onDone, onCancel, remaining = 0 }: {
     const url = URL.createObjectURL(file);
     const t = setTimeout(() => {
       setSrc(url);
-      setView(Math.max(220, Math.min(380, window.innerWidth - 48)));
+      setView(Math.max(220, Math.min(380, window.innerWidth - 80))); // dialog padding + border
     }, 0);
     return () => { clearTimeout(t); URL.revokeObjectURL(url); };
   }, [file]);
@@ -108,6 +113,8 @@ export function ImageCropper({ file, onDone, onCancel, remaining = 0 }: {
     canvas.toBlob((b) => { setBusy(false); if (b) onDone(b); }, "image/jpeg", 0.88);
   }
 
+  if (studio) return <PhotoStudio file={file} onDone={onDone} onBack={() => setStudio(false)} remaining={remaining} />;
+
   // Portalled to <body>: inside the inventory form, an ancestor's transform /
   // backdrop-filter made `fixed` position against the form instead of the
   // screen, pushing the dialog (and its "Use photo" button) off the edge.
@@ -138,6 +145,11 @@ export function ImageCropper({ file, onDone, onCancel, remaining = 0 }: {
 
         <input type="range" min={1} max={4} step={0.01} value={zoom} aria-label="Zoom"
           onChange={(e) => zoomTo(Number(e.target.value))} className="mt-4 w-full" />
+
+        <button type="button" onClick={() => setStudio(true)}
+          className="mt-4 w-full rounded-xl border border-[#39FF14]/40 px-4 py-2 text-sm text-[#39FF14] hover:bg-[#39FF14]/10">
+          ✨ Studio: remove the background
+        </button>
 
         <div className="mt-4 flex justify-end gap-3">
           <button type="button" onClick={onCancel} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-400 hover:text-white">
