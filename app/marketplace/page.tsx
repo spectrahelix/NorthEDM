@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 import { publicVendorIds } from "@/utils/vendorVisibility";
+import { CountryCards } from "@/app/components/CountryCards";
 
 export const metadata: Metadata = {
   title: "Marketplace",
@@ -29,6 +30,7 @@ type Vendor = {
   accent_color: string | null;
   user_id: string | null;
   suspended_at: string | null;
+  country?: string | null;
 };
 
 function normalizeUrl(url: string) {
@@ -73,12 +75,19 @@ export default async function MarketplacePage() {
 
   const { data } = await supabase
     .from("vendors")
-    .select("id, name, category, description, vendor_type, is_founder, website, accent_color, user_id, suspended_at")
+    .select("id, name, category, description, vendor_type, is_founder, website, accent_color, user_id, suspended_at, country")
     .eq("status", "approved")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
   const vendors = (data ?? []) as Vendor[];
+  // One "Check all shops from …" card per country outside the US with a live shop.
+  const byCountry = new Map<string, number>();
+  for (const v of vendors) {
+    const c = String(v.country || "US").toUpperCase();
+    if (c !== "US" && !v.suspended_at) byCountry.set(c, (byCountry.get(c) ?? 0) + 1);
+  }
+  const countryCounts = [...byCountry.entries()].sort((a, b) => b[1] - a[1]).map(([code, shops]) => ({ code, shops }));
 
   // The marketplace keeps the NorthEDM look; each shop's name shows in its own
   // font (unless its operator or this visitor has shop fonts switched off).
@@ -327,6 +336,8 @@ export default async function MarketplacePage() {
         )}
       </section>
       )}
+
+      <CountryCards countries={countryCounts} />
 
       {vendors.length > 0 ? (
         <section className="mx-auto max-w-6xl px-6 py-16">

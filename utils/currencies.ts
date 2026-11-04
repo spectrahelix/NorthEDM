@@ -13,3 +13,21 @@ export function currencyForCountry(country: string | null | undefined): string {
 }
 /** Currencies without minor units in everyday use — prices are shown whole. */
 export const WHOLE_UNIT = new Set(["GMD", "XOF", "GNF", "JPY", "NGN", "SLE"]);
+
+/** Display name for an ISO-2 country, from the shared list (falls back to the code). */
+export function countryName(code: string | null | undefined): string {
+  const c = String(code || "US").toUpperCase();
+  return COUNTRY_NAMES[c] ?? c;
+}
+const COUNTRY_NAMES: Record<string, string> = {
+  US: "the United States", GM: "The Gambia", SN: "Senegal", GH: "Ghana", NG: "Nigeria", SL: "Sierra Leone", GN: "Guinea", LR: "Liberia",
+  CI: "Côte d'Ivoire", ML: "Mali", CA: "Canada", MX: "Mexico", GB: "the United Kingdom", IE: "Ireland", DE: "Germany", FR: "France",
+  NL: "the Netherlands", BE: "Belgium", ES: "Spain", PT: "Portugal", IT: "Italy", SE: "Sweden", NO: "Norway", DK: "Denmark",
+  CH: "Switzerland", AU: "Australia", NZ: "New Zealand", JP: "Japan", BR: "Brazil", ZA: "South Africa",
+};
+/** 🇬🇲 from "GM" (regional-indicator letters). */
+export function flagEmoji(code: string | null | undefined): string {
+  const c = String(code || "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return "🌍";
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
