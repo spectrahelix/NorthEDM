@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatMoney } from "@/utils/money";
 import { BridgeReview } from "@/app/components/festdash/BridgeReview";
 import { WalletWatch } from "@/app/components/festdash/WalletWatch";
+import { WaychitPanel } from "@/app/components/festdash/WaychitPanel";
 
 type Promoter = {
   id: string; user_id: string; display_name: string | null; is_active: boolean; is_coordinator: boolean; region: string | null;
@@ -137,6 +138,8 @@ export default function CoordinatorsClient() {
             <button onClick={() => run("settings", { action: "set_settings", ...settings }, "Settings saved.")} disabled={busy === "settings"} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-400 disabled:opacity-50">Save settings</button>
           </section>
         )}
+
+        <WaychitPanel />
 
         {/* Remittances to confirm */}
         <section className={card}>

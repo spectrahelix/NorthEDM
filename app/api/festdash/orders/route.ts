@@ -7,6 +7,8 @@ import { isLocalMethod, isLocalRail, isWalletMethod, minRunnerFeeCents, platform
 import { activeSubscription, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
 import { festdashListingActive } from "@/utils/billing";
 import { activePass, loadFeeSettings, serviceFeeCents } from "@/utils/festdashPass";
+import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
+import { safeOrigin } from "@/utils/safeRedirect";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -68,12 +70,23 @@ export async function POST(req: Request) {
   // coordinator's share and the runner fee are booked as owed BY the owner and
   // sent to the coordinator to disburse (collected_by = 'owner').
   const localCard = local && paymentMethod === "card";
+  // Waychit (2026-11-04): Wave / QMoney / Afrimoney paid on Waychit's page into
+  // NorthEDM's own merchant account; confirmed by its signed webhook, not by
+  // the coordinator. Offered only while the owner has it switched on, and only
+  // in dalasi (Waychit is GMD-only). utils/waychit.ts.
+  const waychit = local && paymentMethod === "waychit" ? await waychitState(admin) : null;
+  if (waychit && (!waychit.enabled || currency !== "GMD")) {
+    return NextResponse.json({ error: "Paying through Waychit isn't available yet — pick another way to pay." }, { status: 400 });
+  }
+  const localWaychit = !!waychit;
+  // Wallet orders that wait for the coordinator's manual confirmation.
+  const manualWallet = local && !localCard && !localWaychit;
   let payTo: string | null = null;
   if (local) {
     // Cash on delivery was removed on 2026-11-02 (owner's decision): an order
     // reaches the shop only after its payment is confirmed, and cash skipped
     // that gate. Old cash orders keep their status values for history.
-    if (!isWalletMethod(paymentMethod) && !localCard) {
+    if (!isWalletMethod(paymentMethod) && !localCard && !localWaychit) {
       return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney, Afrimoney or card." }, { status: 400 });
     }
     const sub = await activeSubscription(admin, vid);
@@ -228,10 +241,10 @@ export async function POST(req: Request) {
       promo_code_id: promoCodeId,
       // Hold new orders out of the vendor queue until the card is authorized.
       // The webhook / confirm step promotes them to "pending" once escrowed.
-      status: local && !localCard ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
-      payment_status: local && !localCard ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : "unpaid",
+      status: manualWallet ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
+      payment_status: manualWallet ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : localWaychit ? "awaiting_payment" : "unpaid",
       paid: false,
-      payment_method: local && !localCard ? paymentMethod : "card",
+      payment_method: manualWallet ? paymentMethod : localWaychit ? "waychit" : "card",
       payment_to: payTo,
       currency,
     }])
@@ -262,8 +275,32 @@ export async function POST(req: Request) {
   // Local-rail orders stop here: no card, no escrow. A wallet order waits for
   // the purse keeper's confirmation (/festdash/purse); a cash order goes
   // straight into the shop's queue and settles at handover.
-  if (local && !localCard) {
+  if (manualWallet) {
     return NextResponse.json({ order: data });
+  }
+
+  // Waychit: send the customer to Waychit's page for the order total plus the
+  // processing fee (shown as its own line; the shop's split is untouched).
+  if (localWaychit && waychit) {
+    const { chargeGmd, processingFeeCents } = waychitCharge(Number(data.total_cents), waychit.fee_bps);
+    if (chargeGmd > WAYCHIT_MAX_GMD) {
+      await admin.from("festdash_orders").delete().eq("id", data.id);
+      return NextResponse.json({ error: `Waychit takes up to D${WAYCHIT_MAX_GMD.toLocaleString()} per payment.` }, { status: 400 });
+    }
+    const site = safeOrigin(null, req.url);
+    try {
+      const pr = await createPaymentRequest({
+        amountGmd: chargeGmd, description: `FestDash order ${String(data.id).slice(0, 8)}`, clientReference: String(data.id).replace(/-/g, ""),
+        successRedirectUrl: `${site}/festdash/track/${data.id}?paid=1`, failureRedirectUrl: `${site}/festdash/order?canceled=${data.id}`,
+        metadata: { kind: "festdash", orderId: String(data.id) },
+      });
+      await admin.from("festdash_orders").update({ waychit_request_id: pr.id, processing_fee_cents: processingFeeCents }).eq("id", data.id);
+      return NextResponse.json({ order: { ...data, processing_fee_cents: processingFeeCents }, checkoutUrl: pr.waychitLaunchUrl });
+    } catch (e) {
+      console.error("waychit payment request failed:", e);
+      await admin.from("festdash_orders").delete().eq("id", data.id);
+      return NextResponse.json({ error: "Couldn't open Waychit. Please try again or pick another way to pay." }, { status: 502 });
+    }
   }
 
   // The amount owed on the card after any code discount.

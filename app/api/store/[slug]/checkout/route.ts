@@ -8,6 +8,8 @@ import { loadShippingSettings, quoteShipping } from "@/utils/shipping";
 import { emailUser } from "@/utils/notifyEmail";
 import { formatMoney } from "@/utils/money";
 import { docPath } from "@/utils/orderDocs";
+import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
+import { safeOrigin } from "@/utils/safeRedirect";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -106,6 +108,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   // Afrimoney paid to the coordinator, confirmed in the purse console before
   // the order counts as paid — the same flow as a FestDash wallet order.
   const rail = await storeRail(admin, (store.owner_user_id as string | null) ?? null);
+  // Waychit (2026-11-04): the same wallets, paid on Waychit's page into
+  // NorthEDM's own merchant account and confirmed by its signed webhook
+  // (utils/waychit.ts). Only while the owner has it switched on, GMD only.
+  if (rail && body.paymentMethod === "waychit") {
+    if (!user) return NextResponse.json({ error: "Sign in to pay, so we can match your payment to you." }, { status: 401 });
+    const wc = await waychitState(admin);
+    if (!wc.enabled || rail.currency !== "GMD") return NextResponse.json({ error: "Paying through Waychit isn't available yet — pick another way to pay." }, { status: 400 });
+    const { chargeGmd, processingFeeCents } = waychitCharge(subtotal, wc.fee_bps);
+    if (chargeGmd > WAYCHIT_MAX_GMD) return NextResponse.json({ error: `Waychit takes up to D${WAYCHIT_MAX_GMD.toLocaleString()} per payment.` }, { status: 400 });
+    const { data: wo, error: woErr } = await admin.from("store_orders").insert({
+      store_id: store.id, customer_id: user.id, email: user.email ?? null, items: orderItems,
+      subtotal_cents: subtotal, platform_fee_cents: platformFee, operator_fee_cents: operatorFee, total_cents: subtotal,
+      processing_fee_cents: processingFeeCents, status: "awaiting_payment", payment_method: "waychit", currency: rail.currency, vendor_id: rail.vendorId,
+    }).select("id").single();
+    if (woErr) return NextResponse.json({ error: woErr.message }, { status: 500 });
+    const site = safeOrigin(null, req.url);
+    try {
+      const pr = await createPaymentRequest({
+        amountGmd: chargeGmd, description: `${store.name ?? store.slug} order ${orderRef(wo.id)}`, clientReference: String(wo.id).replace(/-/g, ""),
+        successRedirectUrl: `${site}/${store.slug}?order=${wo.id}`, failureRedirectUrl: `${site}/${store.slug}`,
+        metadata: { kind: "store", orderId: String(wo.id) },
+      });
+      await admin.from("store_orders").update({ waychit_request_id: pr.id }).eq("id", wo.id);
+      return NextResponse.json({ url: pr.waychitLaunchUrl });
+    } catch (e) {
+      console.error("waychit store payment request failed:", e);
+      await admin.from("store_orders").update({ status: "canceled", updated_at: new Date().toISOString() }).eq("id", wo.id);
+      return NextResponse.json({ error: "Couldn't open Waychit. Please try again or pick another way to pay." }, { status: 502 });
+    }
+  }
+
   if (rail && body.paymentMethod !== "card") {
     if (!user) return NextResponse.json({ error: "Sign in to pay by wallet, so we can match your payment to you." }, { status: 401 });
     const method = body.paymentMethod;

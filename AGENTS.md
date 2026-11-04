@@ -459,6 +459,28 @@ through the site; it records what moved and who confirmed it.** Full design in
   API keys, webhook secret, account number and TIN leave the server masked
   to their last four characters. Status *live* is a label until the provider
   integration is written.
+- **Waychit into NorthEDM's OWN merchant account — built, SWITCHED OFF
+  (2026-11-04).** Owner's decision: one Waychit merchant account that the owner
+  controls takes Wave / QMoney / Afrimoney, and NorthEDM pays shops,
+  coordinators and runners from it (Waychit Payouts). `utils/waychit.ts` (API
+  client, `Waychit-Signature` check: HMAC-SHA256 hex of `${t}.${rawBody}`,
+  5-minute window), `utils/waychitFee.ts` (client-safe gross-up so the 3%
+  arrives whole, whole dalasi), `utils/waychitOrders.ts` (confirm → split
+  booked `collected_by = 'owner'` → one `waychit_payouts` row per recipient;
+  runner's at delivery; a succeeded payout books a `payout` ledger row so
+  Settle net is unchanged; a declined paid order stops its payouts and the
+  owner refunds from Waychit — no refund API). Checkout option `waychit` on
+  the FestDash order page and wallet-rail store carts, GMD only;
+  `/api/waychit/webhook` (re-reads the request at Waychit before marking
+  paid; events stored once in `waychit_events`); `/api/waychit/status`;
+  owner panel `WaychitPanel` on /admin/festdash/coordinators (switch, fee,
+  payouts with Send — nothing is sent automatically). **Live only when
+  `WAYCHIT_API_KEY` + `WAYCHIT_WEBHOOK_SECRET` are in Vercel AND
+  `coordinator_program_settings.waychit_enabled` is on.** Waychit pays out only
+  inside The Gambia (wallets / Gambian banks) — it can't reach Stripe or a US
+  account; the owner's share leaves by bank wire from the Gambian settlement
+  account. Waychit requires a business registered in The Gambia (merchant
+  agreement §8.1). No sandbox: the first test is a small real order.
 - **Wallet-theft guards (2026-11-04).** A coordinator's wallet receives the
   money, so the site can't stop him keeping it — it makes it visible within a
   day and gives customers and shops a line to the owner (`utils/walletWatch.ts`):
