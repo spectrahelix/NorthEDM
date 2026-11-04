@@ -37,7 +37,7 @@ export async function PATCH(
   // Load the order (RLS lets the owning vendor / assigned driver read it)
   const { data: order } = await supabase
     .from("festdash_orders")
-    .select("id, vendor_id, driver_id, status, confirmation_code, payment_method, total_cents, runner_fee_cents, currency, payment_ref, fulfillment")
+    .select("id, vendor_id, driver_id, status, confirmation_code, payment_method, total_cents, runner_fee_cents, service_fee_cents, currency, payment_ref, fulfillment")
     .eq("id", id)
     .single();
 
@@ -108,7 +108,7 @@ export async function PATCH(
     if (v?.coordinator_user_id) {
       const settings = await loadSplitSettings(admin);
       await recordSaleSplit(admin, {
-        id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0),
+        id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0), service_fee_cents: Number(order.service_fee_cents ?? 0),
         currency: String(order.currency || "USD"), payment_method: "cash", payment_ref: order.payment_ref ?? null, delivery: order.fulfillment !== "pickup",
       }, v.coordinator_user_id as string, settings, user.id);
     }
@@ -155,7 +155,7 @@ export async function PATCH(
             // /admin/festdash/coordinators ("Sent by Remitly").
             const settings = await loadSplitSettings(admin);
             await recordSaleSplit(admin, {
-              id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0),
+              id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0), service_fee_cents: Number(order.service_fee_cents ?? 0),
               currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: full.stripe_payment_intent, collected_by: "owner", delivery: order.fulfillment !== "pickup",
             }, vend.coordinator_user_id as string, settings, user.id);
           } else {
@@ -176,7 +176,7 @@ export async function PATCH(
               referredUserId: (vend.user_id as string | null) ?? null,
               source: "festdash_order",
               sourceId: id,
-              baseCents: Number(order.total_cents) - Number(order.runner_fee_cents ?? 0),
+              baseCents: Number(order.total_cents) - Number(order.runner_fee_cents ?? 0) - Number(order.service_fee_cents ?? 0),
               rateBps: splits.sale_coordinator_bps,
               holdDays,
             });

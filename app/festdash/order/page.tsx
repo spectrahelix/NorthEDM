@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 import { ProductThumb } from "@/app/components/ProductThumb";
 
@@ -9,6 +10,7 @@ import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, RUNNER_FEE_CHOICES_BPS, WALLET_METHODS, isLocalRail, minRunnerFeeCents, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
+import { serviceFeeCents } from "@/utils/festdashPass";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
@@ -168,7 +170,14 @@ export default function OrderPage() {
   const modes = selectedVendor?.fulfillment_modes ?? "both";
   const pickupOnly = modes === "pickup", deliveryOnly = modes === "delivery";
   const pickup = pickupOnly ? true : deliveryOnly ? false : fulfillment === "pickup";
-  const payableCents = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents);
+  // Service fee (5%, $1 minimum on USD) — none while the customer holds a
+  // FestDash pass. The server recomputes it; this is the same rule for display.
+  const [feeInfo, setFeeInfo] = useState<{ bps: number; min: number; passEnds: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/festdash/pass").then((r) => r.json()).then((j) => setFeeInfo({ bps: Number(j.service_fee_bps ?? 0), min: Number(j.service_fee_min_cents ?? 0), passEnds: j.active?.ends_at ?? null })).catch(() => {});
+  }, []);
+  const serviceFee = feeInfo ? serviceFeeCents(discountedCents, currency, { service_fee_bps: feeInfo.bps, service_fee_min_cents: feeInfo.min, festdash_passes: [] }, !!feeInfo.passEnds) : 0;
+  const payableCents = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents) + serviceFee;
 
   async function applyPromo() {
     if (!promoInput.trim() || !selectedVendor) return;
@@ -837,6 +846,17 @@ export default function OrderPage() {
                   <p className="mt-1 text-xs text-neutral-500">The minimum runner fee is {money(runnerMinCents)}; that&apos;s what will be charged.</p>
                 )}
               </div>
+              )}
+
+              {feeInfo && (
+                <div className="flex justify-between gap-3 text-sm">
+                  {feeInfo.passEnds ? (
+                    <span className="text-neutral-400">Service fee <span className="text-emerald-400">waived — FestDash pass until {new Date(feeInfo.passEnds).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span></span>
+                  ) : (
+                    <span className="text-neutral-400">Service fee <span className="text-neutral-600">({feeInfo.bps / 100}%{currency === "USD" && feeInfo.min > 0 ? `, ${money(feeInfo.min)} min` : ""})</span> · <Link href="/festdash/pass" className="text-orange-400 underline-offset-2 hover:underline">skip it with a pass</Link></span>
+                  )}
+                  <span className="shrink-0 text-neutral-300">{money(serviceFee)}</span>
+                </div>
               )}
 
               <div className="flex justify-between font-semibold">

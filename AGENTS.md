@@ -675,6 +675,21 @@ through the site; it records what moved and who confirmed it.** Full design in
   `/marketplace/country/<iso2>` listing those shops with their items, prices
   in the shop's currency with ≈ in the visitor's. New countries appear on
   their own — the owner wants people from everywhere to feel welcome.
+- **Service fee + FestDash passes (2026-11-04)** — `utils/festdashPass.ts`.
+  Every FestDash order (pickup or delivery, every rail) carries a customer
+  **service fee**: `service_fee_bps` (5%) of the items after any code, at least
+  `service_fee_min_cents` ($1) on USD orders, stored as
+  `festdash_orders.service_fee_cents` and included in `total_cents`. It is
+  NorthEDM's in full and sits **outside the shop's split**, like the runner
+  fee: every split/commission base is `total − runner fee − service fee`
+  (`recordSaleSplit` adds it to `owner_cents`; the card application fee adds
+  it whole). A customer with a running **FestDash pass** pays none. Passes
+  (2-day, weekend, 7-day, monthly — `coordinator_program_settings.festdash_passes`,
+  prices in /admin/festdash/coordinators) are one-time USD card payments
+  bought on `/festdash/pass` (`/api/festdash/pass`, Stripe `kind =
+  festdash_pass`), switched on by the webhook (`activatePass`, stacks after a
+  running pass) in `festdash_member_passes` (service-role writes; users read
+  their own). The runner fee is never waived.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays

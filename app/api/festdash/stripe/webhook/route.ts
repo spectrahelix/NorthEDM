@@ -9,6 +9,7 @@ import { checkWrite } from "@/utils/dbWrite";
 import { recordCommission, voidCommission, commissionTerms } from "@/utils/commissions";
 import { handleSubscriptionEvent } from "@/utils/billing";
 import { sendOrderEmails } from "@/utils/orderEmails";
+import { activatePass } from "@/utils/festdashPass";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
 // completed Checkout means the card is AUTHORIZED (funds held in escrow), not
@@ -90,6 +91,13 @@ export async function POST(req: Request) {
         }
       }
     }
+  } else if (event.type === "checkout.session.completed" &&
+      (event.data.object as Stripe.Checkout.Session).metadata?.kind === "festdash_pass") {
+    // FestDash pass bought (utils/festdashPass.ts): switch it on. Stacks after a
+    // running pass; idempotent, so a retried event changes nothing.
+    const session = event.data.object as Stripe.Checkout.Session;
+    const passId = session.metadata?.pass_id || session.client_reference_id;
+    if (passId && session.payment_status === "paid") await activatePass(db, passId);
   } else if (event.type === "checkout.session.completed" &&
       !(event.data.object as Stripe.Checkout.Session).metadata?.kind) {
     // FestDash order — the fallback for sessions with no `kind`. The guard matters:
