@@ -5,6 +5,9 @@ import { storeAdminClient } from "@/utils/store";
 import { storeRail } from "@/utils/storeRail";
 import { isWalletMethod, orderRef, walletNumberFor } from "@/utils/gambiaPay";
 import { loadShippingSettings, quoteShipping } from "@/utils/shipping";
+import { emailUser } from "@/utils/notifyEmail";
+import { formatMoney } from "@/utils/money";
+import { docPath } from "@/utils/orderDocs";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -115,6 +118,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       status: "awaiting_confirmation", payment_method: method, payment_to: payTo, currency: rail.currency, vendor_id: rail.vendorId,
     }).select("id").single();
     if (woErr) return NextResponse.json({ error: woErr.message }, { status: 500 });
+    // The buyer keeps a link to this order: payment details now, and the
+    // "I paid but it wasn't confirmed" button later if it stalls.
+    await emailUser(user.email, `Your order ${orderRef(wo.id)} — pay ${formatMoney(subtotal, rail.currency)} by ${method}`, {
+      heading: "Your order is placed — now pay",
+      intro: `Send ${formatMoney(subtotal, rail.currency)} by ${method} to ${payTo} and put ${orderRef(wo.id)} in the note. Then enter your transaction reference on the store page. If it isn't confirmed within 24 hours, open this order and tell NorthEDM.`,
+      rows: [["Order", orderRef(wo.id)], ["Amount", formatMoney(subtotal, rail.currency)], ["Pay to", `${payTo} (${method})`]],
+      cta: { label: "Open your order", path: docPath("store", wo.id, "invoice") },
+    }).catch(() => {});
     return NextResponse.json({ orderId: wo.id, payTo, method, reference: orderRef(wo.id), total_cents: subtotal, currency: rail.currency, coordinator: rail.coordinatorName });
   }
 

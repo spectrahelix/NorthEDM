@@ -6,6 +6,7 @@ import { canViewDoc, loadOrderDoc, type DocKind, type OrderDoc, type Party } fro
 import { formatMoney } from "@/utils/money";
 import { COUNTRIES } from "@/utils/shipping";
 import { PrintButton } from "./PrintButton";
+import { WalletDispute } from "@/app/components/festdash/WalletDispute";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -37,7 +38,15 @@ export default async function OrderDocPage({ params, searchParams }: { params: P
   }
   const d = await loadOrderDoc(admin, kind as DocKind, id);
   if (!d) notFound();
-  return doc === "label" ? <Label d={d} /> : <InvoiceOrReceipt d={d} receipt={doc === "receipt"} />;
+  // A wallet-paid store order the buyer is looking at: the "I paid but it wasn't confirmed" route to the owner.
+  let dispute: React.ReactNode = null;
+  if (kind === "store" && user) {
+    const { data: so } = await admin.from("store_orders").select("customer_id, status, payment_method, payment_ref, payment_ref_at, payment_disputed_at").eq("id", id).maybeSingle();
+    if (so && so.customer_id === user.id && so.payment_ref && ["wave", "qmoney", "afrimoney"].includes(String(so.payment_method)) && ["awaiting_confirmation", "canceled"].includes(String(so.status))) {
+      dispute = <div className="mx-auto max-w-3xl px-4 print:hidden"><WalletDispute kind="store" id={id} refAt={so.payment_ref_at ?? null} rejected={so.status === "canceled"} alreadyReported={!!so.payment_disputed_at} /></div>;
+    }
+  }
+  return <>{dispute}{doc === "label" ? <Label d={d} /> : <InvoiceOrReceipt d={d} receipt={doc === "receipt"} />}</>;
 }
 
 /** Print just the document: the site header, footer and report button live in the root layout. */

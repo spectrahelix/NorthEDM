@@ -9,6 +9,7 @@ import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 import { AccentPicker } from "@/app/components/AccentPicker";
 import { formatMoney } from "@/utils/money";
 import { VendorEditForm } from "@/app/marketplace/[id]/components/VendorEditForm";
+import { CoordinatorBook } from "@/app/components/festdash/CoordinatorBook";
 
 /**
  * My Shop — the one admin page every marketplace vendor gets: profile, shop
@@ -162,6 +163,7 @@ export default function MyShopPage() {
 
         {/* Payouts: Stripe for US shops; the Gambian payment bridge for every other currency */}
         <div className="mt-4"><PayoutsCard returnTo="/vendor" /></div>
+        {(v.currency ?? "USD") !== "USD" && <div className="mt-4"><CoordinatorBook /></div>}
         {(v.currency ?? "USD") !== "USD" && <div className="mt-4"><BridgeIntake scope="shop" /></div>}
       </div>
     </main>

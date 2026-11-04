@@ -219,3 +219,14 @@ export async function notifyBridgeSubmitted(opts: { name: string; provider: stri
     pushOwner("Payment bridge details submitted", opts.name, reviewUrl),
   ]);
 }
+
+/** A wallet-payment concern (rejected with a reference, stale, or reported by a customer/shop). */
+export async function notifyWalletIssue(opts: { title: string; message: string }) {
+  const path = "/admin/festdash/coordinators#wallet-watch";
+  const url = SITE_URL ? `${SITE_URL}${path}` : path;
+  await Promise.allSettled([
+    notifyAdminsInApp("wallet_watch", `${opts.title}: ${opts.message}`.slice(0, 480), path),
+    emailOwner(`⚠️ ${opts.title}`, `${opts.message}\n\nWallet watch: ${url}`),
+    pushOwner(opts.title, opts.message.slice(0, 180), url),
+  ]);
+}

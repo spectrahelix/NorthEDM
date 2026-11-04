@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { storeAdminClient } from "@/utils/store";
 import { isSiteAdminUser, loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
+import { alertRejectedWithRef } from "@/utils/walletWatch";
 
 // POST — the coordinator (or an admin) confirms a store order's wallet payment
 // arrived, or rejects it. Confirming marks it paid, takes the stock down and
@@ -34,6 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .update({ status: "canceled", payment_confirmed_by: user.id, payment_confirmed_at: now, updated_at: now })
       .eq("id", id).eq("status", "awaiting_confirmation");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (order.payment_ref) await alertRejectedWithRef(admin, "store", String(order.id)).catch(() => {});
     return NextResponse.json({ ok: true, status: "canceled" });
   }
 

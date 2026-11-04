@@ -8,6 +8,7 @@ import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, orderRef, isWalletMethod } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
+import { WalletDispute } from "@/app/components/festdash/WalletDispute";
 type Order = {
   id: string;
   vendor_id: number;
@@ -25,6 +26,8 @@ type Order = {
   payment_method: string;
   payment_to: string | null;
   payment_ref: string | null;
+  payment_ref_at?: string | null;
+  payment_disputed_at?: string | null;
   payment_status: string;
   currency: string;
   driver_lat: number | null;
@@ -177,6 +180,9 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
             <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-300">
               ✓ Reference <span className="font-dm-mono">{order.payment_ref}</span> received. The purse keeper confirms it from their wallet and this page updates on its own.
             </div>
+          ) : null}
+          {order.payment_ref ? (
+            <WalletDispute kind="festdash" id={order.id} refAt={order.payment_ref_at ?? null} alreadyReported={!!order.payment_disputed_at} />
           ) : (
             <div className="rounded-2xl border border-white/10 bg-white/3 p-4">
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Your {method} transaction reference</label>
@@ -252,7 +258,10 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 
         {isDeclined ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-6 text-center">
-            <p className="text-red-400">The vendor declined this order.</p>
+            <p className="text-red-400">{order.payment_status === "rejected" ? "The payment for this order was marked as not received." : "The vendor declined this order."}</p>
+            {order.payment_status === "rejected" && order.payment_ref && (
+              <div className="text-left"><WalletDispute kind="festdash" id={order.id} refAt={order.payment_ref_at ?? null} rejected alreadyReported={!!order.payment_disputed_at} /></div>
+            )}
             <Link href="/festdash/order" className="mt-4 inline-block rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-orange-400">
               Place a New Order
             </Link>

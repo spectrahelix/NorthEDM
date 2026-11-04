@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (order.status !== "awaiting_confirmation" || !isWalletMethod(order.payment_method)) {
     return NextResponse.json({ error: "This order isn't waiting for a wallet payment." }, { status: 409 });
   }
-  const { error } = await admin.from("store_orders").update({ payment_ref: ref, updated_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await admin.from("store_orders").update({ payment_ref: ref, payment_ref_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

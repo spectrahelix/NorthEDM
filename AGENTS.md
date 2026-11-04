@@ -440,6 +440,21 @@ through the site; it records what moved and who confirmed it.** Full design in
   API keys, webhook secret, account number and TIN leave the server masked
   to their last four characters. Status *live* is a label until the provider
   integration is written.
+- **Wallet-theft guards (2026-11-04).** A coordinator's wallet receives the
+  money, so the site can't stop him keeping it — it makes it visible within a
+  day and gives customers and shops a line to the owner (`utils/walletWatch.ts`):
+  a rejected payment that had a customer reference alerts the owner at once
+  (both confirm-payment routes); one unconfirmed 24h after the reference
+  (`payment_ref_at`) alerts once from the daily subscription-reminders cron
+  (`payment_escalated_at`); the customer gets **I paid but it wasn't
+  confirmed** (`WalletDispute` → `/api/wallet-dispute`) on the FestDash track
+  page and on a store order's document page (emailed to them when the order
+  is placed); the owner's **Wallet watch** panel on
+  /admin/festdash/coordinators lists all of them until **Resolved**
+  (`payment_watch_resolved_at`). Shops see every sale their coordinator
+  collected for them with their share, plus stalled payments, on My Shop
+  (`CoordinatorBook`, `/api/vendor/coordinator-book`) and can **Tell
+  NorthEDM**. The real fix is still the payment bridge.
 - **Gee's two-day grace (owner's instruction, 2026-11-03).** Gee keeps 100% of
   his own shop's sales for two days — through **2026-11-05** — while his Wave
   number is the only rail. The ledger still books the normal 90/5/5 on those
