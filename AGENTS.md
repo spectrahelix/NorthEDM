@@ -423,7 +423,15 @@ through the site; it records what moved and who confirmed it.** Full design in
   confirm, shop + coordinator shares are paid out locally from the settled
   funds, the owner's share stays in the Gambian account for the bank wire.
   The ledger's data model does not change. The final wire out of the country
-  is a bank operation, not an API — it stays manual. **Intake is built
+  is a bank operation, not an API — it stays manual. **The aggregator's fee
+  is passed to the customer** (owner's decision, 2026-11-04): Waychit charges
+  3% on Wave / QMoney / Afrimoney / bank payments (4.8% on cards — cards stay
+  on Stripe, so only the 3% applies), deducted before settlement. Checkout
+  adds it to the customer's total as a separate "payment processing" line,
+  so the shop's 90% (80% delivered) and the platform share are computed on
+  the items exactly as today and arrive whole. Make the rate a setting in
+  `coordinator_program_settings`, not a constant. Ask Waychit in writing
+  whether its merchant agreement allows passing the fee on before going live. **Intake is built
   (2026-11-03):** the coordinator enters business, bank and provider details
   in the **Payment bridge** card on /festdash/purse (`BridgeIntake`,
   `/api/festdash/purse/bridge`), saves as they go and presses *Submit to
