@@ -646,6 +646,12 @@ through the site; it records what moved and who confirmed it.** Full design in
   `ConversionNote` beside each checkout says exactly that (owner's decision:
   the buyer carries the conversion fee). Prices in USD at Stripe are
   eligible; GMD sessions are presented as GMD.
+- **Shop by country (2026-11-04).** /marketplace shows a "Check all shops
+  from <country>" card (`CountryCards`) for every country outside the US with
+  at least one public, unsuspended shop (`vendors.country`); each opens
+  `/marketplace/country/<iso2>` listing those shops with their items, prices
+  in the shop's currency with ≈ in the visitor's. New countries appear on
+  their own — the owner wants people from everywhere to feel welcome.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays
