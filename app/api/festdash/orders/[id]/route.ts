@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { queueRunnerPayout } from "@/utils/waychitOrders";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
@@ -121,6 +122,18 @@ export async function PATCH(
   //   declined  → CANCEL the authorization (releases the hold; card untouched).
   // Best-effort and never reverses the delivery/decline that already happened —
   // a Stripe hiccup is recorded as *_failed for the owner to settle manually.
+  // Waychit orders were paid into NorthEDM's Waychit account up front. At
+  // delivery the runner's fee joins the payouts queue; a declined paid order
+  // stops its queued payouts (the owner refunds the customer from Waychit —
+  // there is no refund API).
+  if (order.payment_method === "waychit") {
+    if (status === "delivered") await queueRunnerPayout(admin, id);
+    if (status === "declined") {
+      await admin.from("waychit_payouts").update({ status: "reversed", error: "Order declined — refund the customer from Waychit; nothing to pay out.", updated_at: new Date().toISOString() })
+        .eq("order_kind", "festdash").eq("order_id", id).eq("status", "owed");
+    }
+  }
+
   if (status === "delivered" || status === "declined") {
     const { data: full } = await admin
       .from("festdash_orders")

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ProductThumb } from "@/app/components/ProductThumb";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, WALLET_METHODS, type WalletMethod } from "@/utils/gambiaPay";
+import { waychitCharge } from "@/utils/waychitFee";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
 import { Price, ConversionNote } from "@/app/components/CurrencyContext";
@@ -39,7 +40,13 @@ export function StoreCart({
   const currency = wallet?.currency ?? "USD";
   const money = (c: number) => formatMoney(c, currency);
   const walletOptions = wallet ? WALLET_METHODS.filter((m) => !!wallet.numbers[m]) : [];
-  const [method, setMethod] = useState<WalletMethod | "card" | null>(null);
+  const [method, setMethod] = useState<WalletMethod | "card" | "waychit" | null>(null);
+  // Waychit: Wave / QMoney / Afrimoney into NorthEDM's account, only while the owner has it on.
+  const [waychit, setWaychit] = useState<{ enabled: boolean; fee_bps: number } | null>(null);
+  useEffect(() => {
+    if (!wallet) return;
+    fetch("/api/waychit/status").then((r) => r.json()).then((j) => setWaychit({ enabled: !!j.enabled, fee_bps: Number(j.fee_bps ?? 300) })).catch(() => {});
+  }, [wallet]);
   const [placed, setPlaced] = useState<{ orderId: string; payTo: string; method: WalletMethod; reference: string; total_cents: number; coordinator: string | null } | null>(null);
   const [ref, setRef] = useState("");
   const [ship, setShip] = useState<ShipChoice>({ country: "US", service: null });
@@ -52,6 +59,8 @@ export function StoreCart({
     .filter((l) => l.n > 0);
   const count = lines.reduce((s, l) => s + l.n, 0);
   const subtotal = lines.reduce((s, l) => s + l.p.price_cents * l.n, 0);
+  const waychitOn = !!waychit?.enabled && !!wallet && currency === "GMD";
+  const processingCents = waychitOn && method === "waychit" ? waychitCharge(subtotal, waychit!.fee_bps).processingFeeCents : 0;
 
   // Keep the drawer honest: an emptied cart shouldn't leave it hanging open.
   useEffect(() => { if (count === 0) setOpen(false); }, [count]);
@@ -167,7 +176,7 @@ export function StoreCart({
               <p className="font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">
                 {count} item{count === 1 ? "" : "s"} · tap to {open ? "hide" : "review"}
               </p>
-              <p className="font-bebas text-2xl" style={{ color: accent }}><Price cents={subtotal + (shipsParcels ? shipCents : 0)} currency={currency} />{shipsParcels && shipCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(shipCents)} shipping</span> : null}</p>
+              <p className="font-bebas text-2xl" style={{ color: accent }}><Price cents={subtotal + (shipsParcels ? shipCents : 0) + processingCents} currency={currency} />{processingCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(processingCents)} processing</span> : null}{shipsParcels && shipCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(shipCents)} shipping</span> : null}</p>
             </button>
             <button
               onClick={checkout}
@@ -175,7 +184,7 @@ export function StoreCart({
               className="shrink-0 rounded-2xl px-6 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
               style={{ background: accent }}
             >
-              {busy ? "Starting…" : wallet && method !== "card" ? "Place order" : "Checkout"}
+              {busy ? "Starting…" : wallet && method !== "card" && method !== "waychit" ? "Place order" : "Checkout"}
             </button>
           </div>
           {open && (
@@ -195,6 +204,13 @@ export function StoreCart({
                   <span className="font-semibold">Card · Google Pay · Apple Pay</span>
                   <span className="block text-xs text-neutral-500">Any card, or Google Pay / Apple Pay; secure checkout, charged in {currency}</span>
                 </button>
+                {waychitOn && (
+                  <button type="button" onClick={() => { setMethod("waychit"); setError(""); }}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === "waychit" ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
+                    <span className="font-semibold">Wave · QMoney · Afrimoney — instant</span>
+                    <span className="block text-xs text-neutral-500">Pay on Waychit&apos;s secure page; confirmed automatically. Adds {(waychit?.fee_bps ?? 300) / 100}% processing.</span>
+                  </button>
+                )}
                 {walletOptions.map((m) => (
                   <button key={m} type="button" onClick={() => { setMethod(m); setError(""); }}
                     className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === m ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
