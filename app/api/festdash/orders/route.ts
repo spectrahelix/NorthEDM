@@ -6,6 +6,7 @@ import { getStripe, platformFeeCents } from "@/utils/stripe";
 import { isLocalMethod, isLocalRail, isWalletMethod, minRunnerFeeCents, platformShareBps, walletNumberFor } from "@/utils/gambiaPay";
 import { activeSubscription, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
 import { festdashListingActive } from "@/utils/billing";
+import { activePass, loadFeeSettings, serviceFeeCents } from "@/utils/festdashPass";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -180,7 +181,12 @@ export async function POST(req: Request) {
   // Runner fee: the customer's pick, never below 10% of the items. It rides on
   // top of the items and goes to the runner in full (utils/runnerPay.ts).
   const runnerFee = pickup ? 0 : Math.max(minRunnerFeeCents(discountedCents), Math.floor(Number(runnerFeeCents) || 0));
-  const netCents = discountedCents + runnerFee;
+  // Service fee (2026-11-04): NorthEDM's, on top of the items — 5%, at least
+  // $1 on USD orders — waived while the customer holds a FestDash pass. It is
+  // outside the shop's split, like the runner fee (utils/festdashPass.ts).
+  const [feeSettings, pass] = await Promise.all([loadFeeSettings(admin), activePass(admin, user.id)]);
+  const serviceFee = serviceFeeCents(discountedCents, currency, feeSettings, !!pass);
+  const netCents = discountedCents + runnerFee + serviceFee;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
@@ -214,6 +220,7 @@ export async function POST(req: Request) {
       items: lines,
       total_cents: netCents,
       runner_fee_cents: runnerFee,
+      service_fee_cents: serviceFee,
       store_credit_cents: creditCents,
       discount_cents: discountCents,
       commission_cents: commissionCents,
@@ -315,10 +322,10 @@ export async function POST(req: Request) {
     metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id, rail: localCard ? "local_card" : "card" },
   };
   if (vendorAccount) {
-    // Platform share of the ITEMS, plus the whole runner fee: the fee is
-    // collected here and transferred to the runner at the delivery code.
+    // Platform share of the ITEMS, plus the whole runner fee (transferred to
+    // the runner at the delivery code) and the whole service fee (NorthEDM's).
     const splits = await loadSplitSettings(admin);
-    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee, platformShareBps(splits, !pickup)) + runnerFee;
+    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee - serviceFee, platformShareBps(splits, !pickup)) + runnerFee + serviceFee;
     paymentIntentData.transfer_data = { destination: vendorAccount };
   }
 
@@ -327,19 +334,16 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // Items, runner fee and service fee as separate lines so the Stripe
+      // receipt shows what each part is (same total as dueCents).
       line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: currency.toLowerCase(),
-            unit_amount: dueCents,
-            product_data: {
-              name: `FestDash order — ${eventName}`,
-              description: itemSummary || undefined,
-            },
-          },
-        },
-      ],
+        { cents: dueCents - runnerFee - serviceFee, name: `FestDash order — ${pickup ? "pickup" : eventName}`, description: itemSummary || undefined },
+        { cents: runnerFee, name: "Runner fee", description: "Goes to your runner in full" },
+        { cents: serviceFee, name: "Service fee", description: "Waived with a FestDash pass" },
+      ].filter((l) => l.cents > 0).map((l) => ({
+        quantity: 1,
+        price_data: { currency: currency.toLowerCase(), unit_amount: l.cents, product_data: { name: l.name, description: l.description } },
+      })),
       payment_intent_data: paymentIntentData,
       customer_email: user.email ?? undefined,
       success_url: `${origin}/festdash/track/${data.id}?paid=1`,
