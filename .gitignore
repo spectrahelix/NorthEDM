@@ -50,6 +50,7 @@ design/*.png
 .agents/
 .claude/skills/*
 !.claude/skills/hebrew-birth-chart/
+!.claude/skills/product-photo/
 skills-lock.json
 
 # Local MCP + agent skills (machine-specific)
