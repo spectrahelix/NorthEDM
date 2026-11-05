@@ -10,7 +10,9 @@ import { formatMoney } from "@/utils/money";
 import { docPath } from "@/utils/orderDocs";
 import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
 import { safeOrigin } from "@/utils/safeRedirect";
-import { loadLocalRules, remitFeeIn } from "@/utils/localRules";
+import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
+import { BRAND_STORE_SLUG, brandCodeTerms, brandDiscount, isActivePromoter, promoterForCode } from "@/utils/brandShop";
+import { resolveCode } from "@/utils/discountCodes";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -183,8 +185,49 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     ship = { cents: svc.cents, name: svc.name, eta: svc.eta, eta_days: svc.eta_days, zone: quote.zone, weight_g: quote.weight_g };
   }
 
-  const remitFee = rail && localRules ? await remitFeeIn(rail.currency, localRules.remitFeeUsdCents) : 0;
-  if (remitFee > 0) lineItems.push({ quantity: 1, price_data: { currency: "usd", unit_amount: remitFee, product_data: { name: "International transfer fee", description: "Sending the shop its share in The Gambia" } } });
+  const remitFee = rail && localRules ? transferFeeCents(subtotal, rail.currency, localRules.remitFeeBps) : 0;
+  if (remitFee > 0) lineItems.push({ quantity: 1, price_data: { currency: "usd", unit_amount: remitFee, product_data: { name: "Transfer fee", description: "Sending the shop its share in The Gambia" } } });
+
+  // Discounts — NorthEDM brand shop only (utils/brandShop.ts). One code box:
+  // a promoter's code (5% off; that promoter earns 5%) or a discount coupon.
+  // A promoter buying for themselves always gets the 5%; coupons stack on it.
+  let promo: { userId: string; code: string } | null = null;
+  let voucher: Awaited<ReturnType<typeof resolveCode>> = null;
+  let discountCents = 0, voucherCents = 0;
+  let couponId: string | null = null;
+  const codesUsed: string[] = [];
+  if (store.slug === BRAND_STORE_SLUG) {
+    const terms = await brandCodeTerms(admin);
+    const selfPromoter = await isActivePromoter(admin, user?.id);
+    const typed = body.promoCode ? String(body.promoCode).trim() : "";
+    if (typed) {
+      const asPromoter = await promoterForCode(admin, typed);
+      if (asPromoter) {
+        // Someone else's promoter code attributes them; a promoter's own code (or
+        // another code while they already get the 5%) just keeps their own 5%.
+        if (!selfPromoter && asPromoter.userId !== user?.id) promo = asPromoter;
+      } else {
+        const r = await resolveCode(admin, typed, 0);
+        if (!r || r.kind !== "discount") return NextResponse.json({ error: "That code isn't valid." }, { status: 400 });
+        voucher = r;
+        // A coupon a promoter minted attributes them (same rule as everywhere else).
+        if (!selfPromoter && r.promoter_user_id && r.promoter_user_id !== user?.id) promo = { userId: r.promoter_user_id, code: r.code };
+      }
+    }
+    const promoterBps = selfPromoter || (promo && !voucher) ? terms.discountBps : 0;
+    const d = brandDiscount(subtotal, promoterBps, voucher && voucher.kind === "discount" ? voucher : null);
+    discountCents = d.totalCents; voucherCents = d.voucherCents;
+    if (selfPromoter) codesUsed.push("PROMOTER-5");
+    if (promo && !voucher) codesUsed.push(promo.code);
+    if (voucher) codesUsed.push(voucher.code);
+    if (discountCents > 0) {
+      const coupon = await new Stripe(process.env.STRIPE_SECRET_KEY!).coupons.create({
+        amount_off: discountCents, currency: "usd", duration: "once", max_redemptions: 1,
+        name: codesUsed.includes("PROMOTER-5") ? (voucher ? `Promoter 5% + ${voucher.code}` : "Promoter 5%") : `Code ${codesUsed.join(" + ")}`,
+      });
+      couponId = coupon.id;
+    }
+  }
 
   const { data: order, error: orderErr } = await admin.from("store_orders").insert({
     store_id: store.id,
@@ -194,7 +237,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     subtotal_cents: subtotal,
     platform_fee_cents: platformFee,
     operator_fee_cents: operatorFee,
-    total_cents: subtotal + (ship?.cents ?? 0) + remitFee,
+    total_cents: subtotal - discountCents + (ship?.cents ?? 0) + remitFee,
+    ...(discountCents > 0 || promo ? { promo_code: codesUsed.join(" + ") || null, discount_cents: discountCents, promoter_user_id: promo?.userId ?? null } : {}),
+    ...(voucher && voucher.kind === "discount" ? { voucher_code_id: voucher.id, voucher_cents: voucherCents } : {}),
     remit_fee_cents: remitFee,
     ...(ship ? { shipping_cents: ship.cents, ship_country: country, shipping_zone: ship.zone, shipping_service: ship.name, shipping_eta: ship.eta, package_weight_g: ship.weight_g } : {}),
     status: "pending",
@@ -212,8 +257,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     // US stores: a foreign buyer may pay in their own currency (Stripe adds its
     // conversion charge to their total; the store still gets USD). Held-card
     // Gambian orders can't use it (manual capture), so it's off for the rail.
-    ...(rail ? {} : { adaptive_pricing: { enabled: true } }),
+    // Off with a brand-shop discount too: the discount is one USD amount-off coupon.
+    ...(rail || couponId ? {} : { adaptive_pricing: { enabled: true } }),
     line_items: lineItems,
+    ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
     success_url: `${origin}/${store.slug}?order=${order.id}`,
     cancel_url: `${origin}/${store.slug}`,
     shipping_address_collection: { allowed_countries: rail ? ["GM", "US", "GB", "SN"] : [country as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry] },

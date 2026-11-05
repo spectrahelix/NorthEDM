@@ -9,7 +9,7 @@ import { festdashListingActive } from "@/utils/billing";
 import { activePass, loadFeeSettings, serviceFeeCents } from "@/utils/festdashPass";
 import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
 import { safeOrigin } from "@/utils/safeRedirect";
-import { loadLocalRules, remitFeeIn } from "@/utils/localRules";
+import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -206,7 +206,7 @@ export async function POST(req: Request) {
   // outside the shop's split, like the runner fee (utils/festdashPass.ts).
   const [feeSettings, pass] = await Promise.all([loadFeeSettings(admin), activePass(admin, user.id)]);
   const serviceFee = serviceFeeCents(discountedCents, currency, feeSettings, !!pass);
-  const remitFee = localCard && localRules ? await remitFeeIn(currency, localRules.remitFeeUsdCents) : 0;
+  const remitFee = localCard && localRules ? transferFeeCents(discountedCents + runnerFee + serviceFee, currency, localRules.remitFeeBps) : 0;
   const netCents = discountedCents + runnerFee + serviceFee + remitFee;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
@@ -386,7 +386,7 @@ export async function POST(req: Request) {
         { cents: dueCents - runnerFee - serviceFee - remitFee, name: `FestDash order — ${pickup ? "pickup" : eventName}`, description: itemSummary || undefined },
         { cents: runnerFee, name: "Runner fee", description: "Goes to your runner in full" },
         { cents: serviceFee, name: "Service fee", description: "Waived with a FestDash pass" },
-        { cents: remitFee, name: "International transfer fee", description: "Sending the shop its share in The Gambia" },
+        { cents: remitFee, name: "Transfer fee", description: "Sending the shop its share in The Gambia" },
       ].filter((l) => l.cents > 0).map((l) => ({
         quantity: 1,
         price_data: { currency: currency.toLowerCase(), unit_amount: l.cents, product_data: { name: l.name, description: l.description } },

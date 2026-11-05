@@ -345,10 +345,28 @@ on every profile page; API `/api/ranks` (service role — `protect_role_flags`
 discards both columns on every ordinary write, verified 2026-11-04). Giving
 the Promoter rank also creates the promoter row + code (`grantPromoter`).
 The owner's archon account (cjblue) runs vendor 37 **"NorthEDM" — the main
-brand shop** (owner's decision, 2026-11-05; public, featured). `/shop`
-redirects everyone there (`utils/brandShop.ts`), except a shop owner, whose
-/shop is still their own store. Items go in on /vendor/dashboard like any
-shop. The older `shop_products` storefront (/admin/shop, /shop/[slug], cart)
+brand shop** (owner's decision, 2026-11-05; public, featured). It sells
+through its own embedded store **`/northedm`** (store slug `northedm`, vendor
+37 its only member, platform/operator fee 0). `/shop` redirects everyone
+there (`utils/brandShop.ts`), except a shop owner, whose /shop is still their
+own store. Items go in on /vendor/dashboard like any shop. Its sales are
+NorthEDM's own money: `settleStoreOrder` makes no vendor payouts for it.
+**Discounts at the brand shop** (owner, 2026-11-05; `brandDiscount()` in
+`utils/brandShop.ts`), one code box on /northedm only:
+- a promoter's code → `brand_code_discount_bps` (5%) off the items, and that
+  promoter earns `brand_code_commission_bps` (5%) of the discounted items as a
+  `store_order` commission — **booked only if their payout account
+  (`festdash_promoters.stripe_account_id`) is connected when the order is
+  paid**, then paid by the commissions cron;
+- **an active promoter buying for themselves always gets the 5%**, no code,
+  no commission;
+- a **discount coupon** (`discount_codes`) **stacks** on the promoter 5%
+  (percent coupons on the items after the 5%); it is spent at settlement
+  (`redeemCode`). A coupon a promoter minted attributes them.
+Stripe Checkout takes one coupon, so the stacked total goes as one USD
+amount-off coupon (Adaptive Pricing is off for discounted orders). Both rates
+are on /admin/festdash/coordinators. The transfer fee never applies here: it
+is only for shops outside the US. The older `shop_products` storefront (/admin/shop, /shop/[slug], cart)
 held no products and is no longer reached from /shop; its code is left in
 place (store credit is spent through its checkout) until the owner decides
 whether to retire it.
@@ -408,12 +426,13 @@ without it.
 > (`utils/localRules.ts`, owner's decision 2026-11-05). Wave / QMoney /
 > Afrimoney and Waychit are off (`coordinator_program_settings.local_wallets_enabled`
 > = false; both checkouts refuse them, and the order page and store cart hide
-> them and pre-select card). Every card order from a wallet-rail shop adds an
-> **international transfer fee** — `remit_fee_usd_cents` ($3.99 default; the
-> owner sets it to what Remitly actually charges) converted to the shop's
-> currency, stored as `remit_fee_cents` on `festdash_orders` / `store_orders`,
-> shown as its own line and its own Stripe line item, and kept by the owner
-> outside the split (`recordSaleSplit` treats it like the service fee). The
+> them and pre-select card). Every card order from a wallet-rail shop adds a
+> **transfer fee** — `remit_fee_bps`, **3% of the order** (owner, 2026-11-05;
+> items after any code + runner fee + service fee; rounded up to a whole
+> dalasi) — stored as `remit_fee_cents` on `festdash_orders` / `store_orders`,
+> shown as "Transfer fee" on its own line and its own Stripe line item, and
+> kept by the owner outside the split (`recordSaleSplit` treats it like the
+> service fee). `transferFeeCents()` is the one formula. The
 > Gambia country hub (/marketplace/country/GM) pins these rules; the small
 > `IntlPaymentNote` (owner's wording) sits on /festdash, the FestDash order
 > page, store carts, signup, shop-setup and the pass page.

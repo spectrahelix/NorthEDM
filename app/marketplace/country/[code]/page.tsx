@@ -10,8 +10,7 @@ import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { countryName, flagEmoji } from "@/utils/currencies";
 import { accentOr } from "@/utils/accent";
 import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
-import { loadLocalRules, remitFeeIn } from "@/utils/localRules";
-import { formatMoney } from "@/utils/money";
+import { loadLocalRules } from "@/utils/localRules";
 import { serviceClient as rulesClient } from "@/utils/coordinator";
 
 type Vendor = { id: number; name: string | null; category: string | null; description: string | null; accent_color: string | null; currency: string | null; country: string | null };
@@ -54,10 +53,7 @@ export default async function CountryShopsPage({ params }: { params: Promise<{ c
   }
   const name = countryName(code);
   const rules = await loadLocalRules(rulesClient());
-  const shopCurrency = String(vendors.find((v) => v.currency)?.currency ?? "USD");
-  const remitLabel = rules.remitFeeUsdCents > 0
-    ? `${formatMoney(rules.remitFeeUsdCents, "USD")}${shopCurrency !== "USD" ? ` (≈ ${formatMoney(await remitFeeIn(shopCurrency, rules.remitFeeUsdCents), shopCurrency)})` : ""}`
-    : "";
+  const remitLabel = rules.remitFeeBps > 0 ? `${rules.remitFeeBps / 100}%` : "";
   return (
     <main className="min-h-screen px-6 py-14 text-white">
       <div className="mx-auto max-w-6xl">
@@ -76,7 +72,7 @@ export default async function CountryShopsPage({ params }: { params: Promise<{ c
             <p className="font-dm-mono text-[11px] uppercase tracking-widest text-[#FFC93C]">📌 How to pay, for now</p>
             <p className="mt-1 text-neutral-200">
               Shops from {name} take <span className="font-semibold text-white">Visa, Mastercard, debit cards and Google Pay</span> only for now. Wave, QMoney and Afrimoney are paused.
-              An international transfer fee{remitLabel ? ` of ${remitLabel}` : ""} is added to each order to send the shop its share.
+              A transfer fee{remitLabel ? ` of ${remitLabel}` : ""} is added to each order to send the shop its share.
             </p>
           </div>
         )}

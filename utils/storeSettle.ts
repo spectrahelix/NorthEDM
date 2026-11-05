@@ -4,6 +4,8 @@ import { isLocalRail } from "@/utils/gambiaPay";
 import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
 import { chargeIdForPaymentIntent, payStoreOrder } from "@/utils/storePayouts";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
+import { BRAND_SHOP_VENDOR_ID, brandCodeTerms } from "@/utils/brandShop";
+import { redeemCode } from "@/utils/discountCodes";
 
 /**
  * Everything that happens once a store order's money is final: the vendor
@@ -31,6 +33,26 @@ export async function settleStoreOrder(db: SupabaseClient, orderId: string) {
       currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: pi,
       source: "store", collected_by: "owner",
     }, promoter, settings, null);
+    return;
+  }
+  // The NorthEDM brand shop's sales are NorthEDM's own money: no vendor
+  // payouts. A promoter code used there earns its promoter the brand-code
+  // commission — only if their payout account is connected (owner's rule).
+  if (vend && Number(vend.id) === BRAND_SHOP_VENDOR_ID) {
+    // A discount coupon used here is spent once the order is paid.
+    if (order.voucher_code_id) await redeemCode(db, String(order.voucher_code_id), (order.customer_id as string | null) ?? null);
+    const promoterId = (order.promoter_user_id as string | null) ?? null;
+    if (promoterId) {
+      const { data: pr } = await db.from("festdash_promoters").select("stripe_account_id, is_active").eq("user_id", promoterId).maybeSingle();
+      if (pr?.stripe_account_id && pr.is_active) {
+        const terms = await brandCodeTerms(db);
+        const { holdDays } = await commissionTerms(db, "store_order");
+        await recordCommission(db, {
+          promoterUserId: promoterId, referredUserId: (order.customer_id as string | null) ?? null, source: "store_order", sourceId: String(order.id),
+          baseCents: Math.max(0, Number(order.subtotal_cents ?? 0) - Number(order.discount_cents ?? 0)), rateBps: terms.commissionBps, holdDays,
+        });
+      }
+    }
     return;
   }
   // US store: pay each selling vendor from this charge (owed if not connected yet).
