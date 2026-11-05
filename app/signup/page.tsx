@@ -8,6 +8,7 @@ import { passwordRequirements, passwordIsValid, firstPasswordProblem } from "@/u
 import { safeNext } from "@/utils/safeRedirect";
 
 import { USERNAME_RE } from "@/utils/username";
+import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -324,6 +325,7 @@ export default function SignupPage() {
             >
               {loading ? "Creating account…" : "Create Account"}
             </button>
+            <IntlPaymentNote className="mt-1" />
           </form>
         </div>
 

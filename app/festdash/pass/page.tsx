@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatMoney } from "@/utils/money";
 import type { PassOption } from "@/utils/festdashPass";
+import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
 
 // FestDash pass (2026-11-04): pay once, no service fee on FestDash orders for
 // the pass's length. The runner fee is the runner's and is never waived.
@@ -78,7 +79,8 @@ export default function FestDashPassPage() {
       </div>
       {!info && !error && <p className="mt-6 text-sm text-neutral-500">Loading…</p>}
       {error && <p className="mt-4 text-sm text-[#FF5C3A]">{error}</p>}
-      <p className="mt-6 text-xs text-neutral-600">Charged once by card, in US dollars. A pass doesn&apos;t renew by itself and isn&apos;t refundable once it starts.</p>
+      <IntlPaymentNote className="mt-6" />
+      <p className="mt-3 text-xs text-neutral-600">Charged once by card, in US dollars. A pass doesn&apos;t renew by itself and isn&apos;t refundable once it starts.</p>
     </main>
   );
 }

@@ -114,7 +114,7 @@ export async function paidLocalVendorIds(admin: SupabaseClient, vendorIds: numbe
  */
 export async function recordSaleSplit(
   admin: SupabaseClient,
-  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; /** NorthEDM's service fee — outside the split, all to the owner */ service_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null; source?: "festdash" | "store"; collected_by?: "coordinator" | "owner"; /** FestDash order delivered by a runner (not pickup, not a store sale) */ delivery?: boolean },
+  order: { id: string; vendor_id: number; total_cents: number; runner_fee_cents?: number; /** NorthEDM's service fee — outside the split, all to the owner */ service_fee_cents?: number; /** transfer fee (Remitly cost) — also the owner's */ remit_fee_cents?: number; currency: string; payment_method: string; payment_ref: string | null; source?: "festdash" | "store"; collected_by?: "coordinator" | "owner"; /** FestDash order delivered by a runner (not pickup, not a store sale) */ delivery?: boolean },
   coordinatorUserId: string,
   settings: SplitSettings,
   createdBy: string | null
@@ -133,7 +133,7 @@ export async function recordSaleSplit(
   // The runner's fee is the runner's and the service fee is NorthEDM's; the
   // 90/10 split is on the items only.
   const runner = Math.max(0, Math.min(Number(order.runner_fee_cents ?? 0), order.total_cents));
-  const service = Math.max(0, Math.min(Number(order.service_fee_cents ?? 0), order.total_cents - runner));
+  const service = Math.max(0, Math.min(Number(order.service_fee_cents ?? 0) + Number(order.remit_fee_cents ?? 0), order.total_cents - runner));
   const s = splitSale(order.total_cents - runner - service, settings, true, order.delivery === true);
   const { data, error } = await admin
     .from("coordinator_ledger")

@@ -10,6 +10,7 @@ import { formatMoney } from "@/utils/money";
 import { docPath } from "@/utils/orderDocs";
 import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
 import { safeOrigin } from "@/utils/safeRedirect";
+import { loadLocalRules, remitFeeIn } from "@/utils/localRules";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -108,6 +109,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   // Afrimoney paid to the coordinator, confirmed in the purse console before
   // the order counts as paid — the same flow as a FestDash wallet order.
   const rail = await storeRail(admin, (store.owner_user_id as string | null) ?? null);
+  // Interim rule (2026-11-05, utils/localRules.ts): Gambian stores take card /
+  // Google Pay only, plus a transfer fee for the owner's Remitly cost.
+  const localRules = rail ? await loadLocalRules(admin) : null;
+  if (rail && localRules && !localRules.walletsEnabled && body.paymentMethod && body.paymentMethod !== "card") {
+    return NextResponse.json({ error: "For now this store takes card or Google Pay only." }, { status: 400 });
+  }
   // Waychit (2026-11-04): the same wallets, paid on Waychit's page into
   // NorthEDM's own merchant account and confirmed by its signed webhook
   // (utils/waychit.ts). Only while the owner has it switched on, GMD only.
@@ -176,6 +183,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     ship = { cents: svc.cents, name: svc.name, eta: svc.eta, eta_days: svc.eta_days, zone: quote.zone, weight_g: quote.weight_g };
   }
 
+  const remitFee = rail && localRules ? await remitFeeIn(rail.currency, localRules.remitFeeUsdCents) : 0;
+  if (remitFee > 0) lineItems.push({ quantity: 1, price_data: { currency: "usd", unit_amount: remitFee, product_data: { name: "International transfer fee", description: "Sending the shop its share in The Gambia" } } });
+
   const { data: order, error: orderErr } = await admin.from("store_orders").insert({
     store_id: store.id,
     customer_id: user?.id ?? null,
@@ -184,7 +194,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     subtotal_cents: subtotal,
     platform_fee_cents: platformFee,
     operator_fee_cents: operatorFee,
-    total_cents: subtotal + (ship?.cents ?? 0),
+    total_cents: subtotal + (ship?.cents ?? 0) + remitFee,
+    remit_fee_cents: remitFee,
     ...(ship ? { shipping_cents: ship.cents, ship_country: country, shipping_zone: ship.zone, shipping_service: ship.name, shipping_eta: ship.eta, package_weight_g: ship.weight_g } : {}),
     status: "pending",
     // Card on a wallet-rail store: priced and charged in the shop's currency;

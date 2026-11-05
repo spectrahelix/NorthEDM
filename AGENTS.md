@@ -390,6 +390,34 @@ without it.
 
 ## Gambia / coordinator model ("purse keeper") — stage one, 2026-11-01
 
+> ### ⛔ OWNER'S TO-DO — FIRST STEP: GET A PASSPORT (2026-11-05)
+> The owner does not have a passport yet. **Nothing on the Gambian business
+> route can start without it**: registering NorthEDM LLC in The Gambia as a
+> foreign company, the Ecobank account (owner = sole signatory), and the
+> Waychit / Modem Pay merchant account all need the owner's passport
+> (notarised → US State Dept authentication → Gambian embassy legalisation).
+> Order once the passport exists: (1) Gambian law firm as local agent +
+> registered office, NorthEDM LLC filed as a foreign company (form CO38);
+> (2) company TIN at GRA; (3) Ecobank account, owner sole signatory; (4)
+> Waychit and/or Modem Pay in the company's name, keys and login the
+> owner's. Gee is **not** part of this route (owner's decision, 2026-11-05):
+> he only receives payouts to his own wallet. Don't propose a route that puts
+> the company, the account or the keys in Gee's name.
+>
+> **Until then — card / Google Pay only for every Gambian shop**
+> (`utils/localRules.ts`, owner's decision 2026-11-05). Wave / QMoney /
+> Afrimoney and Waychit are off (`coordinator_program_settings.local_wallets_enabled`
+> = false; both checkouts refuse them, and the order page and store cart hide
+> them and pre-select card). Every card order from a wallet-rail shop adds an
+> **international transfer fee** — `remit_fee_usd_cents` ($3.99 default; the
+> owner sets it to what Remitly actually charges) converted to the shop's
+> currency, stored as `remit_fee_cents` on `festdash_orders` / `store_orders`,
+> shown as its own line and its own Stripe line item, and kept by the owner
+> outside the split (`recordSaleSplit` treats it like the service fee). The
+> Gambia country hub (/marketplace/country/GM) pins these rules; the small
+> `IntlPaymentNote` (owner's wording) sits on /festdash, the FestDash order
+> page, store carts, signup, shop-setup and the pass page.
+
 A regional **coordinator** (Gee, The Gambia) signs up local shops, collects
 their flat monthly fee and customers' payments **locally**, keeps his cut,
 pays the shops, and sends the owner's share by Remitly. **No money moves
