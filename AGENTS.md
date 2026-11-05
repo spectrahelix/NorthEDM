@@ -351,13 +351,22 @@ through its own embedded store **`/northedm`** (store slug `northedm`, vendor
 there (`utils/brandShop.ts`), except a shop owner, whose /shop is still their
 own store. Items go in on /vendor/dashboard like any shop. Its sales are
 NorthEDM's own money: `settleStoreOrder` makes no vendor payouts for it.
-**Promoter codes at the brand shop** (owner, 2026-11-05): the cart's code box
-(only on /northedm) takes `brand_code_discount_bps` (5%) off the items as a
-one-time Stripe coupon; the code's promoter earns `brand_code_commission_bps`
-(5%) of the discounted items as a `store_order` commission — **booked only if
-their payout account (`festdash_promoters.stripe_account_id`) is connected
-when the order is paid**, then paid by the commissions cron. A promoter can't
-use their own code. Both rates are on /admin/festdash/coordinators. The older `shop_products` storefront (/admin/shop, /shop/[slug], cart)
+**Discounts at the brand shop** (owner, 2026-11-05; `brandDiscount()` in
+`utils/brandShop.ts`), one code box on /northedm only:
+- a promoter's code → `brand_code_discount_bps` (5%) off the items, and that
+  promoter earns `brand_code_commission_bps` (5%) of the discounted items as a
+  `store_order` commission — **booked only if their payout account
+  (`festdash_promoters.stripe_account_id`) is connected when the order is
+  paid**, then paid by the commissions cron;
+- **an active promoter buying for themselves always gets the 5%**, no code,
+  no commission;
+- a **discount coupon** (`discount_codes`) **stacks** on the promoter 5%
+  (percent coupons on the items after the 5%); it is spent at settlement
+  (`redeemCode`). A coupon a promoter minted attributes them.
+Stripe Checkout takes one coupon, so the stacked total goes as one USD
+amount-off coupon (Adaptive Pricing is off for discounted orders). Both rates
+are on /admin/festdash/coordinators. The transfer fee never applies here: it
+is only for shops outside the US. The older `shop_products` storefront (/admin/shop, /shop/[slug], cart)
 held no products and is no longer reached from /shop; its code is left in
 place (store credit is spent through its checkout) until the owner decides
 whether to retire it.

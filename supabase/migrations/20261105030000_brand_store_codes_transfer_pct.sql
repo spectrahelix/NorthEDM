@@ -24,3 +24,8 @@ on conflict (slug) do nothing;
 insert into public.store_vendors (store_id, vendor_id, status)
 select s.id, 37, 'approved' from public.stores s
 where s.slug = 'northedm' and not exists (select 1 from public.store_vendors sv where sv.store_id = s.id and sv.vendor_id = 37);
+
+-- Discount coupons stack with the promoter discount at the brand shop (2026-11-05).
+alter table public.store_orders
+  add column if not exists voucher_code_id uuid references public.discount_codes(id) on delete set null,
+  add column if not exists voucher_cents integer not null default 0;

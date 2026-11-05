@@ -5,6 +5,7 @@ import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
 import { chargeIdForPaymentIntent, payStoreOrder } from "@/utils/storePayouts";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
 import { BRAND_SHOP_VENDOR_ID, brandCodeTerms } from "@/utils/brandShop";
+import { redeemCode } from "@/utils/discountCodes";
 
 /**
  * Everything that happens once a store order's money is final: the vendor
@@ -38,6 +39,8 @@ export async function settleStoreOrder(db: SupabaseClient, orderId: string) {
   // payouts. A promoter code used there earns its promoter the brand-code
   // commission — only if their payout account is connected (owner's rule).
   if (vend && Number(vend.id) === BRAND_SHOP_VENDOR_ID) {
+    // A discount coupon used here is spent once the order is paid.
+    if (order.voucher_code_id) await redeemCode(db, String(order.voucher_code_id), (order.customer_id as string | null) ?? null);
     const promoterId = (order.promoter_user_id as string | null) ?? null;
     if (promoterId) {
       const { data: pr } = await db.from("festdash_promoters").select("stripe_account_id, is_active").eq("user_id", promoterId).maybeSingle();
