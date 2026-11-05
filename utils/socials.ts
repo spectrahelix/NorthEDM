@@ -6,6 +6,6 @@
  * address never sends anyone to someone else's page.
  */
 export const NORTHEDM_SOCIALS: { facebook: string | null; instagram: string | null } = {
-  facebook: null,
+  facebook: "https://www.facebook.com/share/1VRDNqLM6V/", // owner, 2026-11-05
   instagram: null,
 };
