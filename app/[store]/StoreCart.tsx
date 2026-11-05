@@ -12,6 +12,7 @@ import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
 import { Price, ConversionNote } from "@/app/components/CurrencyContext";
 import { groupVariants } from "@/utils/productVariants";
+import { ItemRequest } from "./ItemRequest";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
@@ -80,6 +81,15 @@ export function StoreCart({
   const [shipCents, setShipCents] = useState(0);
   const shipsParcels = !wallet; // Gambian (wallet-rail) stores hand over locally
   const [refDone, setRefDone] = useState(false);
+  // "QTY Not Listed? → request now": which sizes this shopper already asked for.
+  const [requested, setRequested] = useState<Set<number>>(new Set());
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch(`/api/store/${slug}/requests`).then((r) => r.json()).then((j) => {
+      setRequested(new Set(((j.mine ?? []) as number[]).map(Number)));
+      setSignedIn(!!j.signedIn);
+    }).catch(() => {});
+  }, [slug]);
 
   const lines = products
     .map((p) => ({ p, n: qty[p.id] ?? 0 }))
@@ -221,6 +231,9 @@ export function StoreCart({
                     </div>
                   )}
                 </div>
+                <ItemRequest key={`${g.key}-${p.id}`} slug={slug} accent={accent} signedIn={signedIn} requested={requested} defaultId={p.id}
+                  sizes={g.options.map((o) => ({ id: o.id, label: sized ? (o.variant_label ?? o.name) : o.name }))}
+                  onSent={(id) => setRequested((s) => new Set(s).add(id))} />
               </div>
             </div>
           );

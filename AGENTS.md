@@ -181,6 +181,16 @@ Built for the first real vendor and now the standard for anything new:
   STOCK** banner over its photo and isn't linked (its page isn't public). The
   item page lists off-sale sibling sizes the same way. Off-sale rows are read
   with the service role, display fields only (name, size, photo, price).
+- **Item requests (2026-11-05, owner):** every store card has a small
+  **"QTY Not Listed? → request now"** box. A signed-in shopper asks for a size
+  or quantity that isn't on sale (`ItemRequest` → `/api/store/<slug>/requests`,
+  table `product_requests`, service role only). Push guard: one request per
+  person per size (unique `(product_id, user_id)`, a repeat is 409 and the box
+  reads "Requested ✓"), plus `shieldForm` (10/h). The operator gets a bell +
+  email (the NorthEDM shop also alerts the owner's phone via
+  `notifyProductRequest`), the **Edit shop** button shows "· N item requests",
+  and Edit shop lists them (`ItemRequestsPanel`, Done / Dismiss / Message).
+  Only the requester's username leaves the server — never an email.
 - **Long forms** (anything a person fills in for more than a minute, especially
   with a photo picker): `useUnsavedDraft` from `utils/useUnsavedDraft.ts` restores
   the draft if a phone reloads the tab. The service worker already refuses to

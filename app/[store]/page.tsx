@@ -18,6 +18,7 @@ import { CurrencyPill } from "@/app/components/CurrencyContext";
 import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { BRAND_STORE_SLUG, brandCodeTerms, isActivePromoter } from "@/utils/brandShop";
 import { IN_STOCK_FILTER } from "@/utils/stock";
+import { ItemRequestsPanel } from "./ItemRequestsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,10 @@ export default async function StorefrontPage({ params, searchParams }: { params:
   const editItems: EditableItem[] = editMode && vendorIds.length
     ? (((await admin.from("products").select(`id, name, price, inventory_count, status, is_public, image_url, source, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).order("created_at", { ascending: false })).data ?? []) as EditableItem[])
     : [];
+  // Open "QTY Not Listed?" requests, so the Edit shop button says how many wait.
+  const openRequests = canStock
+    ? ((await admin.from("product_requests").select("id", { count: "exact", head: true }).eq("store_id", storeData.id).eq("status", "open")).count ?? 0)
+    : 0;
   const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; accent_color: string };
   // A NorthEDM admin can preview other looks live (AdminLookPill); the preview
   // cookie is ignored for everyone else, so it never changes what they see.
@@ -188,7 +193,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
                 </>
               ) : (
                 <Link href={`/${store.slug}?edit=1`} className="rounded-xl px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>
-                  ✏️ Edit shop
+                  ✏️ Edit shop{openRequests > 0 ? ` · ${openRequests} item request${openRequests === 1 ? "" : "s"}` : ""}
                 </Link>
               )}
             </div>
@@ -227,6 +232,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
             <p className="mb-4 rounded-xl border border-[#FFC93C]/30 bg-[#FFC93C]/[0.08] px-4 py-2.5 text-sm text-[#FFC93C]">
               ✏️ Editing your shop. Only you see this. Set each size&apos;s price, switch it On sale, then press Save changes (top or bottom). Stock is optional: leave it blank for no limit, or enter a number for limited stock.
             </p>
+            <ItemRequestsPanel slug={store.slug} accent={accent} />
             <ShopEditor items={editItems} accent={accent} currencySymbol={rail ? `${rail.currency} ` : "$"} />
           </>
         ) : cartProducts.length === 0 ? (
