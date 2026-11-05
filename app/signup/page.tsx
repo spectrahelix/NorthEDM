@@ -7,11 +7,13 @@ import { passwordRequirements, passwordIsValid, firstPasswordProblem } from "@/u
 
 import { safeNext } from "@/utils/safeRedirect";
 
-import { USERNAME_RE } from "@/utils/username";
+import { USERNAME_RE, suggestUsername } from "@/utils/username";
 import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailTyped, setEmailTyped] = useState("");
+  const defaultName = suggestUsername(emailTyped);
   // Where to land after the account exists (the shop walkthrough passes this).
   const [next] = useState(() =>
     typeof window === "undefined" ? "/profile/edit" : safeNext(new URLSearchParams(window.location.search).get("next"), "/profile/edit")
@@ -58,7 +60,7 @@ export default function SignupPage() {
     const pw = String(fd.get("password") || "");
     const confirm = String(fd.get("confirm") || "");
 
-    if (!USERNAME_RE.test(username)) {
+    if (username && !USERNAME_RE.test(username)) {
       setError("Username must be 2–20 characters, letters, numbers, and underscores only.");
       setLoading(false);
       return;
@@ -190,14 +192,16 @@ export default function SignupPage() {
               <input
                 name="username"
                 type="text"
-                required
                 autoComplete="username"
-                placeholder="your_alias"
+                placeholder={defaultName || "your_alias"}
                 pattern="[a-zA-Z0-9_]{2,20}"
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none transition focus:border-[#3AFFD4]/50 focus:ring-1 focus:ring-[#3AFFD4]/20"
               />
               <p className="mt-1.5 font-dm-mono text-xs text-neutral-600">
                 2–20 chars · letters, numbers, underscores · shown in the forum
+              </p>
+              <p className="mt-1 text-xs text-neutral-500">
+                Optional. Leave it blank and your username will be the start of your email address{defaultName ? <> (<span className="font-dm-mono text-neutral-300">{defaultName}</span>, or close to it if it&apos;s taken)</> : ""}. You can change it later in your profile.
               </p>
             </div>
 
@@ -209,6 +213,7 @@ export default function SignupPage() {
                 name="email"
                 type="email"
                 required
+                onChange={(e) => setEmailTyped(e.target.value)}
                 autoComplete="email"
                 placeholder="you@example.com"
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none transition focus:border-[#3AFFD4]/50 focus:ring-1 focus:ring-[#3AFFD4]/20"

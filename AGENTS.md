@@ -374,7 +374,9 @@ whether to retire it.
 **Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
 `usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`
 marks that the person picked or kept their name: the email signup form stamps
-it, Google sign-ins (email-prefix username from `finalizeAuthedUser`) and
+it (the username box is **optional** since 2026-11-05 — left blank, the signup
+API uses the email prefix via `suggestUsername()`, adding digits if it's taken
+or reserved, and the form says so under the box), Google sign-ins (email-prefix username from `finalizeAuthedUser`) and
 admin-created accounts don't, and the layout shows `UsernamePrompt` once to any
 signed-in profile without the stamp (`/api/profile/username` checks and saves;
 "Later" hides it for the browser session). Existing accounts were backfilled as
