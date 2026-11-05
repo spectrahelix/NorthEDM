@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 import { ProductThumb } from "@/app/components/ProductThumb";
 
@@ -9,6 +10,10 @@ import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, RUNNER_FEE_CHOICES_BPS, WALLET_METHODS, isLocalRail, minRunnerFeeCents, walletNumberFor, whatsappLink, type LocalMethod, type VendorPayments } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
+import { serviceFeeCents } from "@/utils/festdashPass";
+import { waychitCharge } from "@/utils/waychitFee";
+import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
+import { transferFeeCents } from "@/utils/localRules";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
@@ -81,7 +86,7 @@ export default function OrderPage() {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
-  const [paymentMethod, setPaymentMethod] = useState<LocalMethod | "card" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<LocalMethod | "card" | "waychit" | null>(null);
   // Runner fee: the customer's pick for the runner, 10% of the items minimum.
   const [runnerPctBps, setRunnerPctBps] = useState<number>(1000);
   const [runnerCustom, setRunnerCustom] = useState<string>("");
@@ -163,12 +168,41 @@ export default function OrderPage() {
   const local = isLocalRail(selectedVendor);
   const currency = selectedVendor?.currency ?? "USD";
   const money = (cents: number) => formatMoney(cents, currency);
-  const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
+  // Interim rule (utils/localRules.ts): Gambian shops take card / Google Pay
+  // only for now, plus a transfer fee covering the owner's Remitly cost.
+  const [localRules, setLocalRules] = useState<{ walletsEnabled: boolean; remitFeeBps: number } | null>(null);
+  useEffect(() => {
+    if (!local) return;
+    fetch(`/api/local-rules`).then((r) => r.json())
+      .then((j) => {
+        setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeBps: Number(j.remitFeeBps ?? 0) });
+        if (!j.walletsEnabled) setPaymentMethod("card"); // the only way to pay for now
+      }).catch(() => {});
+  }, [local, currency]);
+  const walletsOff = local && localRules !== null && !localRules.walletsEnabled;
+  const walletOptions = walletsOff ? [] : WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
   const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
   const modes = selectedVendor?.fulfillment_modes ?? "both";
   const pickupOnly = modes === "pickup", deliveryOnly = modes === "delivery";
   const pickup = pickupOnly ? true : deliveryOnly ? false : fulfillment === "pickup";
-  const payableCents = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents);
+  // Service fee (5%, $1 minimum on USD) — none while the customer holds a
+  // FestDash pass. The server recomputes it; this is the same rule for display.
+  const [feeInfo, setFeeInfo] = useState<{ bps: number; min: number; passEnds: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/festdash/pass").then((r) => r.json()).then((j) => setFeeInfo({ bps: Number(j.service_fee_bps ?? 0), min: Number(j.service_fee_min_cents ?? 0), passEnds: j.active?.ends_at ?? null })).catch(() => {});
+  }, []);
+  const serviceFee = feeInfo ? serviceFeeCents(discountedCents, currency, { service_fee_bps: feeInfo.bps, service_fee_min_cents: feeInfo.min, festdash_passes: [] }, !!feeInfo.passEnds) : 0;
+  // Waychit (Wave / QMoney / Afrimoney into NorthEDM's account): shown only
+  // while the owner has it switched on; its 3% is the customer's, on its own line.
+  const [waychit, setWaychit] = useState<{ enabled: boolean; fee_bps: number } | null>(null);
+  useEffect(() => {
+    fetch("/api/waychit/status").then((r) => r.json()).then((j) => setWaychit({ enabled: !!j.enabled, fee_bps: Number(j.fee_bps ?? 300) })).catch(() => {});
+  }, []);
+  const waychitOn = !!waychit?.enabled && local && currency === "GMD" && !walletsOff;
+  const remitFeeCents = local && paymentMethod === "card" && localRules ? transferFeeCents(discountedCents + (pickup ? 0 : runnerFeeCents) + serviceFee, currency, localRules.remitFeeBps) : 0;
+  const beforeProcessing = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents) + serviceFee + remitFeeCents;
+  const processingFeeCents = waychitOn && paymentMethod === "waychit" ? waychitCharge(beforeProcessing, waychit!.fee_bps).processingFeeCents : 0;
+  const payableCents = beforeProcessing + processingFeeCents;
 
   async function applyPromo() {
     if (!promoInput.trim() || !selectedVendor) return;
@@ -839,6 +873,31 @@ export default function OrderPage() {
               </div>
               )}
 
+              {feeInfo && (
+                <div className="flex justify-between gap-3 text-sm">
+                  {feeInfo.passEnds ? (
+                    <span className="text-neutral-400">Service fee <span className="text-emerald-400">waived — FestDash pass until {new Date(feeInfo.passEnds).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span></span>
+                  ) : (
+                    <span className="text-neutral-400">Service fee <span className="text-neutral-600">({feeInfo.bps / 100}%{currency === "USD" && feeInfo.min > 0 ? `, ${money(feeInfo.min)} min` : ""})</span> · <Link href="/festdash/pass" className="text-orange-400 underline-offset-2 hover:underline">skip it with a pass</Link></span>
+                  )}
+                  <span className="shrink-0 text-neutral-300">{money(serviceFee)}</span>
+                </div>
+              )}
+
+              {remitFeeCents > 0 && (
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-neutral-400">Transfer fee <span className="text-neutral-600">({(localRules?.remitFeeBps ?? 300) / 100}%, sending the shop its share)</span></span>
+                  <span className="shrink-0 text-neutral-300">{money(remitFeeCents)}</span>
+                </div>
+              )}
+
+              {processingFeeCents > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-400">Payment processing <span className="text-neutral-600">(Waychit, {(waychit?.fee_bps ?? 300) / 100}%)</span></span>
+                  <span className="text-neutral-300">{money(processingFeeCents)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between font-semibold">
                 <span className="text-white">Total</span>
                 <span className="text-orange-400">{money(payableCents)}</span>
@@ -871,6 +930,7 @@ export default function OrderPage() {
             <>
               <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
+                {walletsOff && <p className="mb-3 text-xs text-neutral-400">For now this shop takes <span className="text-white">card or Google Pay only</span>, with a transfer fee added to the order.</p>}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
@@ -880,6 +940,16 @@ export default function OrderPage() {
                     <span className="font-semibold">Card · Google Pay · Apple Pay</span>
                     <span className="block text-xs text-neutral-500">Any Visa / Mastercard, or Google Pay / Apple Pay with a card saved; charged in {selectedVendor?.currency ?? "the shop's currency"}, held until delivery</span>
                   </button>
+                  {waychitOn && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("waychit")}
+                      className={`rounded-xl border px-4 py-3 text-left text-sm transition ${paymentMethod === "waychit" ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}
+                    >
+                      <span className="font-semibold">Wave · QMoney · Afrimoney — instant</span>
+                      <span className="block text-xs text-neutral-500">Pay on Waychit&apos;s secure page; confirmed automatically, no reference to type. Adds {(waychit?.fee_bps ?? 300) / 100}% processing.</span>
+                    </button>
+                  )}
                   {walletOptions.map((m) => (
                     <button
                       key={m}
@@ -897,14 +967,17 @@ export default function OrderPage() {
                 {paymentMethod === "card" && (
                   <p className="mt-3 text-xs text-neutral-500">🔒 Secure checkout; your card is authorized now and only charged when your order is delivered.</p>
                 )}
-                {paymentMethod && paymentMethod !== "cash" && paymentMethod !== "card" && (
+                {paymentMethod === "waychit" && (
+                  <p className="mt-3 text-xs text-neutral-500">🔒 You&apos;ll go to Waychit to pay with Wave, QMoney or Afrimoney. The moment it goes through, the shop gets your order — no reference needed.</p>
+                )}
+                {paymentMethod && paymentMethod !== "cash" && paymentMethod !== "card" && paymentMethod !== "waychit" && (
                   <p className="mt-3 text-xs text-neutral-500">
                     After you place the order you&apos;ll get a short reference to put in the {METHOD_LABEL[paymentMethod]} transfer note.
                     The shop&apos;s purse keeper confirms it, then the shop starts on your order.
                   </p>
                 )}
                 <p className="mt-3 text-xs text-neutral-600">At handover, give the last 4 digits of your phone to confirm — to your runner, or at the counter if you're picking up.</p>
-                {paymentMethod && paymentMethod !== "card" && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
+                {paymentMethod && paymentMethod !== "card" && paymentMethod !== "waychit" && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
               </div>
               {whatsappTo && (
                 <a
@@ -933,8 +1006,9 @@ export default function OrderPage() {
             disabled={submitting}
             className="w-full rounded-2xl bg-orange-500 py-4 text-lg font-semibold text-white transition hover:bg-orange-400 disabled:opacity-50"
           >
-            {submitting ? (local && paymentMethod !== "card" ? "Placing order…" : "Starting secure checkout…") : local && paymentMethod !== "card" ? "Place order" : "Continue to Payment 🔒"}
+            {submitting ? (local && paymentMethod !== "card" && paymentMethod !== "waychit" ? "Placing order…" : "Starting secure checkout…") : local && paymentMethod !== "card" && paymentMethod !== "waychit" ? "Place order" : "Continue to Payment 🔒"}
           </button>
+          <IntlPaymentNote className="mt-1" />
         </div>
       </div>
     </main>

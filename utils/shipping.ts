@@ -40,24 +40,48 @@ export const DEFAULT_RATES: Rates = {
   us: [
     { id: "ground", name: "USPS Ground Advantage", base_cents: 650, per_kg_cents: 180, eta: "2–5 business days", eta_days: [2, 5] },
     { id: "priority", name: "USPS Priority Mail", base_cents: 950, per_kg_cents: 260, eta: "1–3 business days", eta_days: [1, 3] },
+    // Flat rate (2026-11-05): one price whatever it weighs, while it fits. max_kg
+    // stands in for "fits the envelope / small box" for small goods (dried
+    // herbs, tinctures). Reference figures — check usps.com and edit in /admin/shipping.
+    { id: "flat-envelope", name: "USPS Priority Mail Flat Rate Envelope", base_cents: 1150, per_kg_cents: 0, max_kg: 1.5, eta: "1–3 business days", eta_days: [1, 3] },
+    { id: "flat-small-box", name: "USPS Priority Mail Small Flat Rate Box", base_cents: 1250, per_kg_cents: 0, max_kg: 2.5, eta: "1–3 business days", eta_days: [1, 3] },
   ],
   na: [
     { id: "intl-first", name: "First-Class Package International", base_cents: 1800, per_kg_cents: 900, max_kg: 1.8, eta: "1–3 weeks", eta_days: [7, 21] },
     { id: "intl-priority", name: "Priority Mail International", base_cents: 4000, per_kg_cents: 1200, eta: "6–10 business days", eta_days: [6, 10] },
+    { id: "intl-flat-envelope", name: "Priority Mail International Flat Rate Envelope", base_cents: 3500, per_kg_cents: 0, max_kg: 1.5, eta: "6–10 business days", eta_days: [6, 10] },
   ],
   eu: [
     { id: "intl-first", name: "First-Class Package International", base_cents: 2000, per_kg_cents: 1200, max_kg: 1.8, eta: "1–3 weeks", eta_days: [7, 21] },
     { id: "intl-priority", name: "Priority Mail International", base_cents: 5000, per_kg_cents: 1800, eta: "6–10 business days", eta_days: [6, 10] },
+    { id: "intl-flat-envelope", name: "Priority Mail International Flat Rate Envelope", base_cents: 4600, per_kg_cents: 0, max_kg: 1.5, eta: "6–10 business days", eta_days: [6, 10] },
   ],
   wafrica: [
     { id: "intl-first", name: "First-Class Package International", base_cents: 2200, per_kg_cents: 1400, max_kg: 1.8, eta: "2–4 weeks", eta_days: [14, 28] },
     { id: "intl-priority", name: "Priority Mail International", base_cents: 6000, per_kg_cents: 2200, eta: "6–12 business days", eta_days: [6, 12] },
+    { id: "intl-flat-envelope", name: "Priority Mail International Flat Rate Envelope", base_cents: 4600, per_kg_cents: 0, max_kg: 1.5, eta: "6–12 business days", eta_days: [6, 12] },
   ],
   world: [
     { id: "intl-first", name: "First-Class Package International", base_cents: 2200, per_kg_cents: 1400, max_kg: 1.8, eta: "2–4 weeks", eta_days: [14, 28] },
     { id: "intl-priority", name: "Priority Mail International", base_cents: 6000, per_kg_cents: 2400, eta: "6–10 business days", eta_days: [6, 10] },
+    { id: "intl-flat-envelope", name: "Priority Mail International Flat Rate Envelope", base_cents: 4600, per_kg_cents: 0, max_kg: 1.5, eta: "6–10 business days", eta_days: [6, 10] },
   ],
 };
+
+/**
+ * One-tap shipping weights for the goods NorthEDM sells (owner, 2026-11-05):
+ * the item as it goes in the box — contents plus its own bag or bottle. The
+ * outer mailer is added by packageWeightG. Starting points: weigh one of your
+ * own and type the real figure if it differs (a 30 ml amber dropper bottle
+ * is ~44 g empty at one major supplier; cap and dropper add a few grams).
+ */
+export const WEIGHT_PRESETS: { label: string; grams: number }[] = [
+  { label: "Dried 3.5 g (bagged)", grams: 12 },
+  { label: "Dried 7 g (bagged)", grams: 16 },
+  { label: "Dried 14 g (bagged)", grams: 24 },
+  { label: "Dried 1 oz / 28 g (bagged)", grams: 40 },
+  { label: "Tincture 30 ml glass dropper", grams: 85 },
+];
 
 /** Items without a weight count as 300 g each; packaging adds 10% + 60 g. */
 export const DEFAULT_ITEM_WEIGHT_G = 300;

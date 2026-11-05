@@ -14,6 +14,7 @@ import { brandFor, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 import { CurrencyPill } from "@/app/components/CurrencyContext";
 import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
+import { BRAND_STORE_SLUG, brandCodeTerms, isActivePromoter } from "@/utils/brandShop";
 
 export const dynamic = "force-dynamic";
 
@@ -208,6 +209,8 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             canOrder={canOrder}
             closedReason={closedReason}
             wallet={rail ? { currency: rail.currency, numbers: rail.numbers, coordinator: rail.coordinatorName } : null}
+            promoterCodeBps={store.slug === BRAND_STORE_SLUG ? (await brandCodeTerms(admin)).discountBps : 0}
+            viewerIsPromoter={store.slug === BRAND_STORE_SLUG && (await isActivePromoter(admin, viewer?.id))}
           />
         )}
       </div>

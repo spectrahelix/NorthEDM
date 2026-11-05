@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatMoney } from "@/utils/money";
 import { BridgeReview } from "@/app/components/festdash/BridgeReview";
 import { WalletWatch } from "@/app/components/festdash/WalletWatch";
+import { WaychitPanel } from "@/app/components/festdash/WaychitPanel";
 
 type Promoter = {
   id: string; user_id: string; display_name: string | null; is_active: boolean; is_coordinator: boolean; region: string | null;
@@ -18,7 +19,7 @@ type LedgerRow = {
   shop_cents: number; owner_cents: number; coordinator_cents: number; runner_cents?: number | null; collected_by?: string | null; method: string | null; reference: string | null;
   note: string | null; created_at: string; received_at: string | null; received_usd_cents: number | null;
 };
-type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; delivery_extra_bps?: number; subscription_fee_cents: number; subscription_coordinator_bps: number; bundle_fee_cents?: number; mint_max_percent_off?: number; mint_max_amount_off_cents?: number };
+type Settings = { sale_owner_bps: number; sale_coordinator_bps: number; delivery_extra_bps?: number; subscription_fee_cents: number; subscription_coordinator_bps: number; bundle_fee_cents?: number; mint_max_percent_off?: number; mint_max_amount_off_cents?: number; service_fee_bps?: number; service_fee_min_cents?: number; local_wallets_enabled?: boolean; remit_fee_bps?: number; brand_code_discount_bps?: number; brand_code_commission_bps?: number; festdash_passes?: { key: string; label: string; days: number; price_cents: number }[] };
 type Data = {
   held_commissions?: Record<string, number>; promoters: Promoter[]; vendors: Vendor[]; ledger: LedgerRow[]; settings: Settings | null };
 
@@ -125,9 +126,37 @@ export default function CoordinatorsClient() {
               <div><span className={label}>Promoter codes: max $ off</span><input className={input + " w-full"} value={(settings.mint_max_amount_off_cents ?? 2000) / 100} onChange={(e) => setSettings({ ...settings, mint_max_amount_off_cents: Math.round(Number(e.target.value) * 100) })} /></div>
             </div>
             <p className="mt-2 text-xs text-neutral-500">Every shop keeps {100 - settings.sale_owner_bps / 100}% of each store, marketplace and FestDash pickup sale, referred or not; a FestDash order a runner delivers takes {(settings.delivery_extra_bps ?? 1000) / 100}% more, so the shop keeps {100 - (settings.sale_owner_bps + (settings.delivery_extra_bps ?? 1000)) / 100}% of those. Of the platform&apos;s {settings.sale_owner_bps / 100}%, a shop&apos;s promoter or coordinator gets {settings.sale_coordinator_bps / 100}% of the sale and NorthEDM {(settings.sale_owner_bps - settings.sale_coordinator_bps) / 100}%; with no promoter NorthEDM keeps the whole {settings.sale_owner_bps / 100}%. On card orders the platform % is the Stripe fee taken at delivery and the promoter&apos;s part is paid through Stripe after the hold window. On wallet sales the coordinator keeps it from what they collected. Of each {formatMoney(settings.subscription_fee_cents, "USD")} fee you get {formatMoney(settings.subscription_fee_cents - Math.round(settings.subscription_fee_cents * settings.subscription_coordinator_bps / 10000), "USD")}.</p>
+            <p className={label + " mt-5"}>Gambian shops — how customers pay for now</p>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div><span className={label}>Transfer fee (% of the order)</span><input className={input + " w-full"} value={(settings.remit_fee_bps ?? 300) / 100} onChange={(e) => setSettings({ ...settings, remit_fee_bps: Math.round(Number(e.target.value) * 100) })} /></div>
+              <label className="flex items-center gap-2 text-sm text-neutral-300 sm:col-span-3">
+                <input type="checkbox" checked={!!settings.local_wallets_enabled} onChange={(e) => setSettings({ ...settings, local_wallets_enabled: e.target.checked })} />
+                Also accept Wave / QMoney / Afrimoney (paid to the coordinator). Off = card or Google Pay only.
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">The transfer fee is added to every card order from a Gambian shop and stays with you, to cover what Remitly charges to send the shop&apos;s and coordinator&apos;s shares.</p>
+
+            <p className={label + " mt-5"}>NorthEDM shop — promoter codes</p>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div><span className={label}>Buyer saves (% of items)</span><input className={input + " w-full"} value={(settings.brand_code_discount_bps ?? 500) / 100} onChange={(e) => setSettings({ ...settings, brand_code_discount_bps: Math.round(Number(e.target.value) * 100) })} /></div>
+              <div><span className={label}>Promoter earns (% of discounted items)</span><input className={input + " w-full"} value={(settings.brand_code_commission_bps ?? 500) / 100} onChange={(e) => setSettings({ ...settings, brand_code_commission_bps: Math.round(Number(e.target.value) * 100) })} /></div>
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">Only on the NorthEDM shop (/northedm). The promoter is paid only if their payout account is connected when the order is paid.</p>
+
+            <p className={label + " mt-5"}>Customer service fee &amp; FestDash passes</p>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div><span className={label}>Service fee % of items</span><input className={input + " w-full"} value={(settings.service_fee_bps ?? 500) / 100} onChange={(e) => setSettings({ ...settings, service_fee_bps: Math.round(Number(e.target.value) * 100) })} /></div>
+              <div><span className={label}>Minimum $ (US orders)</span><input className={input + " w-full"} value={(settings.service_fee_min_cents ?? 100) / 100} onChange={(e) => setSettings({ ...settings, service_fee_min_cents: Math.round(Number(e.target.value) * 100) })} /></div>
+              {(settings.festdash_passes ?? []).map((p, i) => (
+                <div key={p.key}><span className={label}>{p.label} ({p.days} days) $</span><input className={input + " w-full"} value={p.price_cents / 100} onChange={(e) => setSettings({ ...settings, festdash_passes: (settings.festdash_passes ?? []).map((q, j) => j === i ? { ...q, price_cents: Math.round(Number(e.target.value) * 100) } : q) })} /></div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">Every FestDash order carries the service fee on its items (after any code), all of it yours; it sits outside the shop&apos;s split, like the runner fee. A customer with a running pass pays none. Passes are one-time card payments in USD and stack if bought back to back.</p>
             <button onClick={() => run("settings", { action: "set_settings", ...settings }, "Settings saved.")} disabled={busy === "settings"} className="mt-3 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold hover:bg-orange-400 disabled:opacity-50">Save settings</button>
           </section>
         )}
+
+        <WaychitPanel />
 
         {/* Remittances to confirm */}
         <section className={card}>

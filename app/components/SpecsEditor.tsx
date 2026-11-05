@@ -1,5 +1,5 @@
 "use client";
-import { COUNTRIES } from "@/utils/shipping";
+import { COUNTRIES, WEIGHT_PRESETS } from "@/utils/shipping";
 import { SPEC_KEYS } from "@/utils/specs";
 
 /** Form state for the specification fields; `specs` is an ordered list so a seller can add rows. */
@@ -29,6 +29,16 @@ export function SpecsEditor({ value, onChange }: { value: SpecsForm; onChange: (
       <p className="mt-1 text-xs text-neutral-500">Weight sets the shipping price the customer sees. Leave it blank and we assume 300 g.</p>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <label className="text-xs text-neutral-400">Weight (g)<input className={inp + " mt-1"} inputMode="numeric" value={value.weightG} onChange={(e) => set({ weightG: e.target.value })} placeholder="300" /></label>
+        <div className="col-span-2 sm:col-span-4 -mt-1 flex flex-wrap gap-1.5">
+          <span className="self-center text-[11px] text-neutral-500">Quick weight:</span>
+          {WEIGHT_PRESETS.map((w) => (
+            <button key={w.label} type="button" onClick={() => set({ weightG: String(w.grams) })}
+              className={`rounded-full border px-2.5 py-0.5 text-[11px] transition ${value.weightG === String(w.grams) ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-400 hover:bg-white/5"}`}>
+              {w.label} · {w.grams} g
+            </button>
+          ))}
+          <span className="self-center text-[11px] text-neutral-600">Shipping price comes from this weight. Weigh one of yours if you can.</span>
+        </div>
         <label className="text-xs text-neutral-400">Length (cm)<input className={inp + " mt-1"} inputMode="decimal" value={value.lengthCm} onChange={(e) => set({ lengthCm: e.target.value })} /></label>
         <label className="text-xs text-neutral-400">Width (cm)<input className={inp + " mt-1"} inputMode="decimal" value={value.widthCm} onChange={(e) => set({ widthCm: e.target.value })} /></label>
         <label className="text-xs text-neutral-400">Height (cm)<input className={inp + " mt-1"} inputMode="decimal" value={value.heightCm} onChange={(e) => set({ heightCm: e.target.value })} /></label>

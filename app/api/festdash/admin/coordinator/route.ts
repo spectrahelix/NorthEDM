@@ -116,8 +116,29 @@ export async function PATCH(req: Request) {
     const bundle = n(body.bundle_fee_cents, 0, 1_000_000), mp = n(body.mint_max_percent_off, 0, 100), ma = n(body.mint_max_amount_off_cents, 0, 1_000_000), dx = n(body.delivery_extra_bps, 0, 5000);
     if (dx != null) patch.delivery_extra_bps = dx;
     if (bundle != null) patch.bundle_fee_cents = bundle; if (mp != null) patch.mint_max_percent_off = mp; if (ma != null) patch.mint_max_amount_off_cents = ma;
-    if (!Object.keys(patch).length) return NextResponse.json({ error: "nothing to change" }, { status: 400 });
-    const { data, error } = await admin.from("coordinator_program_settings").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", 1).select("*").single();
+    // Customer service fee + FestDash passes (utils/festdashPass.ts).
+    const sf = n(body.service_fee_bps, 0, 3000), sfm = n(body.service_fee_min_cents, 0, 10000);
+    if (sf != null) patch.service_fee_bps = sf; if (sfm != null) patch.service_fee_min_cents = sfm;
+    // Gambian shops' interim rules (utils/localRules.ts): wallets switch + transfer fee.
+    const rf = n(body.remit_fee_bps, 0, 2000);
+    if (rf != null) patch.remit_fee_bps = rf;
+    // NorthEDM brand shop promoter codes (utils/brandShop.ts).
+    const bd = n(body.brand_code_discount_bps, 0, 5000), bc = n(body.brand_code_commission_bps, 0, 5000);
+    if (bd != null) patch.brand_code_discount_bps = bd; if (bc != null) patch.brand_code_commission_bps = bc;
+    const walletSwitch = typeof body.local_wallets_enabled === "boolean" ? body.local_wallets_enabled : null;
+    let passes: { key: string; label: string; days: number; price_cents: number }[] | null = null;
+    if (Array.isArray(body.festdash_passes)) {
+      passes = [];
+      for (const p of body.festdash_passes.slice(0, 8)) {
+        const key = String(p?.key ?? "").trim().slice(0, 20), label = String(p?.label ?? "").trim().slice(0, 60);
+        const days = n(p?.days, 1, 366), price = n(p?.price_cents, 50, 100_000);
+        if (!key || !label || days == null || price == null) return NextResponse.json({ error: "Each pass needs a name, 1–366 days and a price of at least $0.50." }, { status: 400 });
+        passes.push({ key, label, days, price_cents: price });
+      }
+      if (!passes.length) passes = null;
+    }
+    if (!Object.keys(patch).length && !passes && walletSwitch === null) return NextResponse.json({ error: "nothing to change" }, { status: 400 });
+    const { data, error } = await admin.from("coordinator_program_settings").update({ ...patch, ...(passes ? { festdash_passes: passes } : {}), ...(walletSwitch === null ? {} : { local_wallets_enabled: walletSwitch }), updated_at: new Date().toISOString() }).eq("id", 1).select("*").single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ settings: data });
   }

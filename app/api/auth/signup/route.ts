@@ -6,7 +6,7 @@ import { sendAuthEmail, authEmailConfigured, authConfirmUrl } from "@/utils/auth
 import { humaniseAuthError } from "@/utils/authErrors";
 import { firstPasswordProblem } from "@/utils/passwordRules";
 import { safeNext, safeOrigin } from "@/utils/safeRedirect";
-import { usernameProblem } from "@/utils/username";
+import { suggestUsername, usernameProblem } from "@/utils/username";
 import {
   clientIp,
   clientContradictsItself,
@@ -17,11 +17,11 @@ import {
 
 
 export async function POST(req: NextRequest) {
-  const { email, password, username, origin: rawOrigin, referralCode, website, elapsedMs, next: rawNext } =
+  const { email, password, username: typedUsername, origin: rawOrigin, referralCode, website, elapsedMs, next: rawNext } =
     (await req.json()) as {
       email: string;
       password: string;
-      username: string;
+      username?: string;
       origin: string;
       next?: string;
       referralCode?: string;
@@ -53,12 +53,16 @@ export async function POST(req: NextRequest) {
   const origin = safeOrigin(rawOrigin, req.url);
   const next = safeNext(typeof rawNext === "string" ? rawNext : null, "/profile/edit");
 
-  if (!email || !password || !username || !rawOrigin) {
+  if (!email || !password || !rawOrigin) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
-  const usernameIssue = usernameProblem(String(username));
-  if (usernameIssue) {
-    return NextResponse.json({ error: usernameIssue }, { status: 400 });
+  // The username is optional (owner, 2026-11-05): left blank, it defaults to
+  // the start of the email address (suggestUsername), made unique below. A
+  // typed one must pass the one username rule.
+  const typed = String(typedUsername ?? "").trim();
+  if (typed) {
+    const usernameIssue = usernameProblem(typed);
+    if (usernameIssue) return NextResponse.json({ error: usernameIssue }, { status: 400 });
   }
   // Mirror of the rules the signup form shows live, so a request that skips the
   // form gets the same answer. Supabase is still the authority — anything this
@@ -116,13 +120,21 @@ export async function POST(req: NextRequest) {
   // ilike, not eq: uniqueness is enforced case-insensitively
   // (user_profiles_username_uidx on lower(username)), so a case-sensitive check
   // would pass "CJBlue" against an existing "cjblue" and then fail on insert.
-  const { data: existing } = await admin
-    .from("user_profiles")
-    .select("id")
-    .ilike("username", username)
-    .maybeSingle();
-  if (existing) {
-    return NextResponse.json({ error: "That username is taken. Try another." }, { status: 409 });
+  const taken = async (name: string) =>
+    !!(await admin.from("user_profiles").select("id").ilike("username", name).maybeSingle()).data;
+  let username = typed;
+  if (typed) {
+    if (await taken(typed)) return NextResponse.json({ error: "That username is taken. Try another." }, { status: 409 });
+  } else {
+    // Default: the email prefix; if it's taken, reserved or too short, add digits.
+    const base = (suggestUsername(String(email)) || "member").slice(0, 16);
+    username = base;
+    for (let i = 0; i < 20 && (usernameProblem(username) || (await taken(username))); i++) {
+      username = `${base}${Math.floor(100 + Math.random() * 9900)}`.slice(0, 20);
+    }
+    if (usernameProblem(username) || (await taken(username))) {
+      return NextResponse.json({ error: "Please pick a username." }, { status: 400 });
+    }
   }
 
   const normalizedRef = referralCode ? String(referralCode).trim().toUpperCase() : null;

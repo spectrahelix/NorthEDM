@@ -59,6 +59,7 @@ begin
     new.is_site_moderator    := old.is_site_moderator;
     new.is_forum_moderator   := old.is_forum_moderator;
     new.rank_locked          := old.rank_locked;
+    new.extra_ranks          := old.extra_ranks;   -- 20261104210000: must stay guarded
     new.pending_email        := old.pending_email;
     new.email_change_token   := old.email_change_token;
     new.email_change_expires := old.email_change_expires;

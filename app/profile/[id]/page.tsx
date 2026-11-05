@@ -9,6 +9,8 @@ import { ProfileHeader } from "@/app/components/ProfileHeader";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
 import { ProfileCTAs } from "@/app/components/ProfileCTAs";
 import { VouchersCard } from "@/app/components/VouchersCard";
+import { RankEditor } from "@/app/components/RankEditor";
+import { canEditRanks } from "@/utils/ranks";
 import { profileTags, currentShow } from "@/utils/supabase/user-profiles";
 import type { ArtisanWork, Social, VendorShow } from "@/utils/supabase/user-profiles";
 
@@ -96,6 +98,11 @@ export default async function ProfilePage({
   }
 
   const isOwn = currentUser?.id === id;
+  // Who may change this member's extra ranks (archon / warden / moderator).
+  const { data: viewer } = currentUser
+    ? await supabase.from("user_profiles").select("id, role, extra_ranks, is_site_moderator").eq("id", currentUser.id).maybeSingle()
+    : { data: null };
+  const rankEditable = !!viewer && canEditRanks(viewer, profile);
 
   // Upcoming shows (vendors). Hidden from others if the vendor toggled hide.
   let shows: VendorShow[] = [];
@@ -178,6 +185,9 @@ export default async function ProfilePage({
             }
           />
         </div>
+
+        <RankEditor userId={id} role={profile.role} extraRanks={profile.extra_ranks ?? []} isModerator={!!profile.is_site_moderator}
+          canEdit={rankEditable} canSetModerator={viewer?.role === "archon" && !isOwn} />
 
         {/* Bio */}
         <div className="mb-6">

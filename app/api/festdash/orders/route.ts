@@ -6,6 +6,10 @@ import { getStripe, platformFeeCents } from "@/utils/stripe";
 import { isLocalMethod, isLocalRail, isWalletMethod, minRunnerFeeCents, platformShareBps, walletNumberFor } from "@/utils/gambiaPay";
 import { activeSubscription, coordinatorFor, loadSplitSettings } from "@/utils/coordinator";
 import { festdashListingActive } from "@/utils/billing";
+import { activePass, loadFeeSettings, serviceFeeCents } from "@/utils/festdashPass";
+import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
+import { safeOrigin } from "@/utils/safeRedirect";
+import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -67,12 +71,29 @@ export async function POST(req: Request) {
   // coordinator's share and the runner fee are booked as owed BY the owner and
   // sent to the coordinator to disburse (collected_by = 'owner').
   const localCard = local && paymentMethod === "card";
+  // Waychit (2026-11-04): Wave / QMoney / Afrimoney paid on Waychit's page into
+  // NorthEDM's own merchant account; confirmed by its signed webhook, not by
+  // the coordinator. Offered only while the owner has it switched on, and only
+  // in dalasi (Waychit is GMD-only). utils/waychit.ts.
+  const waychit = local && paymentMethod === "waychit" ? await waychitState(admin) : null;
+  if (waychit && (!waychit.enabled || currency !== "GMD")) {
+    return NextResponse.json({ error: "Paying through Waychit isn't available yet — pick another way to pay." }, { status: 400 });
+  }
+  const localWaychit = !!waychit;
+  // Interim rule (2026-11-05, utils/localRules.ts): Gambian shops take card /
+  // Google Pay only, plus a transfer fee for the owner's Remitly cost.
+  const localRules = local ? await loadLocalRules(admin) : null;
+  if (localRules && !localRules.walletsEnabled && !localCard) {
+    return NextResponse.json({ error: "For now this shop takes card or Google Pay only." }, { status: 400 });
+  }
+  // Wallet orders that wait for the coordinator's manual confirmation.
+  const manualWallet = local && !localCard && !localWaychit;
   let payTo: string | null = null;
   if (local) {
     // Cash on delivery was removed on 2026-11-02 (owner's decision): an order
     // reaches the shop only after its payment is confirmed, and cash skipped
     // that gate. Old cash orders keep their status values for history.
-    if (!isWalletMethod(paymentMethod) && !localCard) {
+    if (!isWalletMethod(paymentMethod) && !localCard && !localWaychit) {
       return NextResponse.json({ error: "Choose how you'll pay: Wave, QMoney, Afrimoney or card." }, { status: 400 });
     }
     const sub = await activeSubscription(admin, vid);
@@ -180,7 +201,13 @@ export async function POST(req: Request) {
   // Runner fee: the customer's pick, never below 10% of the items. It rides on
   // top of the items and goes to the runner in full (utils/runnerPay.ts).
   const runnerFee = pickup ? 0 : Math.max(minRunnerFeeCents(discountedCents), Math.floor(Number(runnerFeeCents) || 0));
-  const netCents = discountedCents + runnerFee;
+  // Service fee (2026-11-04): NorthEDM's, on top of the items — 5%, at least
+  // $1 on USD orders — waived while the customer holds a FestDash pass. It is
+  // outside the shop's split, like the runner fee (utils/festdashPass.ts).
+  const [feeSettings, pass] = await Promise.all([loadFeeSettings(admin), activePass(admin, user.id)]);
+  const serviceFee = serviceFeeCents(discountedCents, currency, feeSettings, !!pass);
+  const remitFee = localCard && localRules ? transferFeeCents(discountedCents + runnerFee + serviceFee, currency, localRules.remitFeeBps) : 0;
+  const netCents = discountedCents + runnerFee + serviceFee + remitFee;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
@@ -214,6 +241,8 @@ export async function POST(req: Request) {
       items: lines,
       total_cents: netCents,
       runner_fee_cents: runnerFee,
+      service_fee_cents: serviceFee,
+      remit_fee_cents: remitFee,
       store_credit_cents: creditCents,
       discount_cents: discountCents,
       commission_cents: commissionCents,
@@ -221,10 +250,10 @@ export async function POST(req: Request) {
       promo_code_id: promoCodeId,
       // Hold new orders out of the vendor queue until the card is authorized.
       // The webhook / confirm step promotes them to "pending" once escrowed.
-      status: local && !localCard ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
-      payment_status: local && !localCard ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : "unpaid",
+      status: manualWallet ? (paymentMethod === "cash" ? "pending" : "awaiting_confirmation") : "awaiting_payment",
+      payment_status: manualWallet ? (paymentMethod === "cash" ? "cod" : "awaiting_confirmation") : localWaychit ? "awaiting_payment" : "unpaid",
       paid: false,
-      payment_method: local && !localCard ? paymentMethod : "card",
+      payment_method: manualWallet ? paymentMethod : localWaychit ? "waychit" : "card",
       payment_to: payTo,
       currency,
     }])
@@ -255,8 +284,32 @@ export async function POST(req: Request) {
   // Local-rail orders stop here: no card, no escrow. A wallet order waits for
   // the purse keeper's confirmation (/festdash/purse); a cash order goes
   // straight into the shop's queue and settles at handover.
-  if (local && !localCard) {
+  if (manualWallet) {
     return NextResponse.json({ order: data });
+  }
+
+  // Waychit: send the customer to Waychit's page for the order total plus the
+  // processing fee (shown as its own line; the shop's split is untouched).
+  if (localWaychit && waychit) {
+    const { chargeGmd, processingFeeCents } = waychitCharge(Number(data.total_cents), waychit.fee_bps);
+    if (chargeGmd > WAYCHIT_MAX_GMD) {
+      await admin.from("festdash_orders").delete().eq("id", data.id);
+      return NextResponse.json({ error: `Waychit takes up to D${WAYCHIT_MAX_GMD.toLocaleString()} per payment.` }, { status: 400 });
+    }
+    const site = safeOrigin(null, req.url);
+    try {
+      const pr = await createPaymentRequest({
+        amountGmd: chargeGmd, description: `FestDash order ${String(data.id).slice(0, 8)}`, clientReference: String(data.id).replace(/-/g, ""),
+        successRedirectUrl: `${site}/festdash/track/${data.id}?paid=1`, failureRedirectUrl: `${site}/festdash/order?canceled=${data.id}`,
+        metadata: { kind: "festdash", orderId: String(data.id) },
+      });
+      await admin.from("festdash_orders").update({ waychit_request_id: pr.id, processing_fee_cents: processingFeeCents }).eq("id", data.id);
+      return NextResponse.json({ order: { ...data, processing_fee_cents: processingFeeCents }, checkoutUrl: pr.waychitLaunchUrl });
+    } catch (e) {
+      console.error("waychit payment request failed:", e);
+      await admin.from("festdash_orders").delete().eq("id", data.id);
+      return NextResponse.json({ error: "Couldn't open Waychit. Please try again or pick another way to pay." }, { status: 502 });
+    }
   }
 
   // The amount owed on the card after any code discount.
@@ -315,10 +368,10 @@ export async function POST(req: Request) {
     metadata: { festdash_order_id: data.id, vendor_id: String(vendorId), customer_id: user.id, rail: localCard ? "local_card" : "card" },
   };
   if (vendorAccount) {
-    // Platform share of the ITEMS, plus the whole runner fee: the fee is
-    // collected here and transferred to the runner at the delivery code.
+    // Platform share of the ITEMS, plus the whole runner fee (transferred to
+    // the runner at the delivery code) and the whole service fee (NorthEDM's).
     const splits = await loadSplitSettings(admin);
-    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee, platformShareBps(splits, !pickup)) + runnerFee;
+    paymentIntentData.application_fee_amount = platformFeeCents(dueCents - runnerFee - serviceFee, platformShareBps(splits, !pickup)) + runnerFee + serviceFee;
     paymentIntentData.transfer_data = { destination: vendorAccount };
   }
 
@@ -327,19 +380,17 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // Items, runner fee and service fee as separate lines so the Stripe
+      // receipt shows what each part is (same total as dueCents).
       line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: currency.toLowerCase(),
-            unit_amount: dueCents,
-            product_data: {
-              name: `FestDash order — ${eventName}`,
-              description: itemSummary || undefined,
-            },
-          },
-        },
-      ],
+        { cents: dueCents - runnerFee - serviceFee - remitFee, name: `FestDash order — ${pickup ? "pickup" : eventName}`, description: itemSummary || undefined },
+        { cents: runnerFee, name: "Runner fee", description: "Goes to your runner in full" },
+        { cents: serviceFee, name: "Service fee", description: "Waived with a FestDash pass" },
+        { cents: remitFee, name: "Transfer fee", description: "Sending the shop its share in The Gambia" },
+      ].filter((l) => l.cents > 0).map((l) => ({
+        quantity: 1,
+        price_data: { currency: currency.toLowerCase(), unit_amount: l.cents, product_data: { name: l.name, description: l.description } },
+      })),
       payment_intent_data: paymentIntentData,
       customer_email: user.email ?? undefined,
       success_url: `${origin}/festdash/track/${data.id}?paid=1`,

@@ -332,10 +332,51 @@ archon` in both dropdowns. The **Promoter** tag goes through
 promoter row and referral code, the same path as approving an application, so
 a tag never exists without a code behind it.
 
+**Ranks: one primary + extra ranks (2026-11-04).** `user_profiles.role` is the
+primary rank (badge, and admin power for warden/archon); `extra_ranks text[]`
+holds more non-admin ranks (`wanderer | merchant | promoter`, DB check) whose
+abilities the person also has. One implementation, `utils/ranks.ts`:
+`hasRank()` (archon holds every rank), `canSell()` (seller tags, Merchant rank,
+archon, warden — used by `canManageInventory`, the inventory dashboard and the
+/marketplace CTA), `canEditRanks()`. Archons and wardens edit anyone's extra
+ranks (a warden not an archon's); **site moderators** (`is_site_moderator`,
+set only by an archon) edit non-admins' but never their own. UI: `RankEditor`
+on every profile page; API `/api/ranks` (service role — `protect_role_flags`
+discards both columns on every ordinary write, verified 2026-11-04). Giving
+the Promoter rank also creates the promoter row + code (`grantPromoter`).
+The owner's archon account (cjblue) runs vendor 37 **"NorthEDM" — the main
+brand shop** (owner's decision, 2026-11-05; public, featured). It sells
+through its own embedded store **`/northedm`** (store slug `northedm`, vendor
+37 its only member, platform/operator fee 0). `/shop` redirects everyone
+there (`utils/brandShop.ts`), except a shop owner, whose /shop is still their
+own store. Items go in on /vendor/dashboard like any shop. Its sales are
+NorthEDM's own money: `settleStoreOrder` makes no vendor payouts for it.
+**Discounts at the brand shop** (owner, 2026-11-05; `brandDiscount()` in
+`utils/brandShop.ts`), one code box on /northedm only:
+- a promoter's code → `brand_code_discount_bps` (5%) off the items, and that
+  promoter earns `brand_code_commission_bps` (5%) of the discounted items as a
+  `store_order` commission — **booked only if their payout account
+  (`festdash_promoters.stripe_account_id`) is connected when the order is
+  paid**, then paid by the commissions cron;
+- **an active promoter buying for themselves always gets the 5%**, no code,
+  no commission;
+- a **discount coupon** (`discount_codes`) **stacks** on the promoter 5%
+  (percent coupons on the items after the 5%); it is spent at settlement
+  (`redeemCode`). A coupon a promoter minted attributes them.
+Stripe Checkout takes one coupon, so the stacked total goes as one USD
+amount-off coupon (Adaptive Pricing is off for discounted orders). Both rates
+are on /admin/festdash/coordinators. The transfer fee never applies here: it
+is only for shops outside the US. The older `shop_products` storefront (/admin/shop, /shop/[slug], cart)
+held no products and is no longer reached from /shop; its code is left in
+place (store credit is spent through its checkout) until the owner decides
+whether to retire it.
+
 **Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
 `usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`
 marks that the person picked or kept their name: the email signup form stamps
-it, Google sign-ins (email-prefix username from `finalizeAuthedUser`) and
+it (the username box is **optional** since 2026-11-05 — left blank, the signup
+API uses the email prefix via `suggestUsername()`, adding digits if it's taken
+or reserved, and the form says so under the box), Google sign-ins (email-prefix username from `finalizeAuthedUser`) and
 admin-created accounts don't, and the layout shows `UsernamePrompt` once to any
 signed-in profile without the stamp (`/api/profile/username` checks and saves;
 "Later" hides it for the browser session). Existing accounts were backfilled as
@@ -368,6 +409,35 @@ Mapbox dashboard to the site's domains — and every caller falls back to text
 without it.
 
 ## Gambia / coordinator model ("purse keeper") — stage one, 2026-11-01
+
+> ### ⛔ OWNER'S TO-DO — FIRST STEP: GET A PASSPORT (2026-11-05)
+> The owner does not have a passport yet. **Nothing on the Gambian business
+> route can start without it**: registering NorthEDM LLC in The Gambia as a
+> foreign company, the Ecobank account (owner = sole signatory), and the
+> Waychit / Modem Pay merchant account all need the owner's passport
+> (notarised → US State Dept authentication → Gambian embassy legalisation).
+> Order once the passport exists: (1) Gambian law firm as local agent +
+> registered office, NorthEDM LLC filed as a foreign company (form CO38);
+> (2) company TIN at GRA; (3) Ecobank account, owner sole signatory; (4)
+> Waychit and/or Modem Pay in the company's name, keys and login the
+> owner's. Gee is **not** part of this route (owner's decision, 2026-11-05):
+> he only receives payouts to his own wallet. Don't propose a route that puts
+> the company, the account or the keys in Gee's name.
+>
+> **Until then — card / Google Pay only for every Gambian shop**
+> (`utils/localRules.ts`, owner's decision 2026-11-05). Wave / QMoney /
+> Afrimoney and Waychit are off (`coordinator_program_settings.local_wallets_enabled`
+> = false; both checkouts refuse them, and the order page and store cart hide
+> them and pre-select card). Every card order from a wallet-rail shop adds a
+> **transfer fee** — `remit_fee_bps`, **3% of the order** (owner, 2026-11-05;
+> items after any code + runner fee + service fee; rounded up to a whole
+> dalasi) — stored as `remit_fee_cents` on `festdash_orders` / `store_orders`,
+> shown as "Transfer fee" on its own line and its own Stripe line item, and
+> kept by the owner outside the split (`recordSaleSplit` treats it like the
+> service fee). `transferFeeCents()` is the one formula. The
+> Gambia country hub (/marketplace/country/GM) pins these rules; the small
+> `IntlPaymentNote` (owner's wording) sits on /festdash, the FestDash order
+> page, store carts, signup, shop-setup and the pass page.
 
 A regional **coordinator** (Gee, The Gambia) signs up local shops, collects
 their flat monthly fee and customers' payments **locally**, keeps his cut,
@@ -459,6 +529,28 @@ through the site; it records what moved and who confirmed it.** Full design in
   API keys, webhook secret, account number and TIN leave the server masked
   to their last four characters. Status *live* is a label until the provider
   integration is written.
+- **Waychit into NorthEDM's OWN merchant account — built, SWITCHED OFF
+  (2026-11-04).** Owner's decision: one Waychit merchant account that the owner
+  controls takes Wave / QMoney / Afrimoney, and NorthEDM pays shops,
+  coordinators and runners from it (Waychit Payouts). `utils/waychit.ts` (API
+  client, `Waychit-Signature` check: HMAC-SHA256 hex of `${t}.${rawBody}`,
+  5-minute window), `utils/waychitFee.ts` (client-safe gross-up so the 3%
+  arrives whole, whole dalasi), `utils/waychitOrders.ts` (confirm → split
+  booked `collected_by = 'owner'` → one `waychit_payouts` row per recipient;
+  runner's at delivery; a succeeded payout books a `payout` ledger row so
+  Settle net is unchanged; a declined paid order stops its payouts and the
+  owner refunds from Waychit — no refund API). Checkout option `waychit` on
+  the FestDash order page and wallet-rail store carts, GMD only;
+  `/api/waychit/webhook` (re-reads the request at Waychit before marking
+  paid; events stored once in `waychit_events`); `/api/waychit/status`;
+  owner panel `WaychitPanel` on /admin/festdash/coordinators (switch, fee,
+  payouts with Send — nothing is sent automatically). **Live only when
+  `WAYCHIT_API_KEY` + `WAYCHIT_WEBHOOK_SECRET` are in Vercel AND
+  `coordinator_program_settings.waychit_enabled` is on.** Waychit pays out only
+  inside The Gambia (wallets / Gambian banks) — it can't reach Stripe or a US
+  account; the owner's share leaves by bank wire from the Gambian settlement
+  account. Waychit requires a business registered in The Gambia (merchant
+  agreement §8.1). No sandbox: the first test is a small real order.
 - **Wallet-theft guards (2026-11-04).** A coordinator's wallet receives the
   money, so the site can't stop him keeping it — it makes it visible within a
   day and gives customers and shops a line to the owner (`utils/walletWatch.ts`):
@@ -638,7 +730,13 @@ through the site; it records what moved and who confirmed it.** Full design in
   +10% and 60 g packaging) with an ETA string; the table is a **reference
   estimate modelled on USPS retail**, overridable in **/admin/shipping**
   (`shipping_settings.rates`, plus `ship_from` and a handling fee). The cart's
-  `ShipTo` picker calls `/api/shipping/quote`; both checkouts re-quote
+  `ShipTo` picker calls `/api/shipping/quote`; **flat-rate services**
+  (Priority Mail Flat Rate Envelope / Small Box domestic, International Flat
+  Rate Envelope abroad — `per_kg_cents: 0`, `max_kg` as the "fits" limit) and
+  **one-tap item weights** for the owner's goods (`WEIGHT_PRESETS`: dried
+  3.5 / 7 / 14 / 28 g bagged, 30 ml glass-dropper tincture) were added
+  2026-11-05, plus `ShipEstimate` on marketplace item pages of US shops
+  (same quote, any country, before anything is in a cart); both checkouts re-quote
   server-side and charge it as a Stripe `shipping_options` line, so the Stripe
   receipt matches ours; `allowed_countries` is the chosen country. Store
   shipping is paid in full to the operator (`payStoreOrder`). Wallet-rail
@@ -686,6 +784,21 @@ through the site; it records what moved and who confirmed it.** Full design in
   `/marketplace/country/<iso2>` listing those shops with their items, prices
   in the shop's currency with ≈ in the visitor's. New countries appear on
   their own — the owner wants people from everywhere to feel welcome.
+- **Service fee + FestDash passes (2026-11-04)** — `utils/festdashPass.ts`.
+  Every FestDash order (pickup or delivery, every rail) carries a customer
+  **service fee**: `service_fee_bps` (5%) of the items after any code, at least
+  `service_fee_min_cents` ($1) on USD orders, stored as
+  `festdash_orders.service_fee_cents` and included in `total_cents`. It is
+  NorthEDM's in full and sits **outside the shop's split**, like the runner
+  fee: every split/commission base is `total − runner fee − service fee`
+  (`recordSaleSplit` adds it to `owner_cents`; the card application fee adds
+  it whole). A customer with a running **FestDash pass** pays none. Passes
+  (2-day, weekend, 7-day, monthly — `coordinator_program_settings.festdash_passes`,
+  prices in /admin/festdash/coordinators) are one-time USD card payments
+  bought on `/festdash/pass` (`/api/festdash/pass`, Stripe `kind =
+  festdash_pass`), switched on by the webhook (`activatePass`, stacks after a
+  running pass) in `festdash_member_passes` (service-role writes; users read
+  their own). The runner fee is never waived.
 - **No store credit on FestDash orders** (2026-11-02): it is NorthEDM's own
   liability and the vendor would never be paid for the credit-covered part. The
   order route ignores `useCredit`; the order page doesn't offer it. Credit stays
