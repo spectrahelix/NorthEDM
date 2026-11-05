@@ -55,7 +55,7 @@ export default function AdminCreateUserPage() {
       </div>
 
       <div className="mx-auto max-w-2xl px-6 py-10">
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form method="post" onSubmit={handleSubmit} className="space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
