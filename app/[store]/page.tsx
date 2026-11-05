@@ -213,7 +213,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
         {editMode ? (
           <>
             <p className="mb-4 rounded-xl border border-[#FFC93C]/30 bg-[#FFC93C]/[0.08] px-4 py-2.5 text-sm text-[#FFC93C]">
-              ✏️ Editing your shop. Only you see this. Set each size&apos;s price and stock, switch it On sale, and press Save. An item shows to customers once it&apos;s on sale with a price and stock above 0.
+              ✏️ Editing your shop. Only you see this. Set each size&apos;s price and stock, switch it On sale, then press Save changes (top or bottom). An item shows to customers once it&apos;s on sale with a price and stock above 0.
             </p>
             <ShopEditor items={editItems} accent={accent} currencySymbol={rail ? `${rail.currency} ` : "$"} />
           </>
