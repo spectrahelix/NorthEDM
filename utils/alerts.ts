@@ -230,3 +230,14 @@ export async function notifyWalletIssue(opts: { title: string; message: string }
     pushOwner(opts.title, opts.message.slice(0, 180), url),
   ]);
 }
+
+/** A shopper asked the NorthEDM brand shop for an item / quantity not on sale — email + phone push + in-app. */
+export async function notifyProductRequest(opts: { item: string; quantity: number; note?: string | null; who: string; path: string }) {
+  const message = `${opts.who} asked for ${opts.quantity} × ${opts.item}${opts.note ? ` — "${opts.note}"` : ""}.`;
+  const url = SITE_URL ? `${SITE_URL}${opts.path}` : opts.path;
+  await Promise.allSettled([
+    notifyAdminsInApp("product_request", message, opts.path),
+    emailOwner(`🛒 Item request — ${opts.quantity} × ${opts.item}`, `${message}\n\nSee all requests: ${url}`),
+    pushOwner("New item request", message, url),
+  ]);
+}
