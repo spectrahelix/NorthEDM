@@ -7,6 +7,7 @@ import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, WALLET_METHODS, type WalletMethod } from "@/utils/gambiaPay";
 import { waychitCharge } from "@/utils/waychitFee";
 import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
+import { transferFeeCents } from "@/utils/localRules";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
 import { Price, ConversionNote } from "@/app/components/CurrencyContext";
@@ -21,8 +22,10 @@ type Wallet = { currency: string; numbers: { wave?: string | null; qmoney?: stri
 // Cart for an embedded store. Quantities live only in this component — the server
 // re-reads every price and stock count at checkout, so nothing here is trusted.
 export function StoreCart({
-  slug, products, accent, canOrder, closedReason, displayFont = null, cardBg, wallet = null,
+  slug, products, accent, canOrder, closedReason, displayFont = null, cardBg, wallet = null, promoterCodeBps = 0,
 }: {
+  /** NorthEDM brand shop: a promoter's code takes this off the items (utils/brandShop.ts). 0 = no code box. */
+  promoterCodeBps?: number;
   slug: string;
   products: StoreProduct[];
   accent: string;
@@ -41,13 +44,14 @@ export function StoreCart({
   const currency = wallet?.currency ?? "USD";
   const money = (c: number) => formatMoney(c, currency);
   const [method, setMethod] = useState<WalletMethod | "card" | "waychit" | null>(null);
+  const [promoCode, setPromoCode] = useState("");
   // Interim rule (utils/localRules.ts): Gambian stores take card / Google Pay
   // only for now, plus a transfer fee covering the owner's Remitly cost.
-  const [localRules, setLocalRules] = useState<{ walletsEnabled: boolean; remitFeeCents: number } | null>(null);
+  const [localRules, setLocalRules] = useState<{ walletsEnabled: boolean; remitFeeBps: number } | null>(null);
   useEffect(() => {
     if (!wallet) return;
-    fetch(`/api/local-rules?currency=${encodeURIComponent(currency)}`).then((r) => r.json()).then((j) => {
-      setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeCents: Number(j.remitFeeCents ?? 0) });
+    fetch(`/api/local-rules`).then((r) => r.json()).then((j) => {
+      setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeBps: Number(j.remitFeeBps ?? 0) });
       if (!j.walletsEnabled) setMethod("card"); // the only way to pay for now
     }).catch(() => {});
   }, [wallet, currency]);
@@ -73,7 +77,8 @@ export function StoreCart({
   const subtotal = lines.reduce((s, l) => s + l.p.price_cents * l.n, 0);
   const waychitOn = !!waychit?.enabled && !!wallet && currency === "GMD" && !walletsOff;
   const processingCents = waychitOn && method === "waychit" ? waychitCharge(subtotal, waychit!.fee_bps).processingFeeCents : 0;
-  const remitCents = wallet && method === "card" ? localRules?.remitFeeCents ?? 0 : 0;
+  const remitCents = wallet && method === "card" && localRules ? transferFeeCents(subtotal, currency, localRules.remitFeeBps) : 0;
+  const codeOffCents = promoterCodeBps > 0 && promoCode.trim() ? Math.round((subtotal * promoterCodeBps) / 10000) : 0;
 
   // Keep the drawer honest: an emptied cart shouldn't leave it hanging open.
   useEffect(() => { if (count === 0) setOpen(false); }, [count]);
@@ -92,7 +97,7 @@ export function StoreCart({
     setBusy(true); setError("");
     const res = await fetch(`/api/store/${slug}/checkout`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ items: lines.map((l) => ({ id: l.p.id, qty: l.n })), paymentMethod: wallet ? method : undefined, country: ship.country, shippingService: ship.service }),
+      body: JSON.stringify({ items: lines.map((l) => ({ id: l.p.id, qty: l.n })), paymentMethod: wallet ? method : undefined, country: ship.country, shippingService: ship.service, promoCode: promoterCodeBps > 0 && promoCode.trim() ? promoCode.trim() : undefined }),
     });
     const j = await res.json().catch(() => ({}));
     if (res.status === 401) { window.location.href = `/login?next=${encodeURIComponent(`/${slug}`)}`; return; }
@@ -189,7 +194,7 @@ export function StoreCart({
               <p className="font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">
                 {count} item{count === 1 ? "" : "s"} · tap to {open ? "hide" : "review"}
               </p>
-              <p className="font-bebas text-2xl" style={{ color: accent }}><Price cents={subtotal + (shipsParcels ? shipCents : 0) + processingCents + remitCents} currency={currency} />{processingCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(processingCents)} processing</span> : null}{remitCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(remitCents)} international transfer fee</span> : null}{shipsParcels && shipCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(shipCents)} shipping</span> : null}</p>
+              <p className="font-bebas text-2xl" style={{ color: accent }}><Price cents={subtotal - codeOffCents + (shipsParcels ? shipCents : 0) + processingCents + remitCents} currency={currency} />{codeOffCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-[#39FF14]">−{money(codeOffCents)} promoter code</span> : null}{processingCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(processingCents)} processing</span> : null}{remitCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(remitCents)} transfer fee</span> : null}{shipsParcels && shipCents > 0 ? <span className="ml-2 font-dm-mono text-xs text-neutral-500">incl. {money(shipCents)} shipping</span> : null}</p>
             </button>
             <button
               onClick={checkout}
@@ -211,7 +216,7 @@ export function StoreCart({
           {open && wallet && (
             <div className="mx-auto mt-3 max-w-6xl border-t border-white/10 pt-3">
               <p className="mb-2 font-dm-mono text-[11px] uppercase tracking-widest text-neutral-500">How will you pay?</p>
-              {walletsOff && <p className="mb-2 text-xs text-neutral-400">For now this store takes <span className="text-white">card or Google Pay only</span>, with an international transfer fee added to the order.</p>}
+              {walletsOff && <p className="mb-2 text-xs text-neutral-400">For now this store takes <span className="text-white">card or Google Pay only</span>, with a transfer fee added to the order.</p>}
               <div className="grid gap-2 sm:grid-cols-3">
                 <button type="button" onClick={() => { setMethod("card"); setError(""); }}
                   className={`rounded-xl border px-3 py-2 text-left text-sm transition ${method === "card" ? "border-white/60 bg-white/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}>
@@ -247,6 +252,13 @@ export function StoreCart({
           )}
           {error && <p className="mx-auto mt-2 max-w-6xl text-sm text-[#FF5C3A]">{error}</p>}
           <p className="mx-auto mt-2 max-w-6xl text-center font-dm-mono text-[10px] text-neutral-600">🔒 Secure payment via Stripe</p>
+          {open && promoterCodeBps > 0 && (
+            <div className="mx-auto mt-3 flex max-w-6xl flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+              <input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Promoter code (optional)" autoCapitalize="characters"
+                className="w-56 rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-dm-mono text-sm text-neutral-100 placeholder:text-neutral-600 outline-none" />
+              <span className="text-xs text-neutral-500">A promoter&apos;s code saves you {promoterCodeBps / 100}% on your items.</span>
+            </div>
+          )}
           {open && <div className="mx-auto mt-1 flex max-w-6xl justify-center"><IntlPaymentNote /></div>}
         </div>
       )}

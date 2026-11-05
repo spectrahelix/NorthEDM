@@ -10,7 +10,8 @@ import { formatMoney } from "@/utils/money";
 import { docPath } from "@/utils/orderDocs";
 import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
 import { safeOrigin } from "@/utils/safeRedirect";
-import { loadLocalRules, remitFeeIn } from "@/utils/localRules";
+import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
+import { BRAND_STORE_SLUG, brandCodeTerms, promoterForCode } from "@/utils/brandShop";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -183,8 +184,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     ship = { cents: svc.cents, name: svc.name, eta: svc.eta, eta_days: svc.eta_days, zone: quote.zone, weight_g: quote.weight_g };
   }
 
-  const remitFee = rail && localRules ? await remitFeeIn(rail.currency, localRules.remitFeeUsdCents) : 0;
-  if (remitFee > 0) lineItems.push({ quantity: 1, price_data: { currency: "usd", unit_amount: remitFee, product_data: { name: "International transfer fee", description: "Sending the shop its share in The Gambia" } } });
+  const remitFee = rail && localRules ? transferFeeCents(subtotal, rail.currency, localRules.remitFeeBps) : 0;
+  if (remitFee > 0) lineItems.push({ quantity: 1, price_data: { currency: "usd", unit_amount: remitFee, product_data: { name: "Transfer fee", description: "Sending the shop its share in The Gambia" } } });
+
+  // Promoter code — NorthEDM brand shop only (utils/brandShop.ts): the buyer
+  // saves 5% of the items; the promoter is attributed for a 5% commission.
+  let promo: { userId: string; code: string } | null = null;
+  let discountCents = 0;
+  let couponId: string | null = null;
+  if (store.slug === BRAND_STORE_SLUG && body.promoCode) {
+    promo = await promoterForCode(admin, body.promoCode);
+    if (!promo) return NextResponse.json({ error: "That promoter code isn't valid." }, { status: 400 });
+    if (user && promo.userId === user.id) return NextResponse.json({ error: "You can't use your own promoter code." }, { status: 400 });
+    const terms = await brandCodeTerms(admin);
+    discountCents = Math.round((subtotal * terms.discountBps) / 10000);
+    if (discountCents > 0) {
+      const coupon = await new Stripe(process.env.STRIPE_SECRET_KEY!).coupons.create({
+        percent_off: terms.discountBps / 100, duration: "once", name: `Promoter code ${promo.code}`, max_redemptions: 1,
+      });
+      couponId = coupon.id;
+    }
+  }
 
   const { data: order, error: orderErr } = await admin.from("store_orders").insert({
     store_id: store.id,
@@ -194,7 +214,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     subtotal_cents: subtotal,
     platform_fee_cents: platformFee,
     operator_fee_cents: operatorFee,
-    total_cents: subtotal + (ship?.cents ?? 0) + remitFee,
+    total_cents: subtotal - discountCents + (ship?.cents ?? 0) + remitFee,
+    ...(promo ? { promo_code: promo.code, discount_cents: discountCents, promoter_user_id: promo.userId } : {}),
     remit_fee_cents: remitFee,
     ...(ship ? { shipping_cents: ship.cents, ship_country: country, shipping_zone: ship.zone, shipping_service: ship.name, shipping_eta: ship.eta, package_weight_g: ship.weight_g } : {}),
     status: "pending",
@@ -214,6 +235,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     // Gambian orders can't use it (manual capture), so it's off for the rail.
     ...(rail ? {} : { adaptive_pricing: { enabled: true } }),
     line_items: lineItems,
+    ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
     success_url: `${origin}/${store.slug}?order=${order.id}`,
     cancel_url: `${origin}/${store.slug}`,
     shipping_address_collection: { allowed_countries: rail ? ["GM", "US", "GB", "SN"] : [country as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry] },

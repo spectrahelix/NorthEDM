@@ -13,6 +13,7 @@ import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { serviceFeeCents } from "@/utils/festdashPass";
 import { waychitCharge } from "@/utils/waychitFee";
 import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
+import { transferFeeCents } from "@/utils/localRules";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
@@ -169,12 +170,12 @@ export default function OrderPage() {
   const money = (cents: number) => formatMoney(cents, currency);
   // Interim rule (utils/localRules.ts): Gambian shops take card / Google Pay
   // only for now, plus a transfer fee covering the owner's Remitly cost.
-  const [localRules, setLocalRules] = useState<{ walletsEnabled: boolean; remitFeeCents: number; currency: string } | null>(null);
+  const [localRules, setLocalRules] = useState<{ walletsEnabled: boolean; remitFeeBps: number } | null>(null);
   useEffect(() => {
     if (!local) return;
-    fetch(`/api/local-rules?currency=${encodeURIComponent(currency)}`).then((r) => r.json())
+    fetch(`/api/local-rules`).then((r) => r.json())
       .then((j) => {
-        setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeCents: Number(j.remitFeeCents ?? 0), currency: String(j.currency) });
+        setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeBps: Number(j.remitFeeBps ?? 0) });
         if (!j.walletsEnabled) setPaymentMethod("card"); // the only way to pay for now
       }).catch(() => {});
   }, [local, currency]);
@@ -198,7 +199,7 @@ export default function OrderPage() {
     fetch("/api/waychit/status").then((r) => r.json()).then((j) => setWaychit({ enabled: !!j.enabled, fee_bps: Number(j.fee_bps ?? 300) })).catch(() => {});
   }, []);
   const waychitOn = !!waychit?.enabled && local && currency === "GMD" && !walletsOff;
-  const remitFeeCents = local && paymentMethod === "card" && localRules?.currency === currency ? localRules.remitFeeCents : 0;
+  const remitFeeCents = local && paymentMethod === "card" && localRules ? transferFeeCents(discountedCents + (pickup ? 0 : runnerFeeCents) + serviceFee, currency, localRules.remitFeeBps) : 0;
   const beforeProcessing = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents) + serviceFee + remitFeeCents;
   const processingFeeCents = waychitOn && paymentMethod === "waychit" ? waychitCharge(beforeProcessing, waychit!.fee_bps).processingFeeCents : 0;
   const payableCents = beforeProcessing + processingFeeCents;
@@ -885,7 +886,7 @@ export default function OrderPage() {
 
               {remitFeeCents > 0 && (
                 <div className="flex justify-between gap-3 text-sm">
-                  <span className="text-neutral-400">International transfer fee <span className="text-neutral-600">(sending the shop its share)</span></span>
+                  <span className="text-neutral-400">Transfer fee <span className="text-neutral-600">({(localRules?.remitFeeBps ?? 300) / 100}%, sending the shop its share)</span></span>
                   <span className="shrink-0 text-neutral-300">{money(remitFeeCents)}</span>
                 </div>
               )}
@@ -929,7 +930,7 @@ export default function OrderPage() {
             <>
               <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
-                {walletsOff && <p className="mb-3 text-xs text-neutral-400">For now this shop takes <span className="text-white">card or Google Pay only</span>, with an international transfer fee added to the order.</p>}
+                {walletsOff && <p className="mb-3 text-xs text-neutral-400">For now this shop takes <span className="text-white">card or Google Pay only</span>, with a transfer fee added to the order.</p>}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"

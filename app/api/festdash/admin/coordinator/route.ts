@@ -120,8 +120,11 @@ export async function PATCH(req: Request) {
     const sf = n(body.service_fee_bps, 0, 3000), sfm = n(body.service_fee_min_cents, 0, 10000);
     if (sf != null) patch.service_fee_bps = sf; if (sfm != null) patch.service_fee_min_cents = sfm;
     // Gambian shops' interim rules (utils/localRules.ts): wallets switch + transfer fee.
-    const rf = n(body.remit_fee_usd_cents, 0, 5000);
-    if (rf != null) patch.remit_fee_usd_cents = rf;
+    const rf = n(body.remit_fee_bps, 0, 2000);
+    if (rf != null) patch.remit_fee_bps = rf;
+    // NorthEDM brand shop promoter codes (utils/brandShop.ts).
+    const bd = n(body.brand_code_discount_bps, 0, 5000), bc = n(body.brand_code_commission_bps, 0, 5000);
+    if (bd != null) patch.brand_code_discount_bps = bd; if (bc != null) patch.brand_code_commission_bps = bc;
     const walletSwitch = typeof body.local_wallets_enabled === "boolean" ? body.local_wallets_enabled : null;
     let passes: { key: string; label: string; days: number; price_cents: number }[] | null = null;
     if (Array.isArray(body.festdash_passes)) {
