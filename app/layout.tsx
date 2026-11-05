@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { SectionStrip } from "@/app/components/SectionStrip";
 import { NavBar } from "./components/NavBar";
 import { WaveField } from "./components/WaveField";
 import { PageViewTracker } from "./components/PageViewTracker";
@@ -187,6 +188,7 @@ export default async function RootLayout({
             <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} showVendorDash={hasVendor} />
           </div>
         </header>
+        <SectionStrip />
 
 
         {children}
