@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { canManageInventory } from "@/utils/marketplace";
 import { specsPatch } from "@/utils/specs";
+import { stockFromInput } from "@/utils/stock";
 
 async function getVendorId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number | null> {
   const { data } = await supabase
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
         category: String(body.category ?? "").trim(),
         description: String(body.description ?? "").trim(),
         price: Number(body.price) || 0,
-        inventory_count: Number(body.inventoryCount) || 0,
+        inventory_count: stockFromInput(body.inventoryCount), // blank = no limit
         image_url: body.imageUrl || null,
         is_public: body.isPublic ?? false,
         status: body.status || "draft",

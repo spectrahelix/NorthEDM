@@ -10,6 +10,7 @@ import { activePass, loadFeeSettings, serviceFeeCents } from "@/utils/festdashPa
 import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
 import { safeOrigin } from "@/utils/safeRedirect";
 import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
+import { hasStock } from "@/utils/stock";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if ((m.inventory_count ?? 0) < qty) {
+    if (!hasStock(m, qty)) {
       return NextResponse.json({ error: `Only ${m.inventory_count ?? 0} of “${m.name}” left.` }, { status: 400 });
     }
     lines.push({ product_id: Number(m.id), name: String(m.name), qty, price: Math.round(Number(m.price) * 100) });

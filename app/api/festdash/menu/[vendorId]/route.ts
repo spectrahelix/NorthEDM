@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { IN_STOCK_FILTER } from "@/utils/stock";
 
 export async function GET(
   _req: Request,
@@ -14,7 +15,7 @@ export async function GET(
     .eq("vendor_id", Number(vendorId))
     .eq("is_public", true)
     .eq("status", "published")
-    .gt("inventory_count", 0)
+    .or(IN_STOCK_FILTER)
     .order("category");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

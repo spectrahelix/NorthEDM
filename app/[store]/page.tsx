@@ -17,6 +17,7 @@ import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 import { CurrencyPill } from "@/app/components/CurrencyContext";
 import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { BRAND_STORE_SLUG, brandCodeTerms, isActivePromoter } from "@/utils/brandShop";
+import { IN_STOCK_FILTER } from "@/utils/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -62,13 +63,23 @@ export default async function StorefrontPage({ params, searchParams }: { params:
       ? supabase.from("vendors").select("id, name, category, description").in("id", vendorIds).eq("status", "approved").eq("is_public", true)
       : Promise.resolve({ data: [] as Vendor[] }),
     vendorIds.length
-      ? supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").gt("inventory_count", 0).order("created_at", { ascending: false })
+      ? supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").or(IN_STOCK_FILTER).order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as Product[] }),
   ]);
   const vendors = (vendorsData ?? []) as Vendor[];
   // Wallet-rail stores (operator is a coordinator shop) take wallet payments in the shop's currency.
   const rail = await storeRail(admin, (storeData.owner_user_id as string | null) ?? null);
   const products = (productsData ?? []) as Product[];
+  // Every size of every item is shown (owner, 2026-11-05); the ones not on
+  // sale (or out of a limited stock) are listed as "Out of stock" and can't
+  // be added. Read with the service role — off-sale rows aren't readable to
+  // visitors — and only for this store's visible vendors, only display fields.
+  const visibleVendorIds = vendors.map((v) => v.id);
+  const offSale = visibleVendorIds.length
+    ? (((await admin.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`)
+        .in("vendor_id", visibleVendorIds).not("id", "in", `(${products.map((p) => p.id).join(",") || 0})`)
+        .order("created_at", { ascending: false })).data ?? []) as Product[])
+    : [];
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
   // The shop's identity on its own page: theme background + display font,
   // unless the operator or this visitor has switched custom fonts off.
@@ -112,7 +123,8 @@ export default async function StorefrontPage({ params, searchParams }: { params:
       : billing === "past_due" || billing === "canceled"
         ? "This store has paused ordering. Browsing is still available."
         : undefined;
-  const cartProducts: StoreProduct[] = products.map((p) => ({
+  const cartProducts: StoreProduct[] = [...products.map((p) => ({ p, available: true })), ...offSale.map((p) => ({ p, available: false }))].map(({ p, available }) => ({
+    available,
     id: p.id,
     name: p.name ?? "Item",
     price_cents: Math.round(Number(p.price ?? 0) * 100),
@@ -123,7 +135,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
     variant_label: p.variant_label,
   }));
   // One per item, sizes counted once.
-  const itemCount = groupVariants(products).length;
+  const itemCount = groupVariants(cartProducts).length;
 
   return (
     <main className="relative min-h-screen overflow-x-clip text-neutral-100" style={{ background: brand.theme.background }}>
@@ -213,11 +225,11 @@ export default async function StorefrontPage({ params, searchParams }: { params:
         {editMode ? (
           <>
             <p className="mb-4 rounded-xl border border-[#FFC93C]/30 bg-[#FFC93C]/[0.08] px-4 py-2.5 text-sm text-[#FFC93C]">
-              ✏️ Editing your shop. Only you see this. Set each size&apos;s price and stock, switch it On sale, then press Save changes (top or bottom). An item shows to customers once it&apos;s on sale with a price and stock above 0.
+              ✏️ Editing your shop. Only you see this. Set each size&apos;s price, switch it On sale, then press Save changes (top or bottom). Stock is optional: leave it blank for no limit, or enter a number for limited stock.
             </p>
             <ShopEditor items={editItems} accent={accent} currencySymbol={rail ? `${rail.currency} ` : "$"} />
           </>
-        ) : products.length === 0 ? (
+        ) : cartProducts.length === 0 ? (
           <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-neutral-500">
             No products in this store yet.
           </p>
