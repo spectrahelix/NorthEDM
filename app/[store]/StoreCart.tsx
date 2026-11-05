@@ -18,6 +18,8 @@ export type StoreProduct = {
   image_url: string | null; href: string;
   /** Size options (utils/productVariants.ts): the group's lead row, and this row's button text. */
   variant_of?: number | null; variant_label?: string | null;
+  /** False = shown but not buyable: not on sale, or a limited stock that ran out. */
+  available?: boolean;
 };
 
 type Wallet = { currency: string; numbers: { wave?: string | null; qmoney?: string | null; afrimoney?: string | null }; coordinator: string | null } | null;
@@ -153,38 +155,53 @@ export function StoreCart({
           separate list of Add buttons underneath — every item shown twice. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {groups.map((g) => {
-          const p = g.options.find((o) => o.id === picked[g.key]) ?? g.options[0];
+          const firstBuyable = g.options.find((o) => o.available !== false) ?? g.options[0];
+          const p = g.options.find((o) => o.id === picked[g.key]) ?? firstBuyable;
           const sized = g.options.length > 1;
           const n = qty[p.id] ?? 0;
-          const priced = p.price_cents > 0;
+          const out = p.available === false;
+          const allOut = g.options.every((o) => o.available === false);
+          const priced = p.price_cents > 0 && !out;
           const title = sized ? g.title : p.name;
           const cols = g.options.length === 4 ? 2 : Math.min(g.options.length, 3);
           return (
-            <div key={g.key} className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" style={cardBg ? { background: cardBg } : undefined}>
-              <Link href={p.href} className="block transition hover:opacity-90">
-                <ProductThumb src={g.image_url} alt={title} />
-              </Link>
+            <div key={g.key} className={`flex flex-col overflow-hidden rounded-2xl border bg-white/[0.03] ${allOut ? "border-[#FF3B3B]/50" : "border-white/10"}`} style={cardBg ? { background: cardBg } : undefined}>
+              {allOut ? (
+                // Nothing on sale: the item still shows, under a red corner-to-corner "Out of stock" banner.
+                <div className="relative overflow-hidden">
+                  <div className="opacity-50 grayscale"><ProductThumb src={g.image_url} alt={title} /></div>
+                  <span aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 w-[150%] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-[#E11D2E] py-1.5 text-center font-dm-mono text-xs font-bold uppercase tracking-[0.25em] text-white shadow-lg">Out of stock</span>
+                </div>
+              ) : (
+                <Link href={p.href} className="block transition hover:opacity-90">
+                  <ProductThumb src={g.image_url} alt={title} />
+                </Link>
+              )}
               <div className="flex flex-1 flex-col p-3">
-                <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{title}</Link>
+                {allOut
+                  ? <p className="line-clamp-2 text-sm font-semibold text-white" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{title}</p>
+                  : <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{title}</Link>}
                 {p.vendor_name && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{p.vendor_name}</p>}
                 {sized && (
                   <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} role="radiogroup" aria-label={`${title} size`}>
                     {g.options.map((o) => {
                       const on = o.id === p.id;
+                      const oOut = o.available === false;
                       return (
                         <button key={o.id} type="button" role="radio" aria-checked={on}
                           onClick={() => setPicked((s) => ({ ...s, [g.key]: o.id }))}
-                          className={`min-w-0 rounded-lg border px-1 py-1 text-center leading-tight transition ${on ? "" : "border-white/15 hover:bg-white/5"}`}
-                          style={on ? { borderColor: accent, background: `${accent}26` } : undefined}>
-                          <span className="block truncate text-xs font-semibold text-white">{o.variant_label ?? o.name}</span>
-                          <span className="block truncate font-dm-mono text-[10px] text-neutral-300">{money(o.price_cents).replace(/[.,]00(?!\d)/, "")}</span>
+                          className={`relative min-w-0 overflow-hidden rounded-lg border px-1 py-1 text-center leading-tight transition ${on ? "" : oOut ? "border-[#FF3B3B]/40" : "border-white/15 hover:bg-white/5"}`}
+                          style={on ? { borderColor: oOut ? "#FF3B3B" : accent, background: oOut ? "rgba(225,29,46,0.15)" : `${accent}26` } : undefined}>
+                          <span className={`block truncate text-xs font-semibold ${oOut ? "text-neutral-400 line-through" : "text-white"}`}>{o.variant_label ?? o.name}</span>
+                          <span className={`block truncate font-dm-mono text-[10px] ${oOut ? "font-semibold text-[#FF6B6B]" : "text-neutral-300"}`}>{oOut ? "Out of stock" : money(o.price_cents).replace(/[.,]00(?!\d)/, "")}</span>
                         </button>
                       );
                     })}
                   </div>
                 )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                  {priced ? <Price cents={p.price_cents} currency={currency} className={`text-xl ${displayFont ? "" : "font-bebas"}`} style={{ color: accent, ...(displayFont ? { fontFamily: displayFont } : {}) }} /> : <p className="text-xl" style={{ color: accent }}>—</p>}
+                  {out ? <p className="font-dm-mono text-xs font-bold uppercase tracking-wider text-[#FF6B6B]">Out of stock</p>
+                    : priced ? <Price cents={p.price_cents} currency={currency} className={`text-xl ${displayFont ? "" : "font-bebas"}`} style={{ color: accent, ...(displayFont ? { fontFamily: displayFont } : {}) }} /> : <p className="text-xl" style={{ color: accent }}>—</p>}
                   {n === 0 ? (
                     <button
                       onClick={() => bump(p.id, 1)}

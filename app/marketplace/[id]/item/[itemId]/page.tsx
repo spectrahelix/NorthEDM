@@ -14,6 +14,7 @@ import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { VARIANT_COLUMNS, baseName, groupKeyOf } from "@/utils/productVariants";
 import { formatMoney } from "@/utils/money";
 import { hasStock, stockLabel } from "@/utils/stock";
+import { serviceClient } from "@/utils/coordinator";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,13 @@ async function load(id: string, itemId: string) {
   const [{ data: gallery }, { data: vendor }, { data: sibs }] = await Promise.all([
     supabase.from("product_images").select("url").eq("product_id", product.id).order("position").order("id"),
     supabase.from("vendors").select("id, name, accent_color, user_id, currency").eq("id", product.vendor_id).maybeSingle(),
-    supabase.from("products").select("id, name, price, inventory_count, status, is_public, variant_label")
+    // Every size of the item (owner, 2026-11-05): off-sale sizes are listed as
+    // "Out of stock". Service role, display fields only, this item's group only.
+    serviceClient().from("products").select("id, name, price, inventory_count, status, is_public, variant_label")
       .eq("vendor_id", product.vendor_id).or(`id.eq.${key},variant_of.eq.${key}`),
   ]);
   const sizes = ((sibs ?? []) as { id: number; name: string | null; price: number | null; inventory_count: number | null; status: string | null; is_public: boolean | null; variant_label: string | null }[])
-    .filter((o) => o.id === product.id || (o.status === "published" && o.is_public))
+    .filter((o) => o.id === product.id || !!o.variant_label)
     .sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0) || a.id - b.id);
   const images = (gallery ?? []).map((g) => g.url as string);
   if (images.length === 0 && product.image_url) images.push(product.image_url as string);
@@ -99,13 +102,24 @@ export default async function ItemPage({ params }: Params) {
               <div className="mt-4 grid max-w-md gap-2" style={{ gridTemplateColumns: `repeat(${sizes.length === 4 ? 2 : Math.min(sizes.length, 4)}, minmax(0, 1fr))` }} role="radiogroup" aria-label="Size">
                 {sizes.map((o) => {
                   const on = o.id === p.id;
-                  const out = !hasStock(o);
+                  const onSale = o.status === "published" && !!o.is_public;
+                  const out = !onSale || !hasStock(o);
+                  // An off-sale size has no page a visitor can open: shown, not linked.
+                  if (!onSale && !on) {
+                    return (
+                      <div key={o.id} role="radio" aria-checked={false} aria-disabled
+                        className="rounded-xl border border-[#FF3B3B]/40 bg-[#E11D2E]/10 px-2 py-2 text-center leading-tight">
+                        <span className="block text-sm font-semibold text-neutral-400 line-through">{o.variant_label ?? o.name}</span>
+                        <span className="block font-dm-mono text-xs font-semibold text-[#FF6B6B]">Out of stock</span>
+                      </div>
+                    );
+                  }
                   return (
                     <Link key={o.id} href={`/marketplace/${p.vendor_id}/item/${o.id}`} replace scroll={false} role="radio" aria-checked={on}
-                      className={`rounded-xl border px-2 py-2 text-center leading-tight transition ${on ? "" : "border-white/15 hover:bg-white/5"} ${out && !on ? "opacity-50" : ""}`}
+                      className={`rounded-xl border px-2 py-2 text-center leading-tight transition ${on ? "" : out ? "border-[#FF3B3B]/40" : "border-white/15 hover:bg-white/5"}`}
                       style={on ? { borderColor: accent, background: `${accent}26` } : undefined}>
-                      <span className="block text-sm font-semibold text-white">{o.variant_label ?? o.name}</span>
-                      <span className="block font-dm-mono text-xs text-neutral-300">{formatMoney(Math.round(Number(o.price ?? 0) * 100), vendorCurrency)}{out ? " · sold out" : ""}</span>
+                      <span className={`block text-sm font-semibold ${out ? "text-neutral-400 line-through" : "text-white"}`}>{o.variant_label ?? o.name}</span>
+                      <span className={`block font-dm-mono text-xs ${out ? "font-semibold text-[#FF6B6B]" : "text-neutral-300"}`}>{out ? "Out of stock" : formatMoney(Math.round(Number(o.price ?? 0) * 100), vendorCurrency)}</span>
                     </Link>
                   );
                 })}
