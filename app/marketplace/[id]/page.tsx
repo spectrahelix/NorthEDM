@@ -6,6 +6,8 @@ import { VendorEditForm } from "./components/VendorEditForm";
 import { BackBar } from "@/app/components/BackBar";
 import { accentOr } from "@/utils/accent";
 import { ProductThumb } from "@/app/components/ProductThumb";
+import { groupVariants } from "@/utils/productVariants";
+import { formatMoney } from "@/utils/money";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 
@@ -47,6 +49,8 @@ type Product = {
   image_url: string | null;
   is_public: boolean | null;
   status: string | null;
+  variant_of: number | null;
+  variant_label: string | null;
 };
 
 export default async function VendorDetailPage({
@@ -223,20 +227,33 @@ export default async function VendorDetailPage({
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.length > 0 ? (
-              products.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/marketplace/${vendor.id}/item/${product.id}`}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:bg-white/[0.06]"
-                >
-                  <ProductThumb src={product.image_url} alt={product.name || ""} />
-                  <div className="flex flex-1 flex-col p-3">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-white" style={display}>{product.name || "Unnamed Product"}</h3>
-                    {product.category && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{product.category}</p>}
-                    <Price cents={Math.round(Number(product.price ?? 0) * 100)} currency={vendor.currency ?? "USD"} className={`mt-auto pt-2 text-xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }} />
-                  </div>
-                </Link>
-              ))
+              // One card per item; an item sold in sizes shows its sizes and "from" price.
+              groupVariants(products).map((g) => {
+                const product = g.options[0];
+                const sized = g.options.length > 1;
+                return (
+                  <Link
+                    key={g.key}
+                    href={`/marketplace/${vendor.id}/item/${product.id}`}
+                    className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:bg-white/[0.06]"
+                  >
+                    <ProductThumb src={g.image_url} alt={g.title} />
+                    <div className="flex flex-1 flex-col p-3">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-white" style={display}>{sized ? g.title : (product.name || "Unnamed Product")}</h3>
+                      {product.category && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{product.category}</p>}
+                      {sized && (
+                        <p className="mt-1 font-dm-mono text-[10px] leading-4 text-neutral-400">
+                          {g.options.map((o) => `${o.variant_label ?? "?"} ${formatMoney(Math.round(Number(o.price ?? 0) * 100), vendor.currency ?? "USD")}`).join(" · ")}
+                        </p>
+                      )}
+                      <div className="mt-auto flex items-baseline gap-1 pt-2">
+                        {sized && <span className="font-dm-mono text-[10px] text-neutral-500">from</span>}
+                        <Price cents={Math.round(Number(product.price ?? 0) * 100)} currency={vendor.currency ?? "USD"} className={`text-xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }} />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
             ) : (
               <div className="col-span-full rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-neutral-400">
                 No public products yet.

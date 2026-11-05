@@ -10,6 +10,7 @@ import { lookPreviewCookie, isShopFont } from "@/utils/storeFonts";
 import { isStoreTheme } from "@/utils/storeThemes";
 import { BackBar } from "@/app/components/BackBar";
 import { ProductThumb } from "@/app/components/ProductThumb";
+import { VARIANT_COLUMNS, groupVariants } from "@/utils/productVariants";
 import { StoreCart, type StoreProduct } from "./StoreCart";
 import { brandFor, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string };
 type Vendor = { id: number; name: string | null; category: string | null; description: string | null };
-type Product = { id: number; vendor_id: number; name: string | null; category: string | null; price: number | null; image_url: string | null };
+type Product = { id: number; vendor_id: number; name: string | null; category: string | null; price: number | null; image_url: string | null; variant_of: number | null; variant_label: string | null };
 
 export async function generateMetadata({ params }: { params: Promise<{ store: string }> }): Promise<Metadata> {
   const { store: raw } = await params;
@@ -61,7 +62,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
       ? supabase.from("vendors").select("id, name, category, description").in("id", vendorIds).eq("status", "approved").eq("is_public", true)
       : Promise.resolve({ data: [] as Vendor[] }),
     vendorIds.length
-      ? supabase.from("products").select("id, vendor_id, name, category, price, image_url").in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").gt("inventory_count", 0).order("created_at", { ascending: false })
+      ? supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").gt("inventory_count", 0).order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as Product[] }),
   ]);
   const vendors = (vendorsData ?? []) as Vendor[];
@@ -77,10 +78,10 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   // The operator's items that customers can't see yet (draft, hidden, no price
   // or no stock), so their own storefront never says "empty" while six items
   // wait in the dashboard. Read with the service role, only for canStock.
-  type Unlisted = { id: number; name: string | null; price: number | null; inventory_count: number | null; status: string | null; is_public: boolean | null; image_url: string | null };
+  type Unlisted = { id: number; name: string | null; price: number | null; inventory_count: number | null; status: string | null; is_public: boolean | null; image_url: string | null; variant_of: number | null; variant_label: string | null };
   const listed = new Set(products.map((p) => p.id));
   const unlisted: (Unlisted & { missing: string[] })[] = canStock && vendorIds.length
-    ? (((await admin.from("products").select("id, name, price, inventory_count, status, is_public, image_url").in("vendor_id", vendorIds).order("created_at", { ascending: false })).data ?? []) as Unlisted[])
+    ? (((await admin.from("products").select(`id, name, price, inventory_count, status, is_public, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).order("created_at", { ascending: false })).data ?? []) as Unlisted[])
         .filter((p) => !listed.has(p.id))
         .map((p) => ({
           ...p,
@@ -92,6 +93,8 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
           ].filter(Boolean) as string[],
         }))
     : [];
+  // One card per item here too, sizes listed on it.
+  const unlistedGroups = groupVariants(unlisted);
   const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; accent_color: string };
   // A NorthEDM admin can preview other looks live (AdminLookPill); the preview
   // cookie is ignored for everyone else, so it never changes what they see.
@@ -128,7 +131,11 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
     vendor_name: vendorName.get(p.vendor_id) ?? null,
     image_url: p.image_url,
     href: `/marketplace/${p.vendor_id}/item/${p.id}`,
+    variant_of: p.variant_of,
+    variant_label: p.variant_label,
   }));
+  // One per item, sizes counted once.
+  const itemCount = groupVariants(products).length;
 
   return (
     <main className="relative min-h-screen overflow-x-clip text-neutral-100" style={{ background: brand.theme.background }}>
@@ -166,7 +173,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
           <h1 className={`mt-3 break-words leading-none tracking-wide ${display ? "text-5xl md:text-7xl" : "font-bebas text-7xl md:text-8xl"}`} style={display}>{store.name}</h1>
           {store.tagline && <p className="mt-4 max-w-xl text-neutral-300">{store.tagline}</p>}
           <p className="mt-4 font-dm-mono text-xs text-neutral-500">
-            {vendors.length} vendor{vendors.length === 1 ? "" : "s"} · {products.length} product{products.length === 1 ? "" : "s"}
+            {vendors.length} vendor{vendors.length === 1 ? "" : "s"} · {itemCount} product{itemCount === 1 ? "" : "s"}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">{brand.hasFont && <ShopFontToggle enabled={viewerFonts} />}<CurrencyPill options={VIEW_CURRENCIES} /></div>
           {canStock && (
@@ -212,7 +219,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
               <p className="font-semibold text-white">{unlisted.length ? "Nothing on sale yet." : "Your store is empty."}</p>
               <p className="mt-1 text-sm text-neutral-400">
                 {unlisted.length
-                  ? `Only you see this note. You have ${unlisted.length} item${unlisted.length === 1 ? "" : "s"} below that customers can't see yet. Give each a price and stock, and publish it, in your inventory dashboard.`
+                  ? `Only you see this note. You have ${unlistedGroups.length} item${unlistedGroups.length === 1 ? "" : "s"} below that customers can't see yet. Give each a price and stock, and publish it, in your inventory dashboard.`
                   : "Only you see this note. Items you add in your inventory dashboard and publish appear here automatically; a short guide there points at each field."}
               </p>
               <Link href="/vendor/dashboard" className="mt-4 inline-block rounded-xl px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>{unlisted.length ? "Finish them in the dashboard →" : "Add your first item →"}</Link>
@@ -242,20 +249,29 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             <h2 className={`text-3xl tracking-wide ${display ? "" : "font-bebas"}`} style={display}>Not on sale yet</h2>
             <p className="mb-4 mt-1 text-sm text-neutral-400">Only you see these. Each shows what it still needs before customers can buy it.</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {unlisted.map((p) => (
-                <Link key={p.id} href="/vendor/dashboard"
-                  className="overflow-hidden rounded-2xl border border-dashed border-white/20 bg-black/30 transition hover:bg-white/[0.04]">
-                  <div className="opacity-70"><ProductThumb src={p.image_url} alt={p.name ?? ""} /></div>
-                  <div className="p-3">
-                    <p className="line-clamp-2 text-sm font-semibold text-white">{p.name ?? "Item"}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {p.missing.map((m) => (
-                        <span key={m} className="rounded-md bg-[#FFC93C]/15 px-1.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wider text-[#FFC93C]">{m}</span>
-                      ))}
+              {unlistedGroups.map((g) => {
+                const missing = [...new Set(g.options.flatMap((o) => o.missing))];
+                const sized = g.options.length > 1;
+                return (
+                  <Link key={g.key} href="/vendor/dashboard"
+                    className="overflow-hidden rounded-2xl border border-dashed border-white/20 bg-black/30 transition hover:bg-white/[0.04]">
+                    <div className="opacity-70"><ProductThumb src={g.image_url} alt={g.title} /></div>
+                    <div className="p-3">
+                      <p className="line-clamp-2 text-sm font-semibold text-white">{sized ? g.title : (g.lead.name ?? "Item")}</p>
+                      {sized && (
+                        <p className="mt-1 font-dm-mono text-[11px] leading-5 text-neutral-400">
+                          {g.options.map((o) => `${o.variant_label ?? "?"} $${Number(o.price ?? 0).toFixed(2)}`).join(" · ")}
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {missing.map((m) => (
+                          <span key={m} className="rounded-md bg-[#FFC93C]/15 px-1.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wider text-[#FFC93C]">{m}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}
