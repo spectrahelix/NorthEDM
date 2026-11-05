@@ -11,10 +11,13 @@ import { transferFeeCents } from "@/utils/localRules";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
 import { Price, ConversionNote } from "@/app/components/CurrencyContext";
+import { groupVariants } from "@/utils/productVariants";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
   image_url: string | null; href: string;
+  /** Size options (utils/productVariants.ts): the group's lead row, and this row's button text. */
+  variant_of?: number | null; variant_label?: string | null;
 };
 
 type Wallet = { currency: string; numbers: { wave?: string | null; qmoney?: string | null; afrimoney?: string | null }; coordinator: string | null } | null;
@@ -40,6 +43,10 @@ export function StoreCart({
   closedReason?: string;
 }) {
   const [qty, setQty] = useState<Record<number, number>>({});
+  // One card per item; an item sold in sizes shows a button per size and
+  // remembers which one is picked (cheapest first by default).
+  const groups = groupVariants(products.map((p) => ({ ...p, price: p.price_cents })));
+  const [picked, setPicked] = useState<Record<number, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -145,17 +152,37 @@ export function StoreCart({
           the Add control together. It used to be a photo grid with a second,
           separate list of Add buttons underneath — every item shown twice. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {products.map((p) => {
+        {groups.map((g) => {
+          const p = g.options.find((o) => o.id === picked[g.key]) ?? g.options[0];
+          const sized = g.options.length > 1;
           const n = qty[p.id] ?? 0;
           const priced = p.price_cents > 0;
+          const title = sized ? g.title : p.name;
+          const cols = g.options.length === 4 ? 2 : Math.min(g.options.length, 3);
           return (
-            <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" style={cardBg ? { background: cardBg } : undefined}>
+            <div key={g.key} className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" style={cardBg ? { background: cardBg } : undefined}>
               <Link href={p.href} className="block transition hover:opacity-90">
-                <ProductThumb src={p.image_url} alt={p.name} />
+                <ProductThumb src={g.image_url} alt={title} />
               </Link>
               <div className="flex flex-1 flex-col p-3">
-                <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{p.name}</Link>
+                <Link href={p.href} className="line-clamp-2 text-sm font-semibold text-white hover:underline" style={displayFont ? { fontFamily: displayFont, fontWeight: 400, fontSize: "0.95rem" } : undefined}>{title}</Link>
                 {p.vendor_name && <p className="mt-0.5 truncate font-dm-mono text-[10px] text-neutral-500">{p.vendor_name}</p>}
+                {sized && (
+                  <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} role="radiogroup" aria-label={`${title} size`}>
+                    {g.options.map((o) => {
+                      const on = o.id === p.id;
+                      return (
+                        <button key={o.id} type="button" role="radio" aria-checked={on}
+                          onClick={() => setPicked((s) => ({ ...s, [g.key]: o.id }))}
+                          className={`min-w-0 rounded-lg border px-1 py-1 text-center leading-tight transition ${on ? "" : "border-white/15 hover:bg-white/5"}`}
+                          style={on ? { borderColor: accent, background: `${accent}26` } : undefined}>
+                          <span className="block truncate text-xs font-semibold text-white">{o.variant_label ?? o.name}</span>
+                          <span className="block truncate font-dm-mono text-[10px] text-neutral-300">{money(o.price_cents).replace(/[.,]00(?!\d)/, "")}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-2">
                   {priced ? <Price cents={p.price_cents} currency={currency} className={`text-xl ${displayFont ? "" : "font-bebas"}`} style={{ color: accent, ...(displayFont ? { fontFamily: displayFont } : {}) }} /> : <p className="text-xl" style={{ color: accent }}>—</p>}
                   {n === 0 ? (

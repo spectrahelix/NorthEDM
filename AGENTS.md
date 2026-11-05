@@ -157,6 +157,16 @@ Built for the first real vendor and now the standard for anything new:
   `.claude/skills/product-photo` (`scripts/product-photo.mjs`, agent
   `product-photographer`). Backdrops come only from `BACKDROPS`. Fix cut-out
   quality there, not in a one-off script.
+- **Sizes of one item (2026-11-05):** "one picture per mushroom, with weight
+  buttons". Each size is its own `products` row, with its own price, stock,
+  shipping weight and receipt name, so checkout, stock and shipping are
+  unchanged. Sizes are grouped by `variant_of` (the lead row's id) with
+  `variant_label` as the button text ("3.5 g", "1 oz", "30 ml").
+  `groupVariants()` in `utils/productVariants.ts` makes one card per item on
+  the store page (size buttons showing weight + price, which drive the price
+  and Add), the vendor page ("from" price) and the owner's "Not on sale yet"
+  section. The item page shows a size button per sibling. Add a new size as a
+  new row pointing at the lead; never as a separate card.
 - **Long forms** (anything a person fills in for more than a minute, especially
   with a photo picker): `useUnsavedDraft` from `utils/useUnsavedDraft.ts` restores
   the draft if a phone reloads the tab. The service worker already refuses to
