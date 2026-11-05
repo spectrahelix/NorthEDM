@@ -55,13 +55,22 @@ export function ItemRequest({ slug, sizes, defaultId, requested, signedIn, accen
     setError((j as { error?: string }).error || "Couldn't send that — try again.");
   }
 
+  // Sizes already asked for stay visible on the card, so a sent request never looks lost.
+  const asked = sizes.filter((s) => requested.has(s.id)).map((s) => s.label);
+  const askedNote = asked.length > 0 && (
+    <p className="mt-2 text-center font-dm-mono text-[10px] text-neutral-400">Requested ✓ {asked.join(", ")}</p>
+  );
+
   if (!open) {
     return (
+      <>
+      {askedNote}
       <button type="button" onClick={() => (signedIn === false ? toLogin() : setOpen(true))}
         className="mt-2 w-full rounded-lg border border-dashed border-white/20 px-2 py-1 text-center leading-tight transition hover:border-white/40 hover:bg-white/[0.04]">
         <span className="block text-[11px] font-semibold text-neutral-300">QTY Not Listed?</span>
         <span className="block font-dm-mono text-[10px]" style={{ color: accent }}>→ request now</span>
       </button>
+      </>
     );
   }
 
