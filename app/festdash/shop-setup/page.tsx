@@ -11,6 +11,7 @@ import { currencyForCountry } from "@/utils/currencies";
 import { currencyName } from "@/utils/money";
 import { PriceField } from "@/app/components/PriceField";
 import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
+import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
 
 // The shop owner's walkthrough for a coordinator region (The Gambia). One page
 // takes someone from a QR code to a live shop: account → application →
@@ -148,6 +149,7 @@ export default function ShopSetupPage() {
             Put your shop&apos;s goods online, let people nearby order on the website or WhatsApp, and a runner brings it to them.
             You keep <span className="font-semibold text-white">{shopPct}%</span> of every sale. Your coordinator{coordName ? ` (${coordName})` : ""} handles the money locally.
           </p>
+          <IntlPaymentNote className="mt-3" />
         </div>
         {msg && <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-200">{msg}</p>}
 

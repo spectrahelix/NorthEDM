@@ -6,6 +6,7 @@ import { PaymentPaths } from "@/app/components/festdash/PaymentPaths";
 import { isLocalRail } from "@/utils/gambiaPay";
 import { paidLocalVendorIds } from "@/utils/coordinator";
 import { festdashListingActive } from "@/utils/billing";
+import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
 
 export const metadata = {
   title: "FestDash / FestEats — Go-Anywhere Local Delivery Network",
@@ -166,6 +167,7 @@ export default async function FestDashPage() {
               Set up your shop →
             </Link>
           </div>
+          <div className="mt-4 flex justify-center"><IntlPaymentNote /></div>
         </div>
       </section>
 

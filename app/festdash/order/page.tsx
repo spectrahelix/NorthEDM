@@ -12,6 +12,7 @@ import { METHOD_LABEL, RUNNER_FEE_CHOICES_BPS, WALLET_METHODS, isLocalRail, minR
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { serviceFeeCents } from "@/utils/festdashPass";
 import { waychitCharge } from "@/utils/waychitFee";
+import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
 type Vendor = {
   id: number; name: string; category: string; description: string;
   coordinator_user_id?: string | null; region?: string | null; currency?: string | null; whatsapp_number?: string | null;
@@ -166,7 +167,19 @@ export default function OrderPage() {
   const local = isLocalRail(selectedVendor);
   const currency = selectedVendor?.currency ?? "USD";
   const money = (cents: number) => formatMoney(cents, currency);
-  const walletOptions = WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
+  // Interim rule (utils/localRules.ts): Gambian shops take card / Google Pay
+  // only for now, plus a transfer fee covering the owner's Remitly cost.
+  const [localRules, setLocalRules] = useState<{ walletsEnabled: boolean; remitFeeCents: number; currency: string } | null>(null);
+  useEffect(() => {
+    if (!local) return;
+    fetch(`/api/local-rules?currency=${encodeURIComponent(currency)}`).then((r) => r.json())
+      .then((j) => {
+        setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeCents: Number(j.remitFeeCents ?? 0), currency: String(j.currency) });
+        if (!j.walletsEnabled) setPaymentMethod("card"); // the only way to pay for now
+      }).catch(() => {});
+  }, [local, currency]);
+  const walletsOff = local && localRules !== null && !localRules.walletsEnabled;
+  const walletOptions = walletsOff ? [] : WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
   const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
   const modes = selectedVendor?.fulfillment_modes ?? "both";
   const pickupOnly = modes === "pickup", deliveryOnly = modes === "delivery";
@@ -184,8 +197,9 @@ export default function OrderPage() {
   useEffect(() => {
     fetch("/api/waychit/status").then((r) => r.json()).then((j) => setWaychit({ enabled: !!j.enabled, fee_bps: Number(j.fee_bps ?? 300) })).catch(() => {});
   }, []);
-  const waychitOn = !!waychit?.enabled && local && currency === "GMD";
-  const beforeProcessing = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents) + serviceFee;
+  const waychitOn = !!waychit?.enabled && local && currency === "GMD" && !walletsOff;
+  const remitFeeCents = local && paymentMethod === "card" && localRules?.currency === currency ? localRules.remitFeeCents : 0;
+  const beforeProcessing = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents) + serviceFee + remitFeeCents;
   const processingFeeCents = waychitOn && paymentMethod === "waychit" ? waychitCharge(beforeProcessing, waychit!.fee_bps).processingFeeCents : 0;
   const payableCents = beforeProcessing + processingFeeCents;
 
@@ -869,6 +883,13 @@ export default function OrderPage() {
                 </div>
               )}
 
+              {remitFeeCents > 0 && (
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-neutral-400">International transfer fee <span className="text-neutral-600">(sending the shop its share)</span></span>
+                  <span className="shrink-0 text-neutral-300">{money(remitFeeCents)}</span>
+                </div>
+              )}
+
               {processingFeeCents > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-400">Payment processing <span className="text-neutral-600">(Waychit, {(waychit?.fee_bps ?? 300) / 100}%)</span></span>
@@ -908,6 +929,7 @@ export default function OrderPage() {
             <>
               <div className="rounded-2xl border border-white/8 bg-white/3 p-5">
                 <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">How will you pay?</p>
+                {walletsOff && <p className="mb-3 text-xs text-neutral-400">For now this shop takes <span className="text-white">card or Google Pay only</span>, with an international transfer fee added to the order.</p>}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
@@ -985,6 +1007,7 @@ export default function OrderPage() {
           >
             {submitting ? (local && paymentMethod !== "card" && paymentMethod !== "waychit" ? "Placing order…" : "Starting secure checkout…") : local && paymentMethod !== "card" && paymentMethod !== "waychit" ? "Place order" : "Continue to Payment 🔒"}
           </button>
+          <IntlPaymentNote className="mt-1" />
         </div>
       </div>
     </main>

@@ -9,6 +9,7 @@ import { festdashListingActive } from "@/utils/billing";
 import { activePass, loadFeeSettings, serviceFeeCents } from "@/utils/festdashPass";
 import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } from "@/utils/waychit";
 import { safeOrigin } from "@/utils/safeRedirect";
+import { loadLocalRules, remitFeeIn } from "@/utils/localRules";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -79,6 +80,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Paying through Waychit isn't available yet — pick another way to pay." }, { status: 400 });
   }
   const localWaychit = !!waychit;
+  // Interim rule (2026-11-05, utils/localRules.ts): Gambian shops take card /
+  // Google Pay only, plus a transfer fee for the owner's Remitly cost.
+  const localRules = local ? await loadLocalRules(admin) : null;
+  if (localRules && !localRules.walletsEnabled && !localCard) {
+    return NextResponse.json({ error: "For now this shop takes card or Google Pay only." }, { status: 400 });
+  }
   // Wallet orders that wait for the coordinator's manual confirmation.
   const manualWallet = local && !localCard && !localWaychit;
   let payTo: string | null = null;
@@ -199,7 +206,8 @@ export async function POST(req: Request) {
   // outside the shop's split, like the runner fee (utils/festdashPass.ts).
   const [feeSettings, pass] = await Promise.all([loadFeeSettings(admin), activePass(admin, user.id)]);
   const serviceFee = serviceFeeCents(discountedCents, currency, feeSettings, !!pass);
-  const netCents = discountedCents + runnerFee + serviceFee;
+  const remitFee = localCard && localRules ? await remitFeeIn(currency, localRules.remitFeeUsdCents) : 0;
+  const netCents = discountedCents + runnerFee + serviceFee + remitFee;
 
   // Delivery confirmation code = last 4 digits of the customer's phone
   const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
@@ -234,6 +242,7 @@ export async function POST(req: Request) {
       total_cents: netCents,
       runner_fee_cents: runnerFee,
       service_fee_cents: serviceFee,
+      remit_fee_cents: remitFee,
       store_credit_cents: creditCents,
       discount_cents: discountCents,
       commission_cents: commissionCents,
@@ -374,9 +383,10 @@ export async function POST(req: Request) {
       // Items, runner fee and service fee as separate lines so the Stripe
       // receipt shows what each part is (same total as dueCents).
       line_items: [
-        { cents: dueCents - runnerFee - serviceFee, name: `FestDash order — ${pickup ? "pickup" : eventName}`, description: itemSummary || undefined },
+        { cents: dueCents - runnerFee - serviceFee - remitFee, name: `FestDash order — ${pickup ? "pickup" : eventName}`, description: itemSummary || undefined },
         { cents: runnerFee, name: "Runner fee", description: "Goes to your runner in full" },
         { cents: serviceFee, name: "Service fee", description: "Waived with a FestDash pass" },
+        { cents: remitFee, name: "International transfer fee", description: "Sending the shop its share in The Gambia" },
       ].filter((l) => l.cents > 0).map((l) => ({
         quantity: 1,
         price_data: { currency: currency.toLowerCase(), unit_amount: l.cents, product_data: { name: l.name, description: l.description } },
