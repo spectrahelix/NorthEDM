@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 export default function VendorApplyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -223,6 +224,7 @@ export default function VendorApplyPage() {
 
           {message && <p className="text-green-300">{message}</p>}
         </form>
+        <JoinUsOnline className="mt-8" />
       </div>
     </main>
   );

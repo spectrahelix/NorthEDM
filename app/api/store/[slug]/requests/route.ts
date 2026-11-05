@@ -8,10 +8,10 @@ import { notifyProductRequest } from "@/utils/alerts";
 import { BRAND_STORE_SLUG } from "@/utils/brandShop";
 
 /**
- * "QTY Not Listed? → request now" (owner, 2026-11-05). A signed-in shopper
- * asks this store for an item / size / quantity that isn't on sale. Push
- * guard: one request per person per item size (unique in the table), plus
- * the form shield. The store's operator is alerted (bell + email; for the
+ * "Couldn't find what you were looking for? → request here" (owner,
+ * 2026-11-05). A signed-in shopper asks this store for one of its items, or
+ * for anything in their own words, and how many. Push guard: one request per
+ * person per item, or per thing typed (unique indexes), plus the form shield. The store's operator is alerted (bell + email; for the
  * NorthEDM shop also the owner's phone) and handles them in Edit shop.
  *
  * GET            → { mine: productId[] } for the shopper, and for the
@@ -37,9 +37,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     : [];
   if (!canManage) return NextResponse.json({ mine, signedIn: !!user });
   const { data: rows } = await admin.from("product_requests")
-    .select("id, product_id, user_id, quantity, note, status, created_at").eq("store_id", store.id)
+    .select("id, product_id, item_text, user_id, quantity, note, status, created_at").eq("store_id", store.id)
     .order("created_at", { ascending: false }).limit(200);
-  const productIds = [...new Set((rows ?? []).map((r) => Number(r.product_id)))];
+  const productIds = [...new Set((rows ?? []).filter((r) => r.product_id != null).map((r) => Number(r.product_id)))];
   const userIds = [...new Set((rows ?? []).map((r) => r.user_id as string))];
   const [{ data: prods }, { data: profs }] = await Promise.all([
     productIds.length ? admin.from("products").select("id, name").in("id", productIds) : Promise.resolve({ data: [] as { id: number; name: string }[] }),
@@ -49,7 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const who = new Map((profs ?? []).map((p) => [p.id as string, (p.username || p.display_name || "member") as string]));
   // Only a public handle leaves here — never an email or address (shop owners aren't site admins).
   const requests = (rows ?? []).map((r) => ({
-    id: r.id, product_id: r.product_id, item: pName.get(Number(r.product_id)) ?? "Item", quantity: r.quantity, note: r.note,
+    id: r.id, product_id: r.product_id, item: r.product_id != null ? pName.get(Number(r.product_id)) ?? "Item" : `“${r.item_text}”`, quantity: r.quantity, note: r.note,
     status: r.status, created_at: r.created_at, user_id: r.user_id, who: who.get(r.user_id as string) ?? "member",
   })).sort((a, b) => (a.status === "open" ? 0 : 1) - (b.status === "open" ? 0 : 1));
   return NextResponse.json({ mine, signedIn: true, requests });
@@ -64,19 +64,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const shield = await shieldForm(req, body, "product_request", { max: 10, windowMs: 60 * 60 * 1000 });
   if (shield.verdict !== "ok") return shield.response;
 
-  const productId = Number(body.productId);
+  const itemText = typeof body.itemText === "string" ? body.itemText.trim().replace(/\s+/g, " ").slice(0, 120) : "";
+  const productId = body.productId == null || body.productId === "" ? null : Number(body.productId);
   const quantity = Math.floor(Number(body.quantity));
   const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 300) : null;
-  if (!Number.isFinite(productId) || productId <= 0) return NextResponse.json({ error: "Pick an item." }, { status: 400 });
+  if (productId === null && itemText.length < 2) return NextResponse.json({ error: "Pick an item or tell us what you're after." }, { status: 400 });
+  if (productId !== null && (!Number.isFinite(productId) || productId <= 0)) return NextResponse.json({ error: "Pick an item." }, { status: 400 });
   if (!Number.isFinite(quantity) || quantity < 1 || quantity > 10000) return NextResponse.json({ error: "Enter a quantity from 1 to 10,000." }, { status: 400 });
-  // The item must belong to one of this store's approved vendors.
-  const { data: p } = await admin.from("products").select("id, name, vendor_id").eq("id", productId).maybeSingle();
-  const { data: member } = p ? await admin.from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("vendor_id", p.vendor_id).eq("status", "approved").maybeSingle() : { data: null };
-  if (!p || !member) return NextResponse.json({ error: "That item isn't sold here." }, { status: 400 });
+  // A picked item must belong to one of this store's approved vendors.
+  let itemName = itemText;
+  if (productId !== null) {
+    const { data: p } = await admin.from("products").select("id, name, vendor_id").eq("id", productId).maybeSingle();
+    const { data: member } = p ? await admin.from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("vendor_id", p.vendor_id).eq("status", "approved").maybeSingle() : { data: null };
+    if (!p || !member) return NextResponse.json({ error: "That item isn't sold here." }, { status: 400 });
+    itemName = String(p.name);
+  }
 
-  const { error } = await admin.from("product_requests").insert({ store_id: store.id, product_id: p.id, user_id: user.id, quantity, note });
+  const { error } = await admin.from("product_requests").insert({ store_id: store.id, product_id: productId, item_text: productId === null ? itemText : null, user_id: user.id, quantity, note });
   if (error) {
-    if (/duplicate|unique/i.test(error.message)) return NextResponse.json({ error: "You've already requested this item — the shop has it.", already: true }, { status: 409 });
+    if (/duplicate|unique/i.test(error.message)) return NextResponse.json({ error: "You've already requested this — the shop has it.", already: true }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   await shield.record();
@@ -84,14 +90,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const { data: prof } = await admin.from("user_profiles").select("username, display_name").eq("id", user.id).maybeSingle();
   const who = (prof?.username || prof?.display_name || "A shopper") as string;
   const path = `/${store.slug}?edit=1`;
-  const line = `${who} asked for ${quantity} × ${p.name}${note ? ` — "${note}"` : ""}.`;
+  const line = `${who} asked for ${quantity} × ${itemName}${note ? ` — "${note}"` : ""}.`;
   if (store.slug === BRAND_STORE_SLUG) {
-    await notifyProductRequest({ item: String(p.name), quantity, note, who, path });
+    await notifyProductRequest({ item: itemName, quantity, note, who, path });
   } else {
     const ownerEmail = await admin.auth.admin.getUserById(store.owner_user_id as string).then((r) => r.data?.user?.email ?? null).catch(() => null);
     await Promise.allSettled([
       notifyUserInApp(admin, store.owner_user_id as string, "product_request", line, path),
-      emailUser(ownerEmail, `Item request — ${quantity} × ${p.name}`, { heading: "Someone wants an item you don't have listed", intro: line, cta: { label: "See requests", path } }),
+      emailUser(ownerEmail, `Item request — ${quantity} × ${itemName}`, { heading: "Someone is looking for something in your shop", intro: line, cta: { label: "See requests", path } }),
     ]);
   }
   return NextResponse.json({ ok: true });

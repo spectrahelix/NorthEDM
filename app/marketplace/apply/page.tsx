@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 const CATEGORIES = [
   "Mushrooms & Foraged", "Holistic & Wellness", "Art & Prints", "Crafts & Handmade",
@@ -53,6 +54,7 @@ export default function MarketplaceApplyPage() {
             Thanks for applying for your own NorthEDM Marketplace. The team will review it and reach
             out. Once approved, you&apos;ll be able to upload your inventory from your Vendor Dashboard.
           </p>
+          <JoinUsOnline className="mt-5" compact />
           <Link href="/marketplace" className="mt-6 inline-block rounded-xl border border-white/15 px-6 py-2.5 text-sm text-neutral-200 transition hover:bg-white/5">
             Back to Marketplace
           </Link>

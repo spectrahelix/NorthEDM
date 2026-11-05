@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { isSiteRank } from "@/utils/ranks";
+import { setMemberTag } from "@/utils/memberTags";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
@@ -82,7 +84,7 @@ export async function POST(req: Request) {
         username,
         vendor_id: vendorId ?? null,
         display_name: displayName,
-        role: forumRole ?? "merchant",
+        role: isSiteRank(forumRole) ? forumRole : "wanderer",
         bio: "",
         home_city: "",
         avatar_border: "moss",
@@ -95,8 +97,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: upError.message }, { status: 500 });
     }
 
-    // If a vendor_id was provided, also link the user to that vendor row
+    // If a vendor_id was provided, also link the user to that vendor row, and
+    // give the Merchant tag so they can stock it (tags, not ranks — 2026-11-05).
     if (vendorId) {
+      await setMemberTag(adminClient, uid, "merchant", true);
       await adminClient
         .from("vendors")
         .update({ user_id: uid })

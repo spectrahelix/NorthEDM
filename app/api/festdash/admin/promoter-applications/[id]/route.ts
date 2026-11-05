@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { setMemberTag } from "@/utils/memberTags";
 import { ensureReferralCode } from "@/utils/promoters";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -13,7 +14,6 @@ function getAdminClient() {
 }
 
 // Ranks we won't downgrade when elevating someone to promoter.
-const SENIOR_ROLES = ["archon", "warden", "merchant"];
 
 // Short, unguessable, human-friendly referral code.
 
@@ -54,21 +54,8 @@ export async function PATCH(
       // Mint their referral code (idempotent — skips if already set)
       await ensureReferralCode(adminClient, app.user_id);
 
-      // Elevate rank to 'promoter' unless they already hold a senior role
-      const { data: prof } = await adminClient
-        .from("user_profiles").select("role").eq("id", app.user_id).single();
-      if (!prof || !SENIOR_ROLES.includes(prof.role)) {
-        await adminClient
-          .from("user_profiles")
-          .update({ role: "promoter" })
-          .eq("id", app.user_id);
-      }
-
-      // Light up the Promoter tag on their profile.
-      await adminClient
-        .from("user_profiles")
-        .update({ is_promoter: true })
-        .eq("id", app.user_id);
+      // Promoter is a tag, not a rank (2026-11-05): their rank stays as it is.
+      await setMemberTag(adminClient, app.user_id, "promoter", true);
     }
   }
 

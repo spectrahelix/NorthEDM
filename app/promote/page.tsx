@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 export default function PromoterSignup() {
   const router = useRouter();
@@ -75,6 +76,7 @@ export default function PromoterSignup() {
               Until you do, earnings are recorded but can&apos;t be sent.
             </p>
           </div>
+          <JoinUsOnline className="mx-auto mt-5 max-w-sm" />
           <button
             onClick={() => router.push("/promote/dashboard")}
             className="mt-5 rounded-2xl bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-400"

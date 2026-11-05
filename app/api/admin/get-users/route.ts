@@ -41,7 +41,7 @@ export async function GET() {
 
   const { data: profiles, error: profilesError } = await adminClient
     .from("user_profiles")
-    .select("id, display_name, username, avatar_url, role, created_at, is_founder, is_vendor, is_marketplace, is_festdash_vendor, is_promoter, is_artisan, is_driver, is_forager, is_verified")
+    .select("id, display_name, username, avatar_url, role, created_at, is_founder, is_vendor, is_marketplace, is_festdash_vendor, is_promoter, is_artisan, is_driver, is_forager, extra_ranks, is_site_moderator, vendor_id")
     .order("created_at", { ascending: false });
 
   if (profilesError) {
@@ -62,6 +62,22 @@ export async function GET() {
     if (u.email) emailMap[u.id] = u.email;
   }
 
+  // Each person's shop, for the Public shop switch: listing state and item
+  // counts (so it's visible that switching never touches their items).
+  const vendorIds = [...new Set((profiles ?? []).map((p) => p.vendor_id as number | null).filter((v): v is number => v != null))];
+  const [{ data: vendors }, { data: items }] = await Promise.all([
+    vendorIds.length ? adminClient.from("vendors").select("id, name, status, is_public, suspended_at, suspended_reason").in("id", vendorIds) : Promise.resolve({ data: [] }),
+    vendorIds.length ? adminClient.from("products").select("vendor_id, status, is_public").in("vendor_id", vendorIds) : Promise.resolve({ data: [] }),
+  ]);
+  const shopOf = new Map<number, { id: number; name: string | null; status: string | null; is_public: boolean | null; suspended_at: string | null; suspended_reason: string | null; items: number; on_sale: number }>();
+  for (const v of (vendors ?? []) as { id: number; name: string | null; status: string | null; is_public: boolean | null; suspended_at: string | null; suspended_reason: string | null }[]) {
+    shopOf.set(v.id, { ...v, items: 0, on_sale: 0 });
+  }
+  for (const it of (items ?? []) as { vendor_id: number; status: string | null; is_public: boolean | null }[]) {
+    const s = shopOf.get(it.vendor_id); if (!s) continue;
+    s.items++; if (it.status === "published" && it.is_public) s.on_sale++;
+  }
+
   const result = (profiles ?? []).map(
     (p: {
       id: string;
@@ -78,10 +94,13 @@ export async function GET() {
       is_artisan?: boolean;
       is_driver?: boolean;
       is_forager?: boolean;
-      is_verified?: boolean;
+      extra_ranks?: string[] | null;
+      is_site_moderator?: boolean;
+      vendor_id?: number | null;
     }) => ({
       ...p,
       email: emailMap[p.id] ?? "",
+      shop: p.vendor_id != null ? shopOf.get(p.vendor_id) ?? null : null,
     })
   );
 

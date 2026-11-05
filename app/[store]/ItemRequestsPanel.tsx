@@ -38,7 +38,7 @@ export function ItemRequestsPanel({ slug, accent }: { slug: string; accent: stri
         )}
       </div>
       {shown.length === 0 ? (
-        <p className="mt-1 text-sm text-neutral-400">No open requests. Shoppers ask through &ldquo;QTY Not Listed? → request now&rdquo; on each item.</p>
+        <p className="mt-1 text-sm text-neutral-400">No open requests. Shoppers ask through &ldquo;Couldn&apos;t find what you were looking for? → request here&rdquo; at the top and bottom of your shop.</p>
       ) : (
         <ul className="mt-3 divide-y divide-white/10">
           {shown.map((r) => (

@@ -12,6 +12,7 @@ import { currencyName } from "@/utils/money";
 import { PriceField } from "@/app/components/PriceField";
 import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 // The shop owner's walkthrough for a coordinator region (The Gambia). One page
 // takes someone from a QR code to a live shop: account → application →
@@ -300,6 +301,7 @@ export default function ShopSetupPage() {
             <p className="mt-3 text-xs text-neutral-600">Your coordinator pays your share to the preferred wallet. {PAYMENT_DISCLAIMER_SHORT}</p>
           </div>
         )}
+        <JoinUsOnline />
       </div>
     </main>
   );

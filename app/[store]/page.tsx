@@ -19,6 +19,8 @@ import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { BRAND_STORE_SLUG, brandCodeTerms, isActivePromoter } from "@/utils/brandShop";
 import { IN_STOCK_FILTER } from "@/utils/stock";
 import { ItemRequestsPanel } from "./ItemRequestsPanel";
+import { ItemRequestButton, type RequestableItem } from "./ItemRequest";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +143,9 @@ export default async function StorefrontPage({ params, searchParams }: { params:
   }));
   // One per item, sizes counted once.
   const itemCount = groupVariants(cartProducts).length;
+  // "Couldn't find what you were looking for?" — every item and size of the shop, for the request pop-up.
+  const requestable: RequestableItem[] = groupVariants(cartProducts).flatMap((g) =>
+    g.options.map((o) => ({ id: o.id, label: g.options.length > 1 ? `${g.title} — ${o.variant_label ?? o.name}` : o.name })));
 
   return (
     <main className="relative min-h-screen overflow-x-clip text-neutral-100" style={{ background: brand.theme.background }}>
@@ -240,6 +245,8 @@ export default async function StorefrontPage({ params, searchParams }: { params:
             No products in this store yet.
           </p>
         ) : (
+          <>
+          <ItemRequestButton slug={store.slug} accent={accent} items={requestable} />
           <StoreCart
             slug={store.slug}
             products={cartProducts}
@@ -252,6 +259,9 @@ export default async function StorefrontPage({ params, searchParams }: { params:
             promoterCodeBps={store.slug === BRAND_STORE_SLUG ? (await brandCodeTerms(admin)).discountBps : 0}
             viewerIsPromoter={store.slug === BRAND_STORE_SLUG && (await isActivePromoter(admin, viewer?.id))}
           />
+          <ItemRequestButton slug={store.slug} accent={accent} items={requestable} />
+          <JoinUsOnline className="mx-auto mb-24 max-w-xl" />
+          </>
         )}
       </div>
     </main>
