@@ -8,6 +8,7 @@ import { accentOr } from "@/utils/accent";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 import { SpecsTable } from "@/app/components/SpecsTable";
+import { ShipEstimate } from "@/app/components/ShipEstimate";
 import { Price, CurrencyPill } from "@/app/components/CurrencyContext";
 import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 
@@ -82,6 +83,8 @@ export default async function ItemPage({ params }: Params) {
             </p>
             {p.description && <p className="mt-6 whitespace-pre-line leading-7 text-neutral-300">{p.description as string}</p>}
             <SpecsTable className="mt-6" product={p as unknown as Parameters<typeof SpecsTable>[0]["product"]} />
+            {/* Shops that post parcels from the US (not the Gambian hand-over shops) show a shipping estimate. */}
+            {vendorCurrency === "USD" && <ShipEstimate productId={p.id as number} accent={accent} />}
             <div className="mt-6 flex flex-wrap gap-2">{brand.hasFont && <ShopFontToggle enabled={viewerFonts} />}<CurrencyPill options={VIEW_CURRENCIES} /></div>
             <br />
             <Link href={`/marketplace/${p.vendor_id}`}

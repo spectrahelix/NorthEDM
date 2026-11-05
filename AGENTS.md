@@ -730,7 +730,13 @@ through the site; it records what moved and who confirmed it.** Full design in
   +10% and 60 g packaging) with an ETA string; the table is a **reference
   estimate modelled on USPS retail**, overridable in **/admin/shipping**
   (`shipping_settings.rates`, plus `ship_from` and a handling fee). The cart's
-  `ShipTo` picker calls `/api/shipping/quote`; both checkouts re-quote
+  `ShipTo` picker calls `/api/shipping/quote`; **flat-rate services**
+  (Priority Mail Flat Rate Envelope / Small Box domestic, International Flat
+  Rate Envelope abroad — `per_kg_cents: 0`, `max_kg` as the "fits" limit) and
+  **one-tap item weights** for the owner's goods (`WEIGHT_PRESETS`: dried
+  3.5 / 7 / 14 / 28 g bagged, 30 ml glass-dropper tincture) were added
+  2026-11-05, plus `ShipEstimate` on marketplace item pages of US shops
+  (same quote, any country, before anything is in a cart); both checkouts re-quote
   server-side and charge it as a Stripe `shipping_options` line, so the Stripe
   receipt matches ours; `allowed_countries` is the chosen country. Store
   shipping is paid in full to the operator (`payStoreOrder`). Wallet-rail
