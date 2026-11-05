@@ -9,6 +9,7 @@ import { AdminLookPill } from "@/app/components/AdminLookPill";
 import { lookPreviewCookie, isShopFont } from "@/utils/storeFonts";
 import { isStoreTheme } from "@/utils/storeThemes";
 import { BackBar } from "@/app/components/BackBar";
+import { ProductThumb } from "@/app/components/ProductThumb";
 import { StoreCart, type StoreProduct } from "./StoreCart";
 import { brandFor, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
@@ -73,6 +74,24 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
   const [viewerFonts, isAdmin, { data: { user: viewer } }] = await Promise.all([viewerWantsShopFonts(), viewerIsSiteAdmin(), supabase.auth.getUser()]);
   // The operator (or an admin) gets the way in to stock and manage the store from its own page.
   const canStock = isAdmin || (!!viewer && viewer.id === (storeData.owner_user_id as string | null));
+  // The operator's items that customers can't see yet (draft, hidden, no price
+  // or no stock), so their own storefront never says "empty" while six items
+  // wait in the dashboard. Read with the service role, only for canStock.
+  type Unlisted = { id: number; name: string | null; price: number | null; inventory_count: number | null; status: string | null; is_public: boolean | null; image_url: string | null };
+  const listed = new Set(products.map((p) => p.id));
+  const unlisted: (Unlisted & { missing: string[] })[] = canStock && vendorIds.length
+    ? (((await admin.from("products").select("id, name, price, inventory_count, status, is_public, image_url").in("vendor_id", vendorIds).order("created_at", { ascending: false })).data ?? []) as Unlisted[])
+        .filter((p) => !listed.has(p.id))
+        .map((p) => ({
+          ...p,
+          missing: [
+            p.status !== "published" && "Not published",
+            !p.is_public && "Hidden",
+            !(Number(p.price) > 0) && "No price",
+            !((p.inventory_count ?? 0) > 0) && "No stock",
+          ].filter(Boolean) as string[],
+        }))
+    : [];
   const saved = storeData as unknown as { theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; accent_color: string };
   // A NorthEDM admin can preview other looks live (AdminLookPill); the preview
   // cookie is ignored for everyone else, so it never changes what they see.
@@ -190,9 +209,13 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
         {products.length === 0 ? (
           canStock ? (
             <div className="rounded-2xl border border-white/15 bg-black/30 p-6">
-              <p className="font-semibold text-white">Your store is empty.</p>
-              <p className="mt-1 text-sm text-neutral-400">Only you see this note. Items you add in your inventory dashboard and publish appear here automatically; a short guide there points at each field.</p>
-              <Link href="/vendor/dashboard" className="mt-4 inline-block rounded-xl px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>Add your first item →</Link>
+              <p className="font-semibold text-white">{unlisted.length ? "Nothing on sale yet." : "Your store is empty."}</p>
+              <p className="mt-1 text-sm text-neutral-400">
+                {unlisted.length
+                  ? `Only you see this note. You have ${unlisted.length} item${unlisted.length === 1 ? "" : "s"} below that customers can't see yet. Give each a price and stock, and publish it, in your inventory dashboard.`
+                  : "Only you see this note. Items you add in your inventory dashboard and publish appear here automatically; a short guide there points at each field."}
+              </p>
+              <Link href="/vendor/dashboard" className="mt-4 inline-block rounded-xl px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90" style={{ background: accent }}>{unlisted.length ? "Finish them in the dashboard →" : "Add your first item →"}</Link>
             </div>
           ) : (
             <p className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-neutral-500">
@@ -212,6 +235,29 @@ export default async function StorefrontPage({ params }: { params: Promise<{ sto
             promoterCodeBps={store.slug === BRAND_STORE_SLUG ? (await brandCodeTerms(admin)).discountBps : 0}
             viewerIsPromoter={store.slug === BRAND_STORE_SLUG && (await isActivePromoter(admin, viewer?.id))}
           />
+        )}
+
+        {unlisted.length > 0 && (
+          <section className="mt-12" aria-label="Not on sale yet">
+            <h2 className={`text-3xl tracking-wide ${display ? "" : "font-bebas"}`} style={display}>Not on sale yet</h2>
+            <p className="mb-4 mt-1 text-sm text-neutral-400">Only you see these. Each shows what it still needs before customers can buy it.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {unlisted.map((p) => (
+                <Link key={p.id} href="/vendor/dashboard"
+                  className="overflow-hidden rounded-2xl border border-dashed border-white/20 bg-black/30 transition hover:bg-white/[0.04]">
+                  <div className="opacity-70"><ProductThumb src={p.image_url} alt={p.name ?? ""} /></div>
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-sm font-semibold text-white">{p.name ?? "Item"}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {p.missing.map((m) => (
+                        <span key={m} className="rounded-md bg-[#FFC93C]/15 px-1.5 py-0.5 font-dm-mono text-[10px] uppercase tracking-wider text-[#FFC93C]">{m}</span>
+                      ))}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </main>

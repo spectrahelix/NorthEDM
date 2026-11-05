@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
 
 export default function ForagingPage() {
@@ -33,6 +34,19 @@ export default function ForagingPage() {
 
         <div className="grid gap-8 md:grid-cols-2">
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+            <figure className="mb-6">
+              <Image
+                src="/foraging/cj-guide.jpg"
+                alt="CJ Lewis on a woodland trail, holding a mushroom found on the walk"
+                width={960}
+                height={1200}
+                sizes="(min-width: 768px) 420px, 100vw"
+                className="h-auto w-full rounded-2xl"
+              />
+              <figcaption className="mt-2 text-sm text-neutral-400">
+                Your guide, CJ Lewis, out on the trail.
+              </figcaption>
+            </figure>
             <h2 className="text-2xl font-semibold">What this can include</h2>
             <ul className="mt-4 space-y-3 text-neutral-300">
               <li>• Beginner-friendly guided walks</li>
