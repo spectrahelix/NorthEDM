@@ -1,5 +1,7 @@
 // The site's main sections — one list, used by the header nav, the mobile
-// drawer and the home page's section buttons. Add a section here, not in a page.
+// drawer, the wrapped section bubbles under the header on phones/tablets
+// (SectionStrip, in the layout) and the home page's section buttons. Add a
+// section here, not in a page.
 export type NavLink = {
   href: string;
   label: string;
