@@ -344,9 +344,14 @@ set only by an archon) edit non-admins' but never their own. UI: `RankEditor`
 on every profile page; API `/api/ranks` (service role — `protect_role_flags`
 discards both columns on every ordinary write, verified 2026-11-04). Giving
 the Promoter rank also creates the promoter row + code (`grantPromoter`).
-The owner's archon account (cjblue) holds a private shop, vendor 37
-"NorthEDM (Archon private shop)" (`is_public = false`), so My Shop, inventory
-and the FestDash dashboard open for it.
+The owner's archon account (cjblue) runs vendor 37 **"NorthEDM" — the main
+brand shop** (owner's decision, 2026-11-05; public, featured). `/shop`
+redirects everyone there (`utils/brandShop.ts`), except a shop owner, whose
+/shop is still their own store. Items go in on /vendor/dashboard like any
+shop. The older `shop_products` storefront (/admin/shop, /shop/[slug], cart)
+held no products and is no longer reached from /shop; its code is left in
+place (store credit is spent through its checkout) until the owner decides
+whether to retire it.
 
 **Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
 `usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`
