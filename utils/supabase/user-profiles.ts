@@ -62,17 +62,17 @@ export const PROFILE_COLUMNS =
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the
 // user chose to hide from the forum (they always show on their own profile).
 export function profileTags(
-  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_marketplace" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "is_driver" | "is_forager" | "is_verified" | "hidden_tags">,
+  p: Pick<UserProfile, "is_founder" | "is_vendor" | "is_marketplace" | "is_festdash_vendor" | "is_promoter" | "is_artisan" | "is_driver" | "is_forager" | "is_verified" | "hidden_tags"> & { extra_ranks?: string[] | null },
   opts: { forum?: boolean } = {}
 ): TagKey[] {
   const has: Record<TagKey, boolean | undefined> = {
     founder: p.is_founder,
     verified: p.is_verified,
     vendor: p.is_vendor,
-    marketplace: p.is_marketplace,
+    marketplace: p.is_marketplace || !!p.extra_ranks?.includes("merchant"),
     festdash_vendor: p.is_festdash_vendor,
     driver: p.is_driver,
-    promoter: p.is_promoter,
+    promoter: p.is_promoter || !!p.extra_ranks?.includes("promoter"),
     artisan: p.is_artisan,
     forager: p.is_forager,
   };

@@ -40,7 +40,8 @@ export const TAG_CONFIG: Record<
   founder:         { label: "Founder",     color: "#CC00FF", glyph: "♛", flag: "is_founder" },
   verified:        { label: "Verified",    color: "#7DD3FC", glyph: "✔", flag: "is_verified" },
   vendor:          { label: "Vendor",      color: "#39FF14", glyph: "⬢", flag: "is_vendor" },
-  marketplace:     { label: "Marketplace", color: "#00D4FF", glyph: "▣", flag: "is_marketplace" },
+  // "marketplace" is the seller tag: shown as Merchant (owner, 2026-11-05). Key kept for hidden_tags.
+  marketplace:     { label: "Merchant",    color: "#00D4FF", glyph: "▣", flag: "is_marketplace" },
   festdash_vendor: { label: "FestDash",    color: "#FB923C", glyph: "◆", flag: "is_festdash_vendor" },
   driver:          { label: "Driver",      color: "#3AFFD4", glyph: "⬗", flag: "is_driver" },
   promoter:        { label: "Promoter",    color: "#E8FF47", glyph: "✦", flag: "is_promoter" },
@@ -48,6 +49,23 @@ export const TAG_CONFIG: Record<
   forager:         { label: "Forager",     color: "#7FFF6E", glyph: "❦", flag: "is_forager" },
 };
 
+// "verified" is no longer shown (owner, 2026-11-05): an approved rank or tag
+// already says it. The sign-up gate is the confirmed email, not this flag.
 export const TAG_ORDER: TagKey[] = [
-  "founder", "verified", "vendor", "marketplace", "festdash_vendor", "driver", "promoter", "artisan", "forager",
+  "founder", "vendor", "marketplace", "festdash_vendor", "driver", "promoter", "artisan", "forager",
 ];
+
+/** Tags an admin (or a moderator, for merchant/promoter) can give, in editor order, with what each one does. */
+export const MEMBER_TAGS = [
+  { key: "merchant", tag: "marketplace", help: "Can build a shop and list items. Doesn't make the shop public." },
+  { key: "promoter", tag: "promoter", help: "Gets a referral code and earns commission." },
+  { key: "festdash_vendor", tag: "festdash_vendor", help: "Sells on FestDash." },
+  { key: "vendor", tag: "vendor", help: "Approved vendor badge." },
+  { key: "driver", tag: "driver", help: "FestDash runner." },
+  { key: "artisan", tag: "artisan", help: "Approved artisan." },
+  { key: "forager", tag: "forager", help: "Forager badge." },
+  { key: "founder", tag: "founder", help: "Founding vendor badge." },
+] as const satisfies readonly { key: string; tag: TagKey; help: string }[];
+export type MemberTag = (typeof MEMBER_TAGS)[number]["key"];
+/** Tags a site moderator may give or take (non-admins only). */
+export const MODERATOR_TAGS: readonly MemberTag[] = ["merchant", "promoter"];

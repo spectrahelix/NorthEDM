@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { RankBadge } from "@/app/components/RankBadge";
-import { profileTags } from "@/utils/supabase/user-profiles";
 import Link from "next/link";
 import { UsernameNudge } from "./UsernameNudge";
+import { MEMBER_TAGS, TAG_CONFIG, type MemberTag } from "@/app/components/roleColors";
+import { SITE_RANKS, RANK_INFO, isSiteRank, type SiteRank } from "@/utils/ranks";
 
 type AdminUser = {
   id: string;
@@ -23,13 +24,36 @@ type AdminUser = {
   is_artisan?: boolean;
   is_driver?: boolean;
   is_forager?: boolean;
-  is_verified?: boolean;
+  extra_ranks?: string[] | null;
+  is_site_moderator?: boolean;
+  email_confirmed_at?: string | null;
+  vendor_id?: number | null;
+  shop?: Shop | null;
 };
+type Shop = { id: number; name: string | null; status: string | null; is_public: boolean | null; suspended_at: string | null; suspended_reason: string | null; items: number; on_sale: number };
 
-// Ranks, in order. "promoter" is a real rank (set when a promoter application is
-// approved); it used to be missing from the table's dropdown but present in the
-// editor's, so the two disagreed.
-const ROLES = ["drifter", "wanderer", "merchant", "promoter", "warden", "archon"] as const;
+/** Does this person hold the tag? (utils/memberTags.ts decides how each is stored.) */
+function holds(u: AdminUser, t: MemberTag): boolean {
+  switch (t) {
+    case "merchant": return !!u.is_marketplace || !!u.extra_ranks?.includes("merchant");
+    case "promoter": return !!u.is_promoter || !!u.extra_ranks?.includes("promoter");
+    case "festdash_vendor": return !!u.is_festdash_vendor;
+    case "vendor": return !!u.is_vendor;
+    case "driver": return !!u.is_driver;
+    case "artisan": return !!u.is_artisan;
+    case "forager": return !!u.is_forager;
+    case "founder": return !!u.is_founder;
+  }
+}
+const FIELD_OF: Record<MemberTag, keyof AdminUser> = {
+  merchant: "is_marketplace", promoter: "is_promoter", festdash_vendor: "is_festdash_vendor", vendor: "is_vendor",
+  driver: "is_driver", artisan: "is_artisan", forager: "is_forager", founder: "is_founder",
+};
+/** Public = approved, listed, and not switched off (lights out). */
+function shopState(shop: Shop): "public" | "hidden" | "unlisted" {
+  if (shop.suspended_at) return "hidden";
+  return shop.status === "approved" && shop.is_public ? "public" : "unlisted";
+}
 
 type UserDetails = {
   account: { email: string | null; email_confirmed_at: string | null; last_sign_in_at: string | null; created_at: string | null; providers: string[]; auth_phone: string | null };
@@ -37,9 +61,8 @@ type UserDetails = {
   vendor: { id: number; name: string | null; status: string | null } | null;
   promoter: { referral_code: string | null; is_active: boolean; is_coordinator: boolean; region: string | null; payout_method: string | null } | null;
 };
-type EditKey = "display_name" | "username" | "role" | "home_city" | "pronouns" | "website" | "bio" | "email" | "full_name" | "phone" | "address_line1" | "address_line2" | "city" | "region" | "postal_code";
-const EMPTY_FORM: Record<EditKey, string> = { display_name: "", username: "", role: "drifter", home_city: "", pronouns: "", website: "", bio: "", email: "", full_name: "", phone: "", address_line1: "", address_line2: "", city: "", region: "", postal_code: "" };
-type TagFlag = "is_verified" | "is_driver" | "is_forager" | "is_artisan" | "is_promoter" | "is_founder" | "is_marketplace";
+type EditKey = "display_name" | "username" | "home_city" | "pronouns" | "website" | "bio" | "email" | "full_name" | "phone" | "address_line1" | "address_line2" | "city" | "region" | "postal_code";
+const EMPTY_FORM: Record<EditKey, string> = { display_name: "", username: "", home_city: "", pronouns: "", website: "", bio: "", email: "", full_name: "", phone: "", address_line1: "", address_line2: "", city: "", region: "", postal_code: "" };
 
 function whenish(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -57,11 +80,11 @@ function memberSince(dateStr: string) {
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState<"all" | MemberTag | "shop">("all");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
@@ -80,7 +103,6 @@ export default function AdminUsersPage() {
     }
     const json = await res.json();
     setUsers(json.users ?? []);
-    setFilteredUsers(json.users ?? []);
     setLoading(false);
   }, [router]);
 
@@ -103,21 +125,25 @@ export default function AdminUsersPage() {
     });
   }, [router, fetchUsers]);
 
-  useEffect(() => {
+  // Derived, not stored: the list follows search, filters and edits on its own.
+  const filteredUsers = useMemo(() => {
     let result = users;
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
         (u) =>
           u.display_name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q)
+          u.email.toLowerCase().includes(q) ||
+          (u.username ?? "").toLowerCase().includes(q)
       );
     }
     if (roleFilter !== "all") {
       result = result.filter((u) => u.role === roleFilter);
     }
-    setFilteredUsers(result);
-  }, [search, roleFilter, users]);
+    if (tagFilter === "shop") result = result.filter((u) => !!u.shop);
+    else if (tagFilter !== "all") result = result.filter((u) => holds(u, tagFilter));
+    return result;
+  }, [search, roleFilter, tagFilter, users]);
 
   async function updateRole(targetId: string, newRole: string) {
     setSavingId(targetId);
@@ -138,49 +164,49 @@ export default function AdminUsersPage() {
     );
   }
 
-  async function toggleFounder(target: AdminUser) {
-    setSavingId(target.id);
-    setError("");
-    const value = !target.is_founder;
+  // Give / take one tag (utils/memberTags.ts, saved as you tap).
+  async function setTag(target: AdminUser, tag: MemberTag, value: boolean) {
+    setSavingId(target.id); setError(""); setEditMsg("");
     const res = await fetch("/api/admin/user-tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: target.id, flag: "is_founder", value }),
-    });
-    const json = await res.json();
-    setSavingId(null);
-    if (!res.ok) {
-      setError(json.error ?? "Failed to update Founder tag");
-      return;
-    }
-    setUsers((prev) =>
-      prev.map((u) => (u.id === target.id ? { ...u, is_founder: value } : u))
-    );
-  }
-
-  async function toggleEditingTag(flag: TagFlag) {
-    if (!editing) return;
-    const value = !editing[flag];
-    const res = await fetch("/api/admin/user-tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: editing.id, flag, value }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: target.id, tag, value }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) { setEditMsg(j.error || "Failed"); return; }
-    setEditing({ ...editing, [flag]: value });
-    setUsers((prev) => prev.map((u) => (u.id === editing.id ? { ...u, [flag]: value } : u)));
-    if (flag === "is_promoter") {
-      // Granting Promoter also creates their promoter record and referral code.
+    setSavingId(null);
+    if (!res.ok) { (editing ? setEditMsg : setError)(j.error || "Couldn't change that tag."); return; }
+    const extras = (target.extra_ranks ?? []).filter((r) => r !== tag);
+    const patch: Partial<AdminUser> = { [FIELD_OF[tag]]: value };
+    if (tag === "merchant" || tag === "promoter") patch.extra_ranks = value ? [...extras, tag] : extras;
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, ...patch } : u)));
+    if (editing?.id === target.id) setEditing({ ...editing, ...patch });
+    if (tag === "promoter") {
       setEditDetails((d) => d ? { ...d, promoter: value ? { referral_code: j.referral_code ?? d.promoter?.referral_code ?? null, is_active: true, is_coordinator: d.promoter?.is_coordinator ?? false, region: d.promoter?.region ?? null, payout_method: d.promoter?.payout_method ?? null } : d.promoter ? { ...d.promoter, is_active: false } : null } : d);
-      setEditMsg(value ? `Promoter granted${j.referral_code ? ` — their code is ${j.referral_code}` : ""}.` : "Promoter paused. Their code is kept.");
+      setEditMsg(value ? `Promoter given${j.referral_code ? ` — their code is ${j.referral_code}` : ""}.` : "Promoter paused. Their code is kept.");
     }
+  }
+
+  // Public shop on/off: the same switch as Vendors → Suspend / Restore ("lights
+  // out"). Only vendors.suspended_at changes — never their items, prices, sizes
+  // or which ones are on sale, so switching back restores the shop exactly.
+  async function setShopVisible(target: AdminUser, visible: boolean) {
+    if (!target.shop) return;
+    setSavingId(target.id); setError("");
+    const res = await fetch("/api/vendors/update", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: target.shop.id, action: visible ? "unsuspend" : "suspend", reason: "Hidden by admin" }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setSavingId(null);
+    if (!res.ok || j.success === false) { (editing ? setEditMsg : setError)(j.error || "Couldn't change the shop."); return; }
+    const shop: Shop = { ...target.shop, suspended_at: visible ? null : new Date().toISOString(), suspended_reason: visible ? null : "Hidden by admin" };
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, shop } : u)));
+    if (editing?.id === target.id) setEditing({ ...editing, shop });
   }
 
   async function openEdit(u: AdminUser) {
     setEditMsg("");
     setEditDetails(null);
-    setEditForm({ ...EMPTY_FORM, display_name: u.display_name || "", role: u.role, email: u.email || "" });
+    setEditForm({ ...EMPTY_FORM, display_name: u.display_name || "", email: u.email || "" });
     setEditing(u);
     // Everything about the account in one read — including the private personal
     // details from signup, which an admin's own session is not allowed to select.
@@ -193,7 +219,6 @@ export default function AdminUsersPage() {
     setEditForm({
       display_name: pr.display_name || u.display_name || "",
       username: pr.username || "",
-      role: (pr.role as string) || u.role,
       home_city: pr.home_city || "",
       pronouns: pr.pronouns || "",
       website: pr.website || "",
@@ -223,7 +248,6 @@ export default function AdminUsersPage() {
         patch: {
           display_name: editForm.display_name.trim(),
           username: editForm.username.trim(),
-          role: editForm.role,
           home_city: editForm.home_city.trim(),
           pronouns: editForm.pronouns.trim() || null,
           website: editForm.website.trim() || null,
@@ -248,7 +272,7 @@ export default function AdminUsersPage() {
     setUsers((prev) =>
       prev.map((x) =>
         x.id === editing.id
-          ? { ...x, display_name: editForm.display_name.trim(), role: editForm.role, username: editForm.username.trim() || x.username }
+          ? { ...x, display_name: editForm.display_name.trim(), username: editForm.username.trim() || x.username }
           : x
       )
     );
@@ -259,24 +283,6 @@ export default function AdminUsersPage() {
     } else {
       setEditing(null);
     }
-  }
-
-  async function toggleTag(target: AdminUser, flag: "is_founder" | "is_marketplace") {
-    setSavingId(target.id);
-    setError("");
-    const value = !target[flag];
-    const res = await fetch("/api/admin/user-tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: target.id, flag, value }),
-    });
-    const json = await res.json();
-    setSavingId(null);
-    if (!res.ok) {
-      setError(json.error ?? "Failed to update tag");
-      return;
-    }
-    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, [flag]: value } : u)));
   }
 
   async function deleteUser(target: AdminUser) {
@@ -310,7 +316,8 @@ export default function AdminUsersPage() {
     );
   }
 
-  const availableRoles = myRole === "archon" ? ROLES : ROLES.filter((r) => r !== "archon");
+  const availableRoles: readonly SiteRank[] = myRole === "archon" ? SITE_RANKS : SITE_RANKS.filter((r) => r !== "archon");
+  const rankLabel = (r: string) => (isSiteRank(r) ? RANK_INFO[r].label : r.charAt(0).toUpperCase() + r.slice(1));
 
   return (
     <main className="min-h-screen text-neutral-100 admin-surface">
@@ -338,25 +345,24 @@ export default function AdminUsersPage() {
         )}
 
         {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
-            className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
+            placeholder="Search name, @username or email…"
+            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-[#3AFFD4]/40 focus:outline-none"
           />
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-2.5 text-sm text-neutral-100 focus:outline-none"
-          >
-            <option value="all">All Roles</option>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r.charAt(0).toUpperCase() + r.slice(1)}
-              </option>
-            ))}
+          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filter by rank"
+            className="rounded-xl border border-white/10 bg-neutral-900 px-3 py-2.5 text-sm text-neutral-100 focus:outline-none">
+            <option value="all">All ranks</option>
+            {SITE_RANKS.map((r) => <option key={r} value={r}>{RANK_INFO[r].label} · {RANK_INFO[r].meaning}</option>)}
+          </select>
+          <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value as typeof tagFilter)} aria-label="Filter by tag"
+            className="rounded-xl border border-white/10 bg-neutral-900 px-3 py-2.5 text-sm text-neutral-100 focus:outline-none">
+            <option value="all">All tags</option>
+            {MEMBER_TAGS.map((t) => <option key={t.key} value={t.key}>{TAG_CONFIG[t.tag].label}</option>)}
+            <option value="shop">Has a shop</option>
           </select>
         </div>
 
@@ -364,131 +370,73 @@ export default function AdminUsersPage() {
           {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
         </p>
 
-        {/* Table */}
-        {/* overflow-x-auto, not hidden: on a phone the Actions column was clipped
-            off the right edge with no way to reach Edit or Delete. */}
-        <div className="overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/[0.03]">
-                <th className="px-5 py-3 text-left font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                  User
-                </th>
-                <th className="px-5 py-3 text-left font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                  Email
-                </th>
-                <th className="px-5 py-3 text-left font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                  Joined
-                </th>
-                <th className="px-5 py-3 text-left font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                  Role
-                </th>
-                <th className="px-5 py-3 text-right font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredUsers.map((u) => {
-                const ini = u.display_name.slice(0, 2).toUpperCase() || "??";
-                return (
-                  <tr key={u.id} className="transition hover:bg-white/[0.02]">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 font-dm-mono text-xs text-neutral-400">
-                          {ini}
-                        </div>
-                        <Link
-                          href={`/profile/${u.id}`}
-                          className="hover:underline"
-                        >
-                          <RankBadge role={u.role} name={u.display_name} tags={profileTags(u)} />
-                        </Link>
-                        {u.username && <span className="font-dm-mono text-[10px] text-neutral-600">@{u.username}</span>}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 font-dm-mono text-xs text-neutral-500">
-                      {u.email}
-                    </td>
-                    <td className="px-5 py-4 font-dm-mono text-xs text-neutral-600">
-                      {memberSince(u.created_at)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <select
-                        value={u.role}
-                        onChange={(e) => updateRole(u.id, e.target.value)}
-                        disabled={savingId === u.id}
-                        className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 focus:outline-none disabled:opacity-50"
-                      >
-                        {availableRoles.map((r) => (
-                          <option key={r} value={r}>
-                            {r.charAt(0).toUpperCase() + r.slice(1)}
-                          </option>
-                        ))}
-                      </select>
-                      {savingId === u.id && (
-                        <span className="ml-2 font-dm-mono text-[10px] text-neutral-600">
-                          saving…
-                        </span>
-                      )}
-                      {/* Founder is a vendor-only tag */}
-                      {u.is_vendor && (
-                        <button
-                          onClick={() => toggleFounder(u)}
-                          disabled={savingId === u.id}
-                          className="ml-2 rounded-lg border px-2.5 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50"
-                          style={
-                            u.is_founder
-                              ? { color: "#CC00FF", borderColor: "#CC00FF55", background: "#CC00FF14" }
-                              : { color: "#9aa", borderColor: "rgba(255,255,255,0.12)" }
-                          }
-                          title={u.is_founder ? "Revoke Founder" : "Grant Founder"}
-                        >
-                          ♛ {u.is_founder ? "Founder ✓" : "Founder"}
-                        </button>
-                      )}
-                      {u.is_vendor && (
-                        <button
-                          onClick={() => toggleTag(u, "is_marketplace")}
-                          disabled={savingId === u.id}
-                          className="ml-2 rounded-lg border px-2.5 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50"
-                          style={
-                            u.is_marketplace
-                              ? { color: "#00D4FF", borderColor: "#00D4FF55", background: "#00D4FF14" }
-                              : { color: "#9aa", borderColor: "rgba(255,255,255,0.12)" }
-                          }
-                          title={u.is_marketplace ? "Revoke Marketplace access" : "Grant Marketplace access (paid)"}
-                        >
-                          ▣ {u.is_marketplace ? "Marketplace ✓" : "Marketplace"}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="rounded-lg border border-[#3AFFD4]/30 px-3 py-1.5 font-dm-mono text-xs text-[#3AFFD4] transition hover:bg-[#3AFFD4]/10"
-                        >
-                          Edit
-                        </button>
-                        {u.id === myId ? (
-                          <span className="font-dm-mono text-[10px] text-neutral-700">you</span>
-                        ) : (
-                          <button
-                            onClick={() => deleteUser(u)}
-                            disabled={deletingId === u.id}
-                            className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10 disabled:opacity-50"
-                          >
-                            {deletingId === u.id ? "Deleting…" : "Delete"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* One card per person: who they are, their RANK (one), their TAGS
+            (any number), and their public shop switch. Full editing in Edit. */}
+        <div className="space-y-3">
+          {filteredUsers.map((u) => {
+            const ini = (u.display_name || u.email).slice(0, 2).toUpperCase() || "??";
+            const busy = savingId === u.id;
+            const heldTags = MEMBER_TAGS.filter((t) => holds(u, t.key));
+            return (
+              <div key={u.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 font-dm-mono text-xs text-neutral-400">{ini}</div>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/profile/${u.id}`} className="hover:underline">
+                      <RankBadge role={u.role} name={u.display_name || u.email} tags={[]} />
+                    </Link>
+                    <p className="mt-0.5 break-all font-dm-mono text-[11px] text-neutral-500">
+                      {u.username ? `@${u.username} · ` : ""}{u.email} · joined {memberSince(u.created_at)}
+                    </p>
+                    <EmailVerified user={u} />
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button onClick={() => openEdit(u)}
+                      className="rounded-lg border border-[#3AFFD4]/30 px-3 py-1.5 font-dm-mono text-xs text-[#3AFFD4] transition hover:bg-[#3AFFD4]/10">Edit</button>
+                    {u.id === myId ? (
+                      <span className="font-dm-mono text-[10px] text-neutral-700">you</span>
+                    ) : (
+                      <button onClick={() => deleteUser(u)} disabled={deletingId === u.id}
+                        className="rounded-lg border border-[#FF5C3A]/30 px-3 py-1.5 font-dm-mono text-xs text-[#FF5C3A] transition hover:bg-[#FF5C3A]/10 disabled:opacity-50">
+                        {deletingId === u.id ? "Deleting…" : "Delete"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-[12rem_1fr]">
+                  <div>
+                    <p className="mb-1 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Rank</p>
+                    <select value={isSiteRank(u.role) ? u.role : ""} onChange={(e) => updateRole(u.id, e.target.value)}
+                      disabled={busy || (myRole !== "archon" && u.role === "archon")} aria-label={`Rank for ${u.display_name || u.email}`}
+                      className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 focus:outline-none disabled:opacity-50">
+                      {!isSiteRank(u.role) && <option value="" disabled>{rankLabel(u.role)} (old rank)</option>}
+                      {(u.role === "archon" ? SITE_RANKS : availableRoles).map((r) => (
+                        <option key={r} value={r}>{RANK_INFO[r].label} · {RANK_INFO[r].meaning}</option>
+                      ))}
+                    </select>
+                    {u.is_site_moderator && <p className="mt-1 font-dm-mono text-[10px] text-[#FF9A3C]">+ can give Merchant / Promoter</p>}
+                  </div>
+                  <div>
+                    <p className="mb-1 font-dm-mono text-[10px] uppercase tracking-widest text-neutral-600">Tags</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {heldTags.length === 0 && <span className="font-dm-mono text-[11px] text-neutral-700">none — add in Edit</span>}
+                      {heldTags.map((t) => {
+                        const c = TAG_CONFIG[t.tag];
+                        return (
+                          <span key={t.key} className="rounded-md border px-2 py-0.5 font-dm-mono text-[10px] uppercase tracking-widest"
+                            style={{ color: c.color, borderColor: `${c.color}55`, background: `${c.color}14` }}>{c.glyph} {c.label}</span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {u.shop && <ShopSwitch shop={u.shop} busy={busy} onChange={(v) => setShopVisible(u, v)} />}
+                {busy && <p className="mt-2 font-dm-mono text-[10px] text-neutral-600">saving…</p>}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -531,14 +479,6 @@ export default function AdminUsersPage() {
                 ["Promoter code", editDetails?.promoter?.referral_code ? `${editDetails.promoter.referral_code}${editDetails.promoter.is_active ? "" : " (paused)"}${editDetails.promoter.is_coordinator ? " · coordinator" : ""}` : "—"],
               ];
               if (typeof editDetails?.profile.pending_email === "string" && editDetails.profile.pending_email) facts.push(["Pending email", editDetails.profile.pending_email]);
-              const tags: [TagFlag, string][] = [
-                ["is_verified", "✔ Verified"],
-                ["is_driver", "⬗ Driver"],
-                ["is_forager", "❦ Forager"],
-                ["is_artisan", "◈ Artisan"],
-                ["is_promoter", "✦ Promoter"],
-                ...(editing.is_vendor ? ([["is_founder", "♛ Founder"], ["is_marketplace", "▣ Marketplace"]] as [TagFlag, string][]) : []),
-              ];
               return (
                 <div className="space-y-5">
                   <section className="space-y-3">
@@ -546,6 +486,7 @@ export default function AdminUsersPage() {
                     <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-1 text-xs">
                       {facts.map(([k, v]) => (<div key={k} className="contents"><dt className="text-neutral-600">{k}</dt><dd className="min-w-0 break-words text-neutral-300">{v}</dd></div>))}
                     </dl>
+                    <EmailVerified user={editing} />
                     <div>
                       <label className={label}>Email</label>
                       <input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={input} />
@@ -589,26 +530,50 @@ export default function AdminUsersPage() {
                   </section>
 
                   <section className="space-y-3">
-                    <p className={section}>Rank &amp; tags</p>
-                    <div>
-                      <label className={label}>Rank</label>
-                      <select value={editForm.role} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none">
-                        {availableRoles.map((r) => (<option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={label}>Tags (saved as you tap)</label>
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map(([flag, text]) => (
-                          <button key={flag} type="button" onClick={() => toggleEditingTag(flag)}
-                            className={`rounded-lg border px-3 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition ${editing[flag] ? "border-[#3AFFD4] bg-[#3AFFD4]/10 text-[#3AFFD4]" : "border-white/12 text-neutral-400 hover:bg-white/5"}`}>
-                            {text} {editing[flag] ? "✓" : ""}
+                    <p className={section}>Rank <span className="normal-case tracking-normal text-neutral-600">— one per person, saved as you tap</span></p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {SITE_RANKS.map((r) => {
+                        const on = editing.role === r;
+                        const locked = myRole !== "archon" && (r === "archon" || editing.role === "archon");
+                        return (
+                          <button key={r} type="button" disabled={locked || savingId === editing.id}
+                            onClick={() => { if (!on) { updateRole(editing.id, r); setEditing({ ...editing, role: r }); } }}
+                            className={`rounded-xl border px-3 py-2 text-left transition disabled:opacity-40 ${on ? "border-[#3AFFD4] bg-[#3AFFD4]/10" : "border-white/10 hover:bg-white/5"}`}>
+                            <span className={`block text-sm font-semibold ${on ? "text-[#3AFFD4]" : "text-neutral-200"}`}>{RANK_INFO[r].label}{on ? " ✓" : ""}</span>
+                            <span className="block font-dm-mono text-[10px] text-neutral-500">{RANK_INFO[r].meaning}</span>
                           </button>
-                        ))}
-                      </div>
-                      <p className="mt-1 font-dm-mono text-[10px] text-neutral-600">Promoter creates their promoter record and referral code; Founder and Marketplace apply to vendor accounts.</p>
+                        );
+                      })}
+                    </div>
+                    {editing.is_site_moderator && <p className="font-dm-mono text-[10px] text-[#FF9A3C]">Also a site moderator: can give Merchant / Promoter tags (switch on their profile page).</p>}
+                  </section>
+
+                  <section className="space-y-3">
+                    <p className={section}>Tags <span className="normal-case tracking-normal text-neutral-600">— any number, saved as you tap</span></p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {MEMBER_TAGS.map((t) => {
+                        const on = holds(editing, t.key);
+                        const c = TAG_CONFIG[t.tag];
+                        return (
+                          <button key={t.key} type="button" disabled={savingId === editing.id} onClick={() => setTag(editing, t.key, !on)}
+                            className="rounded-xl border px-3 py-2 text-left transition hover:bg-white/5 disabled:opacity-50"
+                            style={on ? { borderColor: `${c.color}88`, background: `${c.color}14` } : { borderColor: "rgba(255,255,255,0.1)" }}>
+                            <span className="block font-dm-mono text-[11px] uppercase tracking-widest" style={{ color: on ? c.color : "#8a8a8a" }}>
+                              {on ? "✓" : "+"} {c.glyph} {c.label}
+                            </span>
+                            <span className="block text-[11px] text-neutral-500">{t.help}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </section>
+
+                  {editing.shop && (
+                    <section className="space-y-2">
+                      <p className={section}>Public shop</p>
+                      <ShopSwitch shop={editing.shop} busy={savingId === editing.id} onChange={(v) => setShopVisible(editing, v)} />
+                    </section>
+                  )}
                 </div>
               );
             })()}
@@ -634,5 +599,68 @@ export default function AdminUsersPage() {
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * The public-shop switch (owner, 2026-11-05). Merchant lets someone build a
+ * shop; this decides whether the public sees it. Off = lights out
+ * (vendors.suspended_at): nothing about their items changes, so On puts the
+ * shop back exactly as it was. A shop that was never approved or listed is
+ * set up in Vendors first.
+ */
+function ShopSwitch({ shop, busy, onChange }: { shop: Shop; busy: boolean; onChange: (visible: boolean) => void }) {
+  const state = shopState(shop);
+  const on = state === "public";
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+      <button type="button" role="switch" aria-checked={on} disabled={busy || state === "unlisted"} onClick={() => onChange(!on)}
+        className="rounded-lg border px-3 py-1.5 font-dm-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50"
+        style={on ? { color: "#00D4FF", borderColor: "#00D4FF55", background: "#00D4FF14" } : { color: "#9aa", borderColor: "rgba(255,255,255,0.15)" }}>
+        ▣ {on ? "Public shop ✓" : state === "hidden" ? "Shop hidden — turn on" : "Not listed"}
+      </button>
+      <span className="min-w-0 text-[11px] text-neutral-400">
+        {shop.name ?? "Shop"} · {shop.items} item{shop.items === 1 ? "" : "s"}, {shop.on_sale} on sale
+        {state === "unlisted" ? <> · <Link href="/admin/vendors" className="underline">approve / list it in Vendors</Link></> : " · switching never changes their items"}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Admin-only "verified": has this person confirmed their email? (The public
+ * Verified badge is gone; this is the fact that matters — it's what lets them
+ * post, list and apply.) Unconfirmed → a button that re-sends the link through
+ * the same route as the signup screen's "Resend confirmation email".
+ */
+function EmailVerified({ user }: { user: AdminUser }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [note, setNote] = useState("");
+  if (user.email_confirmed_at) {
+    return (
+      <p className="mt-1 font-dm-mono text-[10px] text-[#7DD3FC]" title={`Confirmed ${new Date(user.email_confirmed_at).toLocaleString()}`}>
+        ✔ Email verified
+      </p>
+    );
+  }
+  async function resend() {
+    setState("sending"); setNote("");
+    const r = await fetch("/api/auth/resend-confirmation", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, origin: window.location.origin }),
+    }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (r?.ok) { setState("sent"); setNote((j as { note?: string }).note ?? ""); }
+    else { setState("error"); setNote((j as { error?: string }).error ?? "Couldn't send it."); }
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <span className="font-dm-mono text-[10px] text-[#FFC93C]">✉ Email not verified</span>
+      <button type="button" onClick={resend} disabled={state === "sending" || state === "sent" || !user.email}
+        className="rounded-md border border-[#FFC93C]/40 px-2 py-0.5 font-dm-mono text-[10px] text-[#FFC93C] transition hover:bg-[#FFC93C]/10 disabled:opacity-60">
+        {state === "sending" ? "Sending…" : state === "sent" ? "Verification email sent ✓" : "Resend verification email"}
+      </button>
+      {note && <span className={`text-[10px] ${state === "error" ? "text-[#FF5C3A]" : "text-neutral-400"}`}>{note}</span>}
+    </div>
   );
 }

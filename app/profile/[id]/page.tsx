@@ -186,7 +186,7 @@ export default async function ProfilePage({
           />
         </div>
 
-        <RankEditor userId={id} role={profile.role} extraRanks={profile.extra_ranks ?? []} isModerator={!!profile.is_site_moderator}
+        <RankEditor userId={id} role={profile.role} extraRanks={profile.extra_ranks ?? []} isMerchant={!!profile.is_marketplace} isPromoter={!!profile.is_promoter} isModerator={!!profile.is_site_moderator}
           canEdit={rankEditable} canSetModerator={viewer?.role === "archon" && !isOwn} />
 
         {/* Bio */}

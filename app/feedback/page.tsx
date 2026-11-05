@@ -1,4 +1,5 @@
 import { FeedbackForm } from "./FeedbackForm";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 export const metadata = {
   title: "Feedback",
@@ -17,6 +18,7 @@ export default function FeedbackPage() {
         </p>
 
         <FeedbackForm />
+        <JoinUsOnline className="mt-8" />
       </div>
     </main>
   );

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SITE_RANKS } from "@/utils/ranks";
 import { randomBytes } from "crypto";
 import { adminGuard } from "@/utils/admin";
 import { sendEmail } from "@/utils/email";
@@ -26,7 +27,8 @@ const PROFILE_FIELDS = [
   "postal_code",
 ] as const;
 
-const ROLES = ["drifter", "wanderer", "merchant", "warden", "archon", "promoter"];
+// Ranks only — Merchant / Promoter are tags (utils/memberTags.ts).
+const ROLES: readonly string[] = SITE_RANKS;
 
 export async function POST(req: Request) {
   const g = await adminGuard();

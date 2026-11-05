@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 // The one page a locked-out guest can use. No account required — that's the
 // whole point; see app/api/signin-help/route.ts.
@@ -66,6 +67,7 @@ export default function SigninHelpPage() {
             We got it, and we&apos;ll email <span className="text-neutral-200">{email}</span> directly.
             You don&apos;t need to do anything else.
           </p>
+          <JoinUsOnline className="mt-5" compact />
           <Link
             href="/"
             className="mt-6 inline-block rounded-xl border border-white/10 px-6 py-2.5 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white"

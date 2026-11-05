@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server";
 import { adminGuard } from "@/utils/admin";
-import { grantPromoter, revokePromoter } from "@/utils/promoters";
+import { isMemberTag, setMemberTag } from "@/utils/memberTags";
 
-// Admin-only: grant/revoke a role tag flag on a user's profile. Primarily for
-// the admin-grantable "Founder" tag; the others are normally set by their own
-// approval flows but can be corrected here too. Uses the service-role client so
-// it can write the DB-guarded flags.
-const ALLOWED = new Set([
-  "is_founder",
-  "is_vendor",
-  "is_marketplace",
-  "is_festdash_vendor",
-  "is_promoter",
-  "is_artisan",
-  "is_driver",
-  "is_forager",
-  "is_verified",
-]);
+// Admin-only: give or take one tag (utils/memberTags.ts — the one
+// implementation; Promoter also creates/pauses their promoter row and code).
+// POST { userId, tag, value }. `flag` (the old is_* name) is still accepted.
+const LEGACY: Record<string, string> = {
+  is_marketplace: "merchant", is_promoter: "promoter", is_festdash_vendor: "festdash_vendor", is_vendor: "vendor",
+  is_driver: "driver", is_artisan: "artisan", is_forager: "forager", is_founder: "founder",
+};
 
 export async function POST(req: Request) {
   const g = await adminGuard();
@@ -24,28 +16,11 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const userId = String(body.userId || "");
-  const flag = String(body.flag || "");
+  const tag = body.tag ?? LEGACY[String(body.flag ?? "")];
   const value = !!body.value;
-  if (!userId || !ALLOWED.has(flag)) {
-    return NextResponse.json({ error: "Bad request." }, { status: 400 });
-  }
+  if (!userId || !isMemberTag(tag)) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
-  // Promoter is more than a badge: it needs a promoter row and a referral code
-  // (or, when revoked, a paused row). Same path as approving an application.
-  if (flag === "is_promoter") {
-    if (value) {
-      const { referral_code } = await grantPromoter(g.admin, userId);
-      return NextResponse.json({ ok: true, flag, value, referral_code });
-    }
-    await revokePromoter(g.admin, userId);
-    return NextResponse.json({ ok: true, flag, value });
-  }
-
-  const { error } = await g.admin
-    .from("user_profiles")
-    .update({ [flag]: value })
-    .eq("id", userId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, flag, value });
+  const r = await setMemberTag(g.admin, userId, tag, value);
+  if (r.error) return NextResponse.json({ error: r.error }, { status: 500 });
+  return NextResponse.json({ ok: true, tag, value, referral_code: r.referral_code ?? null });
 }

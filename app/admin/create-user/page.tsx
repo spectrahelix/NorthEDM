@@ -8,7 +8,7 @@ export default function AdminCreateUserPage() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [vendorId, setVendorId] = useState("");
-  const [forumRole, setForumRole] = useState("merchant");
+  const [forumRole, setForumRole] = useState("wanderer");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; userId?: string; error?: string } | null>(null);
 
@@ -133,14 +133,14 @@ export default function AdminCreateUserPage() {
 
             <div>
               <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-                Forum Role
+                Rank
               </label>
               <select
                 value={forumRole}
                 onChange={(e) => setForumRole(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-neutral-900 px-4 py-3 text-sm text-neutral-100 focus:outline-none"
               >
-                {["drifter", "wanderer", "merchant", "warden", "archon"].map((r) => (
+                {["drifter", "wanderer", "warden", "archon"].map((r) => (
                   <option key={r} value={r}>
                     {r.charAt(0).toUpperCase() + r.slice(1)}
                   </option>

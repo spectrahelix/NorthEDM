@@ -15,6 +15,26 @@
  */
 export const PRIMARY_RANKS = ["drifter", "wanderer", "merchant", "promoter", "warden", "archon"] as const;
 export const EXTRA_RANKS = ["wanderer", "merchant", "promoter"] as const;
+
+/**
+ * Ranks vs tags (owner, 2026-11-05). A RANK is where someone stands on the
+ * site — one each: new member, regular, moderator, admin. Everything a person
+ * is approved FOR (selling, promoting, driving…) is a TAG, and anyone can hold
+ * any number of them (utils/memberTags.ts). Merchant and Promoter used to be
+ * ranks; they are tags now, stored where the abilities already read them
+ * (`extra_ranks` + their flags), so `hasRank()` / `canSell()` are unchanged.
+ */
+export const SITE_RANKS = ["drifter", "wanderer", "warden", "archon"] as const;
+export type SiteRank = (typeof SITE_RANKS)[number];
+export const RANK_INFO: Record<SiteRank, { label: string; meaning: string }> = {
+  drifter: { label: "Drifter", meaning: "New member" },
+  wanderer: { label: "Wanderer", meaning: "Site regular" },
+  warden: { label: "Warden", meaning: "Moderator" },
+  archon: { label: "Archon", meaning: "Admin" },
+};
+export function isSiteRank(r: unknown): r is SiteRank {
+  return typeof r === "string" && (SITE_RANKS as readonly string[]).includes(r);
+}
 export type ExtraRank = (typeof EXTRA_RANKS)[number];
 export type Rank = (typeof PRIMARY_RANKS)[number];
 

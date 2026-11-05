@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 
 // Rolling buffer of real JS errors on the page (attached once), so a report can
 // include the actual crash even if it happened before the user opened the form.
@@ -145,6 +146,7 @@ export function BugReporter() {
                   Thank you — this gives us what we need to track it down.
                   {consent && " We'll reach out if we need more detail."}
                 </p>
+                <JoinUsOnline className="mt-4" compact />
                 <button onClick={reset} className="mt-5 rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black hover:opacity-90">Done</button>
               </div>
             ) : (

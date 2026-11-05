@@ -181,16 +181,26 @@ Built for the first real vendor and now the standard for anything new:
   STOCK** banner over its photo and isn't linked (its page isn't public). The
   item page lists off-sale sibling sizes the same way. Off-sale rows are read
   with the service role, display fields only (name, size, photo, price).
-- **Item requests (2026-11-05, owner):** every store card has a small
-  **"QTY Not Listed? → request now"** box. A signed-in shopper asks for a size
-  or quantity that isn't on sale (`ItemRequest` → `/api/store/<slug>/requests`,
-  table `product_requests`, service role only). Push guard: one request per
-  person per size (unique `(product_id, user_id)`, a repeat is 409 and the box
-  reads "Requested ✓"), plus `shieldForm` (10/h). The operator gets a bell +
-  email (the NorthEDM shop also alerts the owner's phone via
-  `notifyProductRequest`), the **Edit shop** button shows "· N item requests",
-  and Edit shop lists them (`ItemRequestsPanel`, Done / Dismiss / Message).
-  Only the requester's username leaves the server — never an email.
+- **Item requests (2026-11-05, owner):** one button at the **top and bottom**
+  of every store — "Couldn't find what you were looking for? → request here.
+  I may be able to get it!" — not a box per card (the owner tried that and
+  found it too much). It opens a pop-up (`ItemRequestButton` in
+  `app/[store]/ItemRequest.tsx`): pick one of the shop's items/sizes or type
+  anything, how many, a note. `/api/store/<slug>/requests`, table
+  `product_requests` (`product_id` or `item_text`), service role only. Push
+  guard: one request per person per item, or per thing typed (unique indexes;
+  a repeat is 409), plus `shieldForm` (10/h). The operator gets a bell + email
+  (the NorthEDM shop also alerts the owner's phone via `notifyProductRequest`),
+  the **Edit shop** button shows "· N item requests", and Edit shop lists them
+  (`ItemRequestsPanel`, Done / Dismiss / Message). Only the requester's
+  username leaves the server — never an email.
+- **"Join us Online" (2026-11-05, owner):** `JoinUsOnline` shows "Join us
+  Online for quick responses and updates!" with NorthEDM's Facebook and
+  Instagram buttons on forms, pop-ups and confirmation screens (item request,
+  bug report, feedback, signup, sign-in help, promote, marketplace + vendor
+  apply, shop setup, store pages). The links live only in `utils/socials.ts`;
+  a blank one hides its button and both blank hide the block. Never guess an
+  address — fill in what the owner gives.
 - **Long forms** (anything a person fills in for more than a minute, especially
   with a photo picker): `useUnsavedDraft` from `utils/useUnsavedDraft.ts` restores
   the draft if a phone reloads the tab. The service worker already refuses to
@@ -404,6 +414,32 @@ is only for shops outside the US. The older `shop_products` storefront (/admin/s
 held no products and is no longer reached from /shop; its code is left in
 place (store credit is spent through its checkout) until the owner decides
 whether to retire it.
+
+**Ranks vs tags (owner, 2026-11-05).** A **rank** is where someone stands —
+one each: Drifter (new), Wanderer (regular), Warden (moderator), Archon (admin)
+(`SITE_RANKS` / `RANK_INFO` in `utils/ranks.ts`). Everything someone is
+approved *for* is a **tag**, any number of them: Merchant, Promoter, FestDash,
+Vendor, Driver, Artisan, Forager, Founder (`MEMBER_TAGS` in
+`app/components/roleColors.ts`). Merchant and Promoter used to be ranks; on
+2026-11-05 everyone holding them moved to Wanderer with the same abilities as
+tags. **`setMemberTag()` in `utils/memberTags.ts` is the only way a tag is
+given or taken** (`/api/admin/user-tags`, `/api/ranks`, promoter approval,
+admin create-user): Merchant = `is_marketplace` + "merchant" in `extra_ranks`
+(what `canSell()` reads — lets them build a shop, never makes it public);
+Promoter = `grantPromoter`/`revokePromoter` + "promoter" in `extra_ranks`.
+Rank routes accept only the four ranks; a warden can't make or change an
+archon. The public **Verified** badge is no longer shown. "Verified" now means what
+the site enforces — a confirmed email (`public.is_verified()`) — and only
+admins see it: /admin/users shows "✔ Email verified" or, if not, **Resend
+verification email** (the same `/api/auth/resend-confirmation` the signup
+screen uses). **Public shop** in
+/admin/users is a separate switch on the person's vendor: Vendors → Suspend /
+Restore (`/api/vendors/update`, `suspended_at`, i.e. lights out/on). It never
+touches products, sizes, prices or what's on sale; a shop never approved or
+listed is set up in /admin/vendors first. ⚠️ `protect_role_flags` keeps every
+tag column unless the writer is the service role — a SQL migration that sets
+them must `set_config('request.jwt.claim.role', 'service_role', true)` first,
+or the update silently does nothing (it did, once, on 2026-11-05).
 
 **Usernames.** One rule, `utils/username.ts` (`USERNAME_RE`, reserved names,
 `usernameProblem()`); don't paste the regex again. `user_profiles.username_chosen_at`

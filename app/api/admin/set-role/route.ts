@@ -3,8 +3,9 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-const VALID_ROLES = ["archon", "warden", "merchant", "wanderer", "drifter"] as const;
-type Role = (typeof VALID_ROLES)[number];
+import { isSiteRank } from "@/utils/ranks";
+
+// Ranks only (utils/ranks.ts SITE_RANKS). Merchant / Promoter are tags now.
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   const { targetUserId, newRole } = body;
 
-  if (!targetUserId || !newRole || !VALID_ROLES.includes(newRole as Role)) {
+  if (!targetUserId || !newRole || !isSiteRank(newRole)) {
     return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
   }
 
@@ -62,6 +63,11 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+
+  if (requesterRole === "warden") {
+    const { data: t } = await adminClient.from("user_profiles").select("role").eq("id", targetUserId).maybeSingle();
+    if (t?.role === "archon") return NextResponse.json({ error: "Wardens cannot change an Archon's rank" }, { status: 403 });
+  }
 
   const { error } = await adminClient
     .from("user_profiles")

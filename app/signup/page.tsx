@@ -9,6 +9,7 @@ import { safeNext } from "@/utils/safeRedirect";
 
 import { USERNAME_RE, suggestUsername } from "@/utils/username";
 import { IntlPaymentNote } from "@/app/components/IntlPaymentNote";
+import { JoinUsOnline } from "@/app/components/JoinUsOnline";
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,6 +133,7 @@ export default function SignupPage() {
           <p className="mt-3 font-dm-mono text-xs text-neutral-600">
             Don&apos;t see it? Check your spam or junk folder.
           </p>
+          <JoinUsOnline className="mt-5" compact />
 
           <div className="mt-6 space-y-3">
             <button
