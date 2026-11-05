@@ -26,6 +26,7 @@ type AdminUser = {
   is_forager?: boolean;
   extra_ranks?: string[] | null;
   is_site_moderator?: boolean;
+  email_confirmed_at?: string | null;
   vendor_id?: number | null;
   shop?: Shop | null;
 };
@@ -387,6 +388,7 @@ export default function AdminUsersPage() {
                     <p className="mt-0.5 break-all font-dm-mono text-[11px] text-neutral-500">
                       {u.username ? `@${u.username} · ` : ""}{u.email} · joined {memberSince(u.created_at)}
                     </p>
+                    <EmailVerified user={u} />
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button onClick={() => openEdit(u)}
@@ -484,6 +486,7 @@ export default function AdminUsersPage() {
                     <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-1 text-xs">
                       {facts.map(([k, v]) => (<div key={k} className="contents"><dt className="text-neutral-600">{k}</dt><dd className="min-w-0 break-words text-neutral-300">{v}</dd></div>))}
                     </dl>
+                    <EmailVerified user={editing} />
                     <div>
                       <label className={label}>Email</label>
                       <input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={input} />
@@ -620,6 +623,44 @@ function ShopSwitch({ shop, busy, onChange }: { shop: Shop; busy: boolean; onCha
         {shop.name ?? "Shop"} · {shop.items} item{shop.items === 1 ? "" : "s"}, {shop.on_sale} on sale
         {state === "unlisted" ? <> · <Link href="/admin/vendors" className="underline">approve / list it in Vendors</Link></> : " · switching never changes their items"}
       </span>
+    </div>
+  );
+}
+
+/**
+ * Admin-only "verified": has this person confirmed their email? (The public
+ * Verified badge is gone; this is the fact that matters — it's what lets them
+ * post, list and apply.) Unconfirmed → a button that re-sends the link through
+ * the same route as the signup screen's "Resend confirmation email".
+ */
+function EmailVerified({ user }: { user: AdminUser }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [note, setNote] = useState("");
+  if (user.email_confirmed_at) {
+    return (
+      <p className="mt-1 font-dm-mono text-[10px] text-[#7DD3FC]" title={`Confirmed ${new Date(user.email_confirmed_at).toLocaleString()}`}>
+        ✔ Email verified
+      </p>
+    );
+  }
+  async function resend() {
+    setState("sending"); setNote("");
+    const r = await fetch("/api/auth/resend-confirmation", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, origin: window.location.origin }),
+    }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (r?.ok) { setState("sent"); setNote((j as { note?: string }).note ?? ""); }
+    else { setState("error"); setNote((j as { error?: string }).error ?? "Couldn't send it."); }
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <span className="font-dm-mono text-[10px] text-[#FFC93C]">✉ Email not verified</span>
+      <button type="button" onClick={resend} disabled={state === "sending" || state === "sent" || !user.email}
+        className="rounded-md border border-[#FFC93C]/40 px-2 py-0.5 font-dm-mono text-[10px] text-[#FFC93C] transition hover:bg-[#FFC93C]/10 disabled:opacity-60">
+        {state === "sending" ? "Sending…" : state === "sent" ? "Verification email sent ✓" : "Resend verification email"}
+      </button>
+      {note && <span className={`text-[10px] ${state === "error" ? "text-[#FF5C3A]" : "text-neutral-400"}`}>{note}</span>}
     </div>
   );
 }

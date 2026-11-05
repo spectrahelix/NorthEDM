@@ -58,8 +58,12 @@ export async function GET() {
   }
 
   const emailMap: Record<string, string> = {};
+  // Admin-only fact (owner, 2026-11-05): has this person confirmed their email?
+  // That is the real "verified" — the gate every user-content form checks.
+  const confirmedMap: Record<string, string | null> = {};
   for (const u of authUsers) {
     if (u.email) emailMap[u.id] = u.email;
+    confirmedMap[u.id] = u.email_confirmed_at ?? null;
   }
 
   // Each person's shop, for the Public shop switch: listing state and item
@@ -100,6 +104,7 @@ export async function GET() {
     }) => ({
       ...p,
       email: emailMap[p.id] ?? "",
+      email_confirmed_at: confirmedMap[p.id] ?? null,
       shop: p.vendor_id != null ? shopOf.get(p.vendor_id) ?? null : null,
     })
   );

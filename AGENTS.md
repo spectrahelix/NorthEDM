@@ -428,8 +428,11 @@ admin create-user): Merchant = `is_marketplace` + "merchant" in `extra_ranks`
 (what `canSell()` reads — lets them build a shop, never makes it public);
 Promoter = `grantPromoter`/`revokePromoter` + "promoter" in `extra_ranks`.
 Rank routes accept only the four ranks; a warden can't make or change an
-archon. The **Verified** badge is no longer shown — the sign-up gate is the
-confirmed email (`public.is_verified()`), not that flag. **Public shop** in
+archon. The public **Verified** badge is no longer shown. "Verified" now means what
+the site enforces — a confirmed email (`public.is_verified()`) — and only
+admins see it: /admin/users shows "✔ Email verified" or, if not, **Resend
+verification email** (the same `/api/auth/resend-confirmation` the signup
+screen uses). **Public shop** in
 /admin/users is a separate switch on the person's vendor: Vendors → Suspend /
 Restore (`/api/vendors/update`, `suspended_at`, i.e. lights out/on). It never
 touches products, sizes, prices or what's on sale; a shop never approved or
