@@ -1,5 +1,5 @@
 // The site's main sections — one list, used by the header nav, the mobile
-// drawer, the swipeable section row under the header on phones/tablets
+// drawer, the wrapped section bubbles under the header on phones/tablets
 // (SectionStrip, in the layout) and the home page's section buttons. Add a
 // section here, not in a page.
 export type NavLink = {
