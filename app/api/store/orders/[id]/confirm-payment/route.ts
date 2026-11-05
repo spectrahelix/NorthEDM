@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { storeAdminClient } from "@/utils/store";
 import { isSiteAdminUser, loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
 import { alertRejectedWithRef } from "@/utils/walletWatch";
+import { adjustedCount } from "@/utils/stock";
 
 // POST — the coordinator (or an admin) confirms a store order's wallet payment
 // arrived, or rejects it. Confirming marks it paid, takes the stock down and
@@ -49,7 +50,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const items = (order.items ?? []) as { product_id: number; qty: number }[];
   for (const it of items) {
     const { data: p } = await admin.from("products").select("inventory_count").eq("id", it.product_id).maybeSingle();
-    if (p) await admin.from("products").update({ inventory_count: Math.max(0, (p.inventory_count ?? 0) - it.qty) }).eq("id", it.product_id);
+    if (p && p.inventory_count != null) await admin.from("products").update({ inventory_count: adjustedCount(p.inventory_count, -it.qty) }).eq("id", it.product_id);
   }
   if (coordinatorId && order.vendor_id) {
     const settings = await loadSplitSettings(admin);

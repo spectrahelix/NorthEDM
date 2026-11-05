@@ -13,6 +13,7 @@ import { Price, CurrencyPill } from "@/app/components/CurrencyContext";
 import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { VARIANT_COLUMNS, baseName, groupKeyOf } from "@/utils/productVariants";
 import { formatMoney } from "@/utils/money";
+import { hasStock, stockLabel } from "@/utils/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function ItemPage({ params }: Params) {
               <div className="mt-4 grid max-w-md gap-2" style={{ gridTemplateColumns: `repeat(${sizes.length === 4 ? 2 : Math.min(sizes.length, 4)}, minmax(0, 1fr))` }} role="radiogroup" aria-label="Size">
                 {sizes.map((o) => {
                   const on = o.id === p.id;
-                  const out = !((o.inventory_count ?? 0) > 0);
+                  const out = !hasStock(o);
                   return (
                     <Link key={o.id} href={`/marketplace/${p.vendor_id}/item/${o.id}`} replace scroll={false} role="radio" aria-checked={on}
                       className={`rounded-xl border px-2 py-2 text-center leading-tight transition ${on ? "" : "border-white/15 hover:bg-white/5"} ${out && !on ? "opacity-50" : ""}`}
@@ -112,7 +113,7 @@ export default async function ItemPage({ params }: Params) {
             )}
             <Price cents={Math.round(Number(p.price ?? 0) * 100)} currency={vendorCurrency} className={`mt-4 block text-4xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }} />
             <p className="mt-1 font-dm-mono text-xs text-neutral-500">
-              {Number(p.inventory_count ?? 0) > 0 ? `${p.inventory_count} in stock` : "Out of stock"}
+              {stockLabel(p as { inventory_count: number | null })}
             </p>
             {p.description && <p className="mt-6 whitespace-pre-line leading-7 text-neutral-300">{p.description as string}</p>}
             <SpecsTable className="mt-6" product={p as unknown as Parameters<typeof SpecsTable>[0]["product"]} />

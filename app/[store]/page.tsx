@@ -17,6 +17,7 @@ import { ShopFontToggle } from "@/app/components/ShopFontToggle";
 import { CurrencyPill } from "@/app/components/CurrencyContext";
 import { VIEW_CURRENCIES } from "@/utils/viewerCurrency";
 import { BRAND_STORE_SLUG, brandCodeTerms, isActivePromoter } from "@/utils/brandShop";
+import { IN_STOCK_FILTER } from "@/utils/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
       ? supabase.from("vendors").select("id, name, category, description").in("id", vendorIds).eq("status", "approved").eq("is_public", true)
       : Promise.resolve({ data: [] as Vendor[] }),
     vendorIds.length
-      ? supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").gt("inventory_count", 0).order("created_at", { ascending: false })
+      ? supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").or(IN_STOCK_FILTER).order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as Product[] }),
   ]);
   const vendors = (vendorsData ?? []) as Vendor[];
@@ -213,7 +214,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
         {editMode ? (
           <>
             <p className="mb-4 rounded-xl border border-[#FFC93C]/30 bg-[#FFC93C]/[0.08] px-4 py-2.5 text-sm text-[#FFC93C]">
-              ✏️ Editing your shop. Only you see this. Set each size&apos;s price and stock, switch it On sale, then press Save changes (top or bottom). An item shows to customers once it&apos;s on sale with a price and stock above 0.
+              ✏️ Editing your shop. Only you see this. Set each size&apos;s price, switch it On sale, then press Save changes (top or bottom). Stock is optional: leave it blank for no limit, or enter a number for limited stock.
             </p>
             <ShopEditor items={editItems} accent={accent} currencySymbol={rail ? `${rail.currency} ` : "$"} />
           </>

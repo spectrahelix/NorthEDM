@@ -36,7 +36,7 @@ type Product = Partial<SpecsColumns> & {
   category: string | null;
   description: string | null;
   price: number;
-  inventory_count: number;
+  inventory_count: number | null;
   image_url: string | null;
   is_public: boolean;
   status: string;
@@ -353,7 +353,7 @@ export default function VendorDashboard() {
             <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Category"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
             <div data-tour="price"><PriceField value={form.price} onChange={(price) => setForm({ ...form, price })} currency={currency} /></div>
-            <input data-tour="stock" value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} placeholder="In stock (qty)" inputMode="numeric"
+            <input data-tour="stock" value={form.inventoryCount} onChange={(e) => setForm({ ...form, inventoryCount: e.target.value })} placeholder="Stock (blank = no limit)" inputMode="numeric"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none" />
           </div>
           <textarea data-tour="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Description"
@@ -402,7 +402,7 @@ export default function VendorDashboard() {
                     )}
                   </p>
                   <p className="font-dm-mono text-xs text-neutral-500">
-                    ${Number(p.price).toFixed(2)} · {p.inventory_count} in stock ·{" "}
+                    ${Number(p.price).toFixed(2)} · {p.inventory_count == null ? "no stock limit" : `${p.inventory_count} in stock`} ·{" "}
                     <span className={p.is_public ? "text-[#39FF14]" : "text-neutral-600"}>{p.is_public ? "Published" : "Draft"}</span>
                   </p>
                   {!p.image_url ? (

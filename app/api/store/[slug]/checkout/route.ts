@@ -13,6 +13,7 @@ import { safeOrigin } from "@/utils/safeRedirect";
 import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
 import { BRAND_STORE_SLUG, brandCodeTerms, brandDiscount, isActivePromoter, promoterForCode } from "@/utils/brandShop";
 import { resolveCode } from "@/utils/discountCodes";
+import { hasStock } from "@/utils/stock";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -80,7 +81,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     if (!memberIds.has(Number(p.vendor_id))) {
       return NextResponse.json({ error: "An item isn't sold by this store." }, { status: 400 });
     }
-    if ((p.inventory_count ?? 0) < qty) {
+    if (!hasStock(p, qty)) {
       return NextResponse.json({ error: `"${p.name}" is out of stock.` }, { status: 400 });
     }
     // `products.price` is dollars; Stripe works in cents.

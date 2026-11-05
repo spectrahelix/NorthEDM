@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProductThumb } from "@/app/components/ProductThumb";
 import { groupVariants } from "@/utils/productVariants";
+import { stockFromInput } from "@/utils/stock";
 
 /**
  * "Edit shop" view of a storefront, for its operator (or an admin): every item
@@ -25,14 +26,15 @@ export type EditableItem = {
 type Draft = { price: string; stock: string; onSale: boolean };
 const initial = (i: EditableItem): Draft => ({
   price: String(Number(i.price ?? 0) || ""),
-  stock: String(i.inventory_count ?? 0),
+  stock: i.inventory_count == null ? "" : String(i.inventory_count),
   onSale: i.status === "published" && !!i.is_public,
 });
-const parsed = (d: Draft) => ({ p: Number(d.price), n: Math.max(0, Math.floor(Number(d.stock) || 0)) });
+// Stock is optional: blank means no limit (utils/stock.ts), so n is null.
+const parsed = (d: Draft) => ({ p: Number(d.price), n: stockFromInput(d.stock) });
 function isDirty(i: EditableItem, d: Draft) {
   const { p, n } = parsed(d);
   const was = initial(i);
-  return p !== (Number(i.price ?? 0) || 0) || n !== (i.inventory_count ?? 0) || d.onSale !== was.onSale;
+  return p !== (Number(i.price ?? 0) || 0) || n !== (i.inventory_count ?? null) || d.onSale !== was.onSale;
 }
 
 export function ShopEditor({ items, accent, currencySymbol = "$" }: { items: EditableItem[]; accent: string; currencySymbol?: string }) {
@@ -64,7 +66,7 @@ export function ShopEditor({ items, accent, currencySymbol = "$" }: { items: Edi
       const d = draftOf(i); const { p, n } = parsed(d);
       const res = await fetch(`/api/vendor/products/${i.id}`, {
         method: "PATCH", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ price: p || 0, inventoryCount: n, status: d.onSale ? "published" : "draft", isPublic: d.onSale }),
+        body: JSON.stringify({ price: p || 0, inventoryCount: n === null ? "" : n, status: d.onSale ? "published" : "draft", isPublic: d.onSale }),
       }).catch(() => null);
       if (!res || !res.ok) {
         const j = res ? await res.json().catch(() => ({})) : {};
@@ -91,7 +93,7 @@ export function ShopEditor({ items, accent, currencySymbol = "$" }: { items: Edi
   // Sizes switched On sale that customers still can't see (stock 0 or no price).
   const hiddenOnSale = items.filter((i) => {
     const d = draftOf(i); const { p, n } = parsed(d);
-    return d.onSale && (!(p > 0) || n <= 0);
+    return d.onSale && (!(p > 0) || (n !== null && n <= 0));
   });
   const hiddenNames = hiddenOnSale.map((i) => i.name ?? "Item");
 
@@ -111,7 +113,7 @@ export function ShopEditor({ items, accent, currencySymbol = "$" }: { items: Edi
       {hiddenOnSale.length > 0 && (
         <div className="rounded-xl border border-[#FF5C3A]/40 bg-[#FF5C3A]/10 px-4 py-3 text-sm text-[#FFB4A3]">
           <p className="font-semibold text-white">
-            {hiddenOnSale.length} size{hiddenOnSale.length === 1 ? " is" : "s are"} on sale but hidden from customers. Enter a stock number above 0{hiddenOnSale.some((i) => !(parsed(draftOf(i)).p > 0)) ? " and a price" : ""}, then Save changes.
+            {hiddenOnSale.length} size{hiddenOnSale.length === 1 ? " is" : "s are"} on sale but hidden from customers. Give each a price, and clear the stock box (no limit) or enter how many you have, then Save changes.
           </p>
           <p className="mt-1 text-xs">{hiddenNames.slice(0, 8).join(" · ")}{hiddenNames.length > 8 ? ` · +${hiddenNames.length - 8} more` : ""}</p>
         </div>
@@ -148,7 +150,7 @@ function SizeRow({ item, draft, error, sized, accent, currencySymbol, onChange }
 }) {
   const locked = item.source === "square";
   const { p, n } = parsed(draft);
-  const hidden = draft.onSale && (!(p > 0) || n <= 0);
+  const hidden = draft.onSale && (!(p > 0) || (n !== null && n <= 0));
   const dirty = isDirty(item, draft);
   return (
     <div className={`px-3 py-2.5 ${dirty ? "bg-white/[0.03]" : ""}`}>
@@ -164,7 +166,7 @@ function SizeRow({ item, draft, error, sized, accent, currencySymbol, onChange }
         </label>
         <label className="w-20">
           <span className="block font-dm-mono text-[10px] uppercase tracking-wider text-neutral-500">Stock</span>
-          <input inputMode="numeric" value={draft.stock} disabled={locked} onChange={(e) => onChange({ stock: e.target.value.replace(/[^0-9]/g, "") })}
+          <input inputMode="numeric" value={draft.stock} placeholder="No limit" disabled={locked} onChange={(e) => onChange({ stock: e.target.value.replace(/[^0-9]/g, "") })}
             className="w-full rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white outline-none" aria-label={`Stock ${item.variant_label ?? ""}`} />
         </label>
         <button type="button" role="switch" aria-checked={draft.onSale} aria-label={`On sale ${item.variant_label ?? item.name ?? ""}`} disabled={locked} onClick={() => onChange({ onSale: !draft.onSale })}
@@ -175,7 +177,7 @@ function SizeRow({ item, draft, error, sized, accent, currencySymbol, onChange }
         {dirty && <span className="ml-auto pb-2 font-dm-mono text-[10px] uppercase tracking-wider text-[#FFC93C]">changed</span>}
       </div>
       {locked && <p className="mt-1 text-[11px] text-neutral-500">Synced from Square — edit it there.</p>}
-      {hidden && <p className="mt-1 text-[11px] text-[#FFC93C]">Customers won&apos;t see it until it has a price and stock above 0.</p>}
+      {hidden && <p className="mt-1 text-[11px] text-[#FFC93C]">Customers won&apos;t see it until it has a price, and stock left if you set a limit.</p>}
       {error && <p className="mt-1 text-[11px] text-[#FF5C3A]">{error}</p>}
     </div>
   );

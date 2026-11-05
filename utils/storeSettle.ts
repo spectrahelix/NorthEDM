@@ -6,6 +6,7 @@ import { chargeIdForPaymentIntent, payStoreOrder } from "@/utils/storePayouts";
 import { recordCommission, commissionTerms } from "@/utils/commissions";
 import { BRAND_SHOP_VENDOR_ID, brandCodeTerms } from "@/utils/brandShop";
 import { redeemCode } from "@/utils/discountCodes";
+import { adjustedCount } from "@/utils/stock";
 
 /**
  * Everything that happens once a store order's money is final: the vendor
@@ -75,7 +76,7 @@ type Line = { product_id: number; qty: number };
 export async function adjustStock(db: SupabaseClient, items: Line[], direction: -1 | 1) {
   for (const it of items ?? []) {
     const { data: p } = await db.from("products").select("inventory_count").eq("id", it.product_id).maybeSingle();
-    if (p) await db.from("products").update({ inventory_count: Math.max(0, (p.inventory_count ?? 0) + direction * Number(it.qty)) }).eq("id", it.product_id);
+    if (p && p.inventory_count != null) await db.from("products").update({ inventory_count: adjustedCount(p.inventory_count, direction * Number(it.qty)) }).eq("id", it.product_id);
   }
 }
 

@@ -167,6 +167,13 @@ Built for the first real vendor and now the standard for anything new:
   and Add), the vendor page ("from" price) and the owner's "Not on sale yet"
   section. The item page shows a size button per sibling. Add a new size as a
   new row pointing at the lead; never as a separate card.
+- **Stock is optional (2026-11-05, owner):** `products.inventory_count` NULL
+  means **no limit** — the item lists and sells by its sizes with no count; a
+  number is limited stock, counted down on paid orders and never below 0.
+  `utils/stock.ts` is the one rule: `hasStock()` (checkout, FestDash order),
+  `IN_STOCK_FILTER` (store page, FestDash menu), `stockFromInput()` (blank box →
+  NULL, both product APIs), `adjustedCount()` (unlimited stays unlimited).
+  The editor and the inventory form leave the stock box blank by default.
 - **Long forms** (anything a person fills in for more than a minute, especially
   with a photo picker): `useUnsavedDraft` from `utils/useUnsavedDraft.ts` restores
   the draft if a phone reloads the tab. The service worker already refuses to
