@@ -88,6 +88,13 @@ export function ShopEditor({ items, accent, currencySymbol = "$" }: { items: Edi
     );
   }
 
+  // Sizes switched On sale that customers still can't see (stock 0 or no price).
+  const hiddenOnSale = items.filter((i) => {
+    const d = draftOf(i); const { p, n } = parsed(d);
+    return d.onSale && (!(p > 0) || n <= 0);
+  });
+  const hiddenNames = hiddenOnSale.map((i) => i.name ?? "Item");
+
   const saveBar = (
     <div className="flex flex-wrap items-center gap-3">
       <button type="button" onClick={saveAll} disabled={!changed.length || saving}
@@ -101,6 +108,14 @@ export function ShopEditor({ items, accent, currencySymbol = "$" }: { items: Edi
 
   return (
     <div className="space-y-4">
+      {hiddenOnSale.length > 0 && (
+        <div className="rounded-xl border border-[#FF5C3A]/40 bg-[#FF5C3A]/10 px-4 py-3 text-sm text-[#FFB4A3]">
+          <p className="font-semibold text-white">
+            {hiddenOnSale.length} size{hiddenOnSale.length === 1 ? " is" : "s are"} on sale but hidden from customers. Enter a stock number above 0{hiddenOnSale.some((i) => !(parsed(draftOf(i)).p > 0)) ? " and a price" : ""}, then Save changes.
+          </p>
+          <p className="mt-1 text-xs">{hiddenNames.slice(0, 8).join(" · ")}{hiddenNames.length > 8 ? ` · +${hiddenNames.length - 8} more` : ""}</p>
+        </div>
+      )}
       {saveBar}
       <div className="grid gap-4 md:grid-cols-2">
         {groups.map((g) => (
