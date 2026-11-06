@@ -32,7 +32,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      # The runner image already ships the Android SDK. setup-android's default
+      # also asks sdkmanager for the legacy "tools" package, which Google
+      # removed — that failed every build from 2026-11 on ("Failed to find
+      # package 'tools'"). Ask only for packages that still exist.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
       - name: Sync Capacitor
         run: npx cap sync android
 
