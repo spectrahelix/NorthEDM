@@ -34,7 +34,14 @@ export async function promoterForCode(admin: SupabaseClient, raw: unknown): Prom
   const code = String(raw ?? "").trim();
   if (!/^[A-Za-z0-9_-]{3,40}$/.test(code)) return null;
   const { data } = await admin.from("festdash_promoters").select("user_id, referral_code").ilike("referral_code", code).eq("is_active", true).maybeSingle();
-  return data?.user_id ? { userId: data.user_id as string, code: data.referral_code as string } : null;
+  if (data?.user_id) return { userId: data.user_id as string, code: data.referral_code as string };
+  // A promoter hoodie's QR code is that promoter's code too (audit 2026-11-06:
+  // hoodie scans were only honoured by the retired /shop cart). Only while
+  // both the hoodie and its promoter are active.
+  const { data: h } = await admin.from("promoter_hoodies").select("code, promoter_user_id, active").ilike("code", code).eq("active", true).maybeSingle();
+  if (!h?.promoter_user_id) return null;
+  const { data: p } = await admin.from("festdash_promoters").select("user_id").eq("user_id", h.promoter_user_id).eq("is_active", true).maybeSingle();
+  return p?.user_id ? { userId: p.user_id as string, code: h.code as string } : null;
 }
 
 /** Is this user an active promoter (they get the 5% on their own orders)? */

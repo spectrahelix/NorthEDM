@@ -13,8 +13,8 @@ _Living reference of open work. Last updated: 2026-07-12._
 - Until this is done, `cj@northedm.com` cannot receive mail.
 
 ### 2. Play Store — publish the closed-testing release (tester link is broken until this is done)
-- Download v2 AAB: `https://github.com/spectrahelix/NorthEDM/releases/download/android-latest/app-release.aab`
-- Play Console → **Test & release → Testing → Closed testing → Alpha → Create new release** → upload the AAB (it's **versionCode 2**, uploads clean).
+- Download the AAB: `https://github.com/spectrahelix/NorthEDM/releases/download/android-latest/app-release.aab`
+- Play Console → **Test & release → Testing → Closed testing → Alpha → Create new release** → upload the AAB (**versionCode 3** since 2026-11-06 — adds the location permission FestDash needs inside the app; rebuild with Actions → Android (AAB) → Run workflow if the release still shows an older date).
 - **Countries/regions** tab → add **United States**. **Testers** tab → select your email list.
 - **Save and publish** → Start rollout. First release goes through **Google review** (hours–2 days); the join link works once approved.
 - Tester join link: `https://play.google.com/apps/testing/com.northedm.app`

@@ -14,6 +14,7 @@ import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
 import { BRAND_STORE_SLUG, brandCodeTerms, brandDiscount, isActivePromoter, promoterForCode } from "@/utils/brandShop";
 import { resolveCode } from "@/utils/discountCodes";
 import { hasStock } from "@/utils/stock";
+import { cookies } from "next/headers";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
 // the client cart is NEVER trusted — every price and stock count is re-read
@@ -200,7 +201,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (store.slug === BRAND_STORE_SLUG) {
     const terms = await brandCodeTerms(admin);
     const selfPromoter = await isActivePromoter(admin, user?.id);
-    const typed = body.promoCode ? String(body.promoCode).trim() : "";
+    // A typed code wins; otherwise a scanned promoter hoodie (the ne_hoodie
+    // cookie set by /h/<code>) counts as that promoter's code.
+    const hoodie = (await cookies()).get("ne_hoodie")?.value ?? "";
+    const typed = body.promoCode ? String(body.promoCode).trim() : hoodie.trim();
     if (typed) {
       const asPromoter = await promoterForCode(admin, typed);
       if (asPromoter) {

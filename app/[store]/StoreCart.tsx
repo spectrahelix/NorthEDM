@@ -55,6 +55,8 @@ export function StoreCart({
   const currency = wallet?.currency ?? "USD";
   const money = (c: number) => formatMoney(c, currency);
   const [method, setMethod] = useState<WalletMethod | "card" | "waychit" | null>(null);
+  // (A scanned promoter hoodie's code is applied by the checkout route from the
+  // ne_hoodie cookie when this box is left empty; Stripe shows the discount.)
   const [promoCode, setPromoCode] = useState("");
   // Interim rule (utils/localRules.ts): Gambian stores take card / Google Pay
   // only for now, plus a transfer fee covering the owner's Remitly cost.
