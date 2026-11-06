@@ -38,4 +38,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Site audit 2026-11-06: FestDash (runner live location, campsite pin,
+         customer "share my live location") uses the browser location API.
+         Inside the app's WebView that needs these, or it fails silently.
+         Foreground only — no background-location declaration needed. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 </manifest>

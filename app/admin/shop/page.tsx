@@ -120,6 +120,17 @@ export default function AdminShopPage() {
 
   return (
     <main className="min-h-screen text-neutral-100 admin-surface">
+      {/* Site audit 2026-11-06: /shop sends everyone to the /northedm store
+          (utils/brandShop.ts), so items added here are never shown. Six
+          inactive copies of the mushroom items were found here on that date. */}
+      <div className="border-b border-[#FFC93C]/40 bg-[#FFC93C]/10 px-6 py-3 text-sm text-[#FFC93C]">
+        <div className="mx-auto max-w-5xl">
+          <span className="font-semibold">This is the old store and customers can&apos;t reach it.</span>{" "}
+          Your shop is <Link href="/northedm" className="underline">/northedm</Link> — add and edit items on{" "}
+          <Link href="/vendor/dashboard" className="underline">your inventory dashboard</Link> or with <Link href="/northedm?edit=1" className="underline">Edit shop</Link>.
+          Store credit is still spent through this old checkout.
+        </div>
+      </div>
       <div className="border-b border-white/10 bg-neutral-950/90">
         <div className="mx-auto max-w-5xl px-6 py-5">
           <div className="flex items-center gap-4">
