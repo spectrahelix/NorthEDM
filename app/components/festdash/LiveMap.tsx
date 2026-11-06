@@ -109,9 +109,9 @@ export default function LiveMap({
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
-  const drawLine = () => {
+  const drawLine = (styleReady = false) => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || (!styleReady && !map.isStyleLoaded())) return;
     if (map.getLayer("ne-route")) map.removeLayer("ne-route");
     if (map.getSource("ne-route")) map.removeSource("ne-route");
     const l = line.current;
@@ -161,6 +161,8 @@ export default function LiveMap({
 
     const pts = [cur.runner, cur.site, cur.customer, cur.me, cur.pick].filter((p): p is MapPoint => !!p);
     if (pts.length === 0) return;
+    // Keep the whole walking path in view, not just its two ends.
+    if (!picker && line.current) for (const [lng, lat] of line.current.coords) pts.push({ lat, lng });
     if (picker) {
       // Never move the map under someone's finger while they place a pin:
       // frame the first point once, then leave the camera alone.
@@ -212,7 +214,7 @@ export default function LiveMap({
         map.on("dragstart", byHand);
         map.on("zoomstart", byHand);
         // A new look drops added layers; draw the route again.
-        map.on("style.load", () => drawLine());
+        map.on("style.load", () => drawLine(true));
         map.on("load", () => {
           if (cancelled) return;
           libRef.current = mod;
@@ -276,19 +278,26 @@ export default function LiveMap({
     };
     if (straight < 25) { line.current = null; drawLine(); setInfo({ kind: "here", meters: straight }); return; }
     const ctrl = new AbortController();
+    let answered = false;
     fetch(`https://api.mapbox.com/directions/v5/mapbox/walking/${from.lng},${from.lat};${to.lng},${to.lat}?geometries=geojson&overview=full&access_token=${encodeURIComponent(token)}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
+        answered = true;
         const r0 = j?.routes?.[0];
         // No path, or a detour far longer than walking straight there: festival
         // fields and campgrounds rarely have mapped footpaths.
         if (!r0?.geometry?.coordinates?.length || r0.distance > Math.max(straight * 2.2, straight + 600)) return straightLine(true);
-        line.current = { coords: r0.geometry.coordinates as number[][], dashed: false };
+        // Mapbox starts and ends the path at the nearest mapped path or road;
+        // join each end to its pin so the line reaches both people.
+        line.current = { coords: [[from.lng, from.lat], ...(r0.geometry.coordinates as number[][]), [to.lng, to.lat]], dashed: false };
         setInfo({ kind: "walk", meters: r0.distance, seconds: r0.duration });
         drawLine();
+        syncRef.current(); // frame the whole route
       })
-      .catch((e) => { if ((e as Error).name !== "AbortError") straightLine(true); });
-    return () => ctrl.abort();
+      .catch((e) => { if ((e as Error).name !== "AbortError") { answered = true; straightLine(true); } });
+    // A position update before Mapbox answered cancels this request — forget
+    // it, so the next run asks again instead of skipping as "already asked".
+    return () => { if (!answered) { ctrl.abort(); asked.current = null; } };
     // drawLine reads refs only.
   }, [fromLat, fromLng, toLat, toLng, token]);
 
@@ -301,7 +310,10 @@ export default function LiveMap({
   return (
     <div className={`overflow-hidden ${className}`}>
       <div className="relative w-full" style={{ height }}>
-        <div ref={container} className="absolute inset-0" role="img" aria-label="Map" />
+        {/* Explicit 100% size: mapbox-gl's own CSS sets .mapboxgl-map to
+            position: relative, which cancels absolute/inset sizing and left the
+            map 0 px tall (black box) — caught on 2026-11-06 before anyone used it. */}
+        <div ref={container} style={{ width: "100%", height: "100%" }} role="img" aria-label="Map" />
         <div className="absolute left-2 top-2 z-10 flex overflow-hidden rounded-lg border border-white/20 bg-black/70 text-[11px] font-semibold backdrop-blur" role="radiogroup" aria-label="Map look">
           {(Object.keys(STYLES) as StyleKey[]).map((k) => (
             <button key={k} type="button" role="radio" aria-checked={styleKey === k} onClick={() => chooseStyle(k)}
