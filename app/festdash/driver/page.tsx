@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
+import { useWakeLock, canKeepScreenOn } from "@/utils/useWakeLock";
 import { formatMoney } from "@/utils/money";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
 type Order = {
@@ -59,6 +60,8 @@ export default function DriverPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  // The customer's live position, when they chose to share it with their runner.
+  const [customerLive, setCustomerLive] = useState<{ lat: number; lng: number; at: string } | null>(null);
 
   // Registration form
   const [displayName, setDisplayName] = useState("");
@@ -101,6 +104,20 @@ export default function DriverPage() {
 
   // Share live GPS while any delivery is in transit
   const transitIds = mine.filter((o) => o.status === "in_transit").map((o) => o.id).join(",");
+  // Phones stop sharing location when the screen locks: keep it on while delivering.
+  useWakeLock(!!transitIds);
+
+  // Follow a customer who shares their live location (every 15 s, the open order only).
+  const liveFor = selected && selected.status === "in_transit" ? selected.id : null;
+  useEffect(() => {
+    if (!liveFor) return;
+    let stop = false;
+    const pull = () => fetch(`/api/festdash/orders/${liveFor}/customer-location`).then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!stop) setCustomerLive(j?.live ?? null); }).catch(() => {});
+    pull();
+    const t = setInterval(pull, 15000);
+    return () => { stop = true; clearInterval(t); };
+  }, [liveFor]);
   useEffect(() => {
     const ids = transitIds ? transitIds.split(",") : [];
     if (ids.length === 0 || typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -413,13 +430,23 @@ export default function DriverPage() {
                 <p className="text-white">{selected.campground_zone}</p>
                 {selected.campsite_notes && <p className="mt-1 text-neutral-400">{selected.campsite_notes}</p>}
               </div>
-              {mapboxToken && (selected.customer_lat != null || myPos) && (
-                <LiveMap
-                  token={mapboxToken}
-                  site={selected.customer_lat != null && selected.customer_lng != null ? { lat: selected.customer_lat, lng: selected.customer_lng } : null}
-                  me={myPos}
-                  height={220}
-                />
+              {mapboxToken && (selected.customer_lat != null || myPos) && (() => {
+                const site = selected.customer_lat != null && selected.customer_lng != null ? { lat: selected.customer_lat, lng: selected.customer_lng } : null;
+                const live = liveFor === selected.id && customerLive ? { lat: customerLive.lat, lng: customerLive.lng } : null;
+                const target = live ?? site;
+                return (
+                  <>
+                    <LiveMap token={mapboxToken} site={site} customer={live} me={myPos} height={240}
+                      route={myPos && target ? { from: myPos, to: target } : null} />
+                    {live && <p className="text-xs text-purple-300">🟣 The customer is sharing their live location — the route goes to them, not the campsite pin.</p>}
+                  </>
+                );
+              })()}
+              {selected.status === "in_transit" && (
+                <p className="rounded-xl border border-orange-400/20 bg-orange-500/[0.06] px-3 py-2 text-xs text-orange-200">
+                  Keep this page open while you deliver — your location stops updating if the screen locks or you switch apps.
+                  {canKeepScreenOn() ? " Your screen will stay on while you have a delivery." : ""}
+                </p>
               )}
               {selected.license_plate && (
                 <div className="rounded-xl bg-white/5 p-3">

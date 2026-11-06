@@ -4,7 +4,8 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { use } from "react";
 
-import LiveMap from "@/app/components/festdash/LiveMap";
+import LiveMap, { type MapPoint } from "@/app/components/festdash/LiveMap";
+import { CustomerLiveShare } from "@/app/components/festdash/CustomerLiveShare";
 import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, orderRef, isWalletMethod } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
@@ -81,6 +82,8 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
   const [refInput, setRefInput] = useState("");
   const [refSaving, setRefSaving] = useState(false);
   const [refMsg, setRefMsg] = useState("");
+  // The customer's own live position, while they choose to share it.
+  const [myLive, setMyLive] = useState<MapPoint | null>(null);
 
   const loadOrder = useCallback(async () => {
     const { data } = await supabase
@@ -317,6 +320,9 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
             </div>
 
             {/* Live runner location */}
+            {order.fulfillment !== "pickup" && ["pending", "accepted", "in_transit"].includes(order.status) && (
+              <CustomerLiveShare orderId={order.id} onPosition={setMyLive} />
+            )}
             {order.status === "in_transit" && (
               <div className="mb-8 overflow-hidden rounded-2xl border border-orange-500/20 bg-white/3">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -330,7 +336,8 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                   )}
                 </div>
                 {hasRunnerLoc && mapboxToken ? (
-                  <LiveMap token={mapboxToken} runner={runnerPoint} site={sitePoint} height={280} className="" />
+                  <LiveMap token={mapboxToken} runner={runnerPoint} site={sitePoint} me={myLive} height={280} className=""
+                    route={runnerPoint && (myLive ?? sitePoint) ? { from: runnerPoint, to: (myLive ?? sitePoint)! } : null} />
                 ) : hasRunnerLoc ? (
                   <div className="px-4 pb-4 text-sm text-neutral-400">
                     Runner is near {order.driver_lat!.toFixed(4)}, {order.driver_lng!.toFixed(4)}.
@@ -340,7 +347,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
                     Waiting for your runner to start sharing their location…
                   </div>
                 )}
-                {distMi != null && (
+                {distMi != null && !mapboxToken && (
                   <div className="flex items-center justify-between border-t border-white/8 px-4 py-3 text-sm">
                     <span><span className="font-semibold text-orange-300">{fmtDistance(distMi)}</span><span className="text-neutral-500"> away</span></span>
                     <span className="font-dm-mono text-xs text-neutral-400">~{etaMin} min out</span>
