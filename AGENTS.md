@@ -475,8 +475,26 @@ not runtime.
 **Mapbox:** the one map component is `app/components/festdash/LiveMap.tsx`
 (track page, runner console, campsite pin picker). It renders only when
 `NEXT_PUBLIC_MAPBOX_TOKEN` is set — a *public* token, URL-restricted in the
-Mapbox dashboard to the site's domains — and every caller falls back to text
-without it.
+Mapbox dashboard to the site's domains (verified 2026-11-06: styles and
+walking directions answer for www.northedm.com, directions are refused from
+other sites) — and every caller falls back to text without it.
+**Map upgrade (owner, 2026-11-06):** looks **Satellite** (default),
+**Outdoors** (trails, woods, contours) and **Dark**, switched on the map and
+remembered per device (`ne_map_style`); a **walking route** from Mapbox
+walking directions, re-asked only when an end moves 25 m or a minute passes,
+replaced by a dashed straight line + distance + compass direction when there's
+no path or the path is a big detour (festival fields rarely have mapped
+footpaths); the camera stops following once someone pans/zooms by hand
+(**Re-centre** brings it back). **Customer live location is opt-in**:
+`CustomerLiveShare` on the track page → `/api/festdash/orders/[id]/customer-location`
+→ table `festdash_customer_live` (service role only, never on the order row,
+because the shop can read order rows); only the runner assigned to an
+in-transit order can read it, positions older than 10 minutes aren't
+returned, and it's deleted when sharing stops or the order is delivered /
+declined. The runner console polls it every 15 s and routes to the customer
+instead of the campsite pin. `useWakeLock` (`utils/useWakeLock.ts`) keeps
+the screen on while a runner has a delivery in transit or a customer is
+sharing — browsers stop location when the screen locks.
 
 ## Gambia / coordinator model ("purse keeper") — stage one, 2026-11-01
 

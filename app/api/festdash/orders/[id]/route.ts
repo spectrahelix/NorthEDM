@@ -98,6 +98,11 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // A finished order stops any live location the customer was sharing.
+  if (status === "delivered" || status === "declined") {
+    await admin.from("festdash_customer_live").delete().eq("order_id", id);
+  }
+
   // Cash on delivery: the handover is the payment. Mark it collected and book
   // the split for the shop's coordinator (idempotent per order).
   if (status === "delivered" && order.payment_method === "cash") {
