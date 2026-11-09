@@ -2,83 +2,27 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-11-06 18:17 UTC
-**Health:** 🟢 All clear (mechanical) · 🟡 judgment pass 2026-11-06: 3 real gaps found and fixed, see Findings
+**Last run:** 2026-11-09 18:44 UTC
+**Health:** 🟢 All clear
 
 | Area | Result |
 | :-- | :-- |
 | Features (pages) | **90** routes (12 dynamic) |
 | API endpoints | **136** |
+| Users | **21** total · 2 new (7d) · 6 new (30d) |
+| Latest signup | 2026-11-03 (5d ago) |
+| Open bug/feedback reports | 0 of 13 total |
 | Security (npm audit) | 0 critical · 0 high · 10 moderate · 0 low |
 | Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
-| Migrations | 95 (latest: `20261106010000_festdash_customer_live.sql`) |
+| Migrations | 97 (latest: `20261106030000_revoke_trigger_fn_execute.sql`) |
 | Env vars referenced | 27 |
 | TODO/FIXME | 0 |
 
 
+<sub>FYI (not a problem): 25 env vars aren't set in CI — expected, CI has no Vercel secrets. Full list in docs/SITE_AUDIT.md.</sub>
 
 ---
-
-## Findings — judgment audit 2026-11-06
-
-Most important first. "Fixed" means applied and checked, as noted.
-
-1. **Forum moderation was browser-only — fixed.** The composer asked
-   `/api/moderate`, then inserted into `threads` / `replies` with the user's own
-   session, so a direct REST call skipped the slur list and link-spam limits.
-   Now a database trigger (`forum_guard`, `forum_text_problem()`) applies the
-   same hard rules on every write. Checked: 5 links refused, a normal post
-   accepted, "spice" / "Scunthorpe" / "do you" not flagged; the composers
-   already show the database's message. Keep the trigger's list in step with
-   `app/api/moderate/route.ts`.
-2. **The Android app could not use location — fixed in code, needs a build.**
-   `AndroidManifest.xml` only declared INTERNET, so inside the app the FestDash
-   runner ping, campsite pin and customer live share would fail silently.
-   Added coarse + fine location (GPS not required) and bumped to versionCode 3.
-   Rebuild with Actions → Android (AAB). Screen wake lock is not supported in
-   the Android WebView; a Capacitor keep-awake plugin would be needed for that.
-3. **Promoter hoodie scans were orphaned — fixed.** `/h/<code>` sets the
-   `ne_hoodie` cookie, but only the retired `/shop` cart read it; `/shop` now
-   redirects to `/northedm`. The brand store's checkout now accepts a hoodie
-   code (typed, or from the cookie when the box is empty) as its promoter's
-   code. Impact so far: none — 22 active hoodies, 0 scans ever.
-4. **`/admin/shop` is a dead end for new items — signposted.** Six inactive $0
-   copies of the mushroom items sit in `shop_products` (2026-11-05); that store
-   is unreachable. A banner now points to `/northedm` and the inventory
-   dashboard. Rows left in place (store credit still spends through it).
-5. **No active FestDash runners (0).** Deliveries can't happen until a runner
-   registers and is switched on in /admin/festdash. Gee's shop is pickup-only,
-   so nothing is broken today.
-6. **Two trigger functions were callable over RPC — fixed.** Revoked EXECUTE on
-   `protect_runner_activation()` / `protect_vendor_admin_fields()` from
-   anon/authenticated (checked: now PGRST202 for anon; `is_site_admin` still
-   answers). The other SECURITY DEFINER helpers the advisor lists are used
-   inside RLS policies and must stay executable.
-7. **Supabase advisor, informational.** 18 tables with RLS on and no policies —
-   all read/written only with the service role (each call site checked), so
-   intended. 62 tables visible in the GraphQL schema — rows still RLS-guarded
-   and the site never uses GraphQL; disabling `pg_graphql` would hide them
-   (needs the owner's approval prompt). Performance: 70 policies call
-   `auth.uid()` per row (wrap in `(select auth.uid())`), 38 unindexed foreign
-   keys, 16 unused indexes — irrelevant at 21 users, worth doing before growth.
-8. **npm audit: 10 moderate, all in eslint tooling** (dev only). The suggested
-   fix is a major *downgrade* of eslint-config-next — leave it. Next.js 16.4.3
-   (≥ 16.4.1 floor).
-
-**Growth & backlog:** 21 accounts (3 in 7 days, 7 in 30, latest 2026-11-03);
-37 distinct visitors / 380 views in 7 days; 4 forum threads (last 2026-11-03);
-0 social posts; 8 FestDash orders and 1 store order ever. `error_reports`: no
-open items (11 spam sign-in-help, 2 dismissed). Events pipeline healthy: 127
-upcoming live, ingested today, **16 pending review** in /admin/events.
-
-**Migrations:** applied set matches the repo through
-`20261106010000_festdash_customer_live`; today's two audit migrations applied.
-Sentinel's migration is parked (needs the owner's Supabase approval).
-
-**Env:** all high-impact keys present in Vercel production (names only
-checked): Supabase, Stripe, Brevo, NTFY, cron, Mapbox, Ticketmaster.
-`BREVO_API_KEY` is a readable (not "Sensitive") variable — consider switching.
 
 ## Feature inventory (90 pages)
 
@@ -316,33 +260,33 @@ checked): Supabase, Stripe, Brevo, NTFY, cron, Mapbox, Ticketmaster.
 
 | Variable | Scope | CI status |
 | :-- | :-- | :-- |
-| `BREVO_API_KEY` | server | — |
-| `BREVO_SENDER_EMAIL` | server | — |
-| `CRON_SECRET` | server | — |
-| `GITHUB_ISSUES_REPO` | server | — |
-| `GITHUB_ISSUES_TOKEN` | server | — |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | public | — |
-| `NEXT_PUBLIC_SITE_URL` | public | — |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | — |
-| `NEXT_PUBLIC_SUPABASE_URL` | public | — |
-| `NEXT_PUBLIC_SW_VERSION` | public | — |
-| `NODE_ENV` | server | — |
-| `NTFY_SERVER` | server | — |
-| `NTFY_TOPIC` | server | — |
-| `OWNER_ALERT_EMAIL` | server | — |
-| `PAYPAL_CLIENT_ID` | server | — |
-| `PAYPAL_ENV` | server | — |
-| `PAYPAL_SECRET` | server | — |
-| `PDF_CHROMIUM_PATH` | server | — |
-| `SEATGEEK_CLIENT_ID` | server | — |
-| `SQUARE_VERSION` | server | — |
-| `STRIPE_SECRET_KEY` | server | — |
-| `STRIPE_WEBHOOK_SECRET` | server | — |
-| `SUPABASE_SERVICE_ROLE_KEY` | server | — |
-| `TICKETMASTER_API_KEY` | server | — |
-| `VERCEL_ENV` | server | — |
-| `WAYCHIT_API_KEY` | server | — |
-| `WAYCHIT_WEBHOOK_SECRET` | server | — |
+| `BREVO_API_KEY` | server | ❌ missing |
+| `BREVO_SENDER_EMAIL` | server | ❌ missing |
+| `CRON_SECRET` | server | ❌ missing |
+| `GITHUB_ISSUES_REPO` | server | ❌ missing |
+| `GITHUB_ISSUES_TOKEN` | server | ❌ missing |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | public | ❌ missing |
+| `NEXT_PUBLIC_SITE_URL` | public | ❌ missing |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | ❌ missing |
+| `NEXT_PUBLIC_SUPABASE_URL` | public | ✅ set |
+| `NEXT_PUBLIC_SW_VERSION` | public | ❌ missing |
+| `NODE_ENV` | server | ❌ missing |
+| `NTFY_SERVER` | server | ❌ missing |
+| `NTFY_TOPIC` | server | ❌ missing |
+| `OWNER_ALERT_EMAIL` | server | ❌ missing |
+| `PAYPAL_CLIENT_ID` | server | ❌ missing |
+| `PAYPAL_ENV` | server | ❌ missing |
+| `PAYPAL_SECRET` | server | ❌ missing |
+| `PDF_CHROMIUM_PATH` | server | ❌ missing |
+| `SEATGEEK_CLIENT_ID` | server | ❌ missing |
+| `SQUARE_VERSION` | server | ❌ missing |
+| `STRIPE_SECRET_KEY` | server | ❌ missing |
+| `STRIPE_WEBHOOK_SECRET` | server | ❌ missing |
+| `SUPABASE_SERVICE_ROLE_KEY` | server | ✅ set |
+| `TICKETMASTER_API_KEY` | server | ❌ missing |
+| `VERCEL_ENV` | server | ❌ missing |
+| `WAYCHIT_API_KEY` | server | ❌ missing |
+| `WAYCHIT_WEBHOOK_SECRET` | server | ❌ missing |
 
 _CI status is blank when run locally. Missing server secrets in CI is normal — what matters is they're set in **Vercel** (Production) and, for the audit's own growth stats, as **GitHub Actions secrets**._
 
