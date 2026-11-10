@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { OrderCancellation } from "@/app/components/festdash/OrderCancellation";
 
 type Handoff = {
   ok: boolean; party: "customer" | "fulfiller"; own_code: string | null;
@@ -16,6 +17,8 @@ export function HandoffConfirmation({ orderId, pickup = false, onChange }: { ord
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [showProblem, setShowProblem] = useState(false);
+  const [problemText, setProblemText] = useState("");
   const endpoint = `/api/festdash/orders/${orderId}/handoff`;
   const load = useCallback(async () => {
     try {
@@ -29,11 +32,8 @@ export function HandoffConfirmation({ orderId, pickup = false, onChange }: { ord
 
   async function submit(action: "confirm" | "problem") {
     if (action === "confirm" && !state?.ready && !/^\d{4}$/.test(code)) { setError("Enter the other person's four-digit code."); return; }
-    let reason: string | null = null;
-    if (action === "problem") {
-      reason = window.prompt("What went wrong? This pauses payment release so NorthEDM can help.");
-      if (reason === null) return;
-    }
+    const reason = action === "problem" ? problemText.trim() : null;
+    if (action === "problem" && !reason) { setError("Briefly describe the handoff problem."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, code, reason }) });
@@ -45,18 +45,6 @@ export function HandoffConfirmation({ orderId, pickup = false, onChange }: { ord
         onChange?.();
       }
     } catch { setError("Couldn't save the confirmation. Check the status before trying again."); }
-    finally { setBusy(false); }
-  }
-
-  async function cancelUnaccepted() {
-    if (!window.confirm("Cancel this unaccepted order and release its card hold?")) return;
-    setBusy(true); setError("");
-    try {
-      const res = await fetch(`/api/festdash/orders/${orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "declined" }) });
-      const data = await res.json();
-      if (!res.ok) setError(data.error || "The order changed. Refresh before canceling.");
-      else { onChange?.(); await load(); }
-    } catch { setError("Couldn't confirm cancellation. Check the order status before retrying."); }
     finally { setBusy(false); }
   }
 
@@ -77,8 +65,9 @@ export function HandoffConfirmation({ orderId, pickup = false, onChange }: { ord
       {canConfirm && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input aria-label={`Code from the ${other}`} inputMode="numeric" autoComplete="off" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder={`${pickup && customer ? "Shop" : customer ? "Dasher" : "Customer"} code`} className="min-w-0 rounded-xl border border-white/15 bg-black/30 px-3 py-3 font-dm-mono text-lg tracking-widest text-white" /><button type="button" disabled={busy || code.length !== 4} onClick={() => submit("confirm")} className="rounded-xl bg-green-500 px-4 py-3 font-semibold text-black disabled:opacity-40">{busy ? "Saving…" : customer ? "I received my order — confirm" : "I handed over the order — confirm"}</button></div>}
       {state?.ready && <p className="mt-3 text-green-300">Both confirmations are saved. {state.payment_status === "released" ? "Payment captured; payouts follow the provider's processing schedule." : "Payment settlement is pending. It will retry if processing fails; contact support if it remains pending."}</p>}
       {state?.ready && state.payment_status !== "released" && <button type="button" onClick={() => submit("confirm")} disabled={busy} className="mt-3 rounded-xl border border-white/20 px-4 py-2 disabled:opacity-40">{busy ? "Checking…" : "Check payment settlement"}</button>}
-      {!closed && state && !state.ready && ["pending", "accepted", "in_transit"].includes(state.order_status) && <button type="button" onClick={() => submit("problem")} disabled={busy || state.problem_reported} className="mt-4 block text-orange-300 underline underline-offset-4 disabled:opacity-40">Report a handoff problem / pause release</button>}
-      {customer && state?.order_status === "pending" && <button type="button" onClick={cancelUnaccepted} disabled={busy} className="mt-4 block text-red-300 underline underline-offset-4 disabled:opacity-40">Cancel this unaccepted order</button>}
+      {!closed && state && !state.ready && ["pending", "accepted", "in_transit"].includes(state.order_status) && <button type="button" onClick={() => setShowProblem(true)} disabled={busy || state.problem_reported} className="mt-4 block text-orange-300 underline underline-offset-4 disabled:opacity-40">Report a handoff problem / pause release</button>}
+      {showProblem && !state?.problem_reported && <div className="mt-3 space-y-3"><textarea aria-label="Describe the handoff problem" value={problemText} onChange={(e) => setProblemText(e.target.value)} maxLength={500} rows={3} className="w-full rounded-xl border border-white/15 bg-black/30 p-3 text-white" placeholder="What went wrong? Sending this report pauses payment release." /><button type="button" onClick={() => submit("problem")} disabled={busy || !problemText.trim()} className="rounded-xl border border-orange-400/30 px-4 py-2 text-orange-300 disabled:opacity-40">{busy ? "Sending…" : "Pause release and send report"}</button></div>}
+      {customer && state?.order_status === "pending" && <OrderCancellation orderId={orderId} label="Cancel this unaccepted order" onChange={() => { onChange?.(); load(); }} />}
       {message && <p role="status" className="mt-3 text-green-300">{message}</p>}
       {error && <p role="alert" className="mt-3 text-orange-300">{error}</p>}
       <p className="mt-4 text-xs leading-6 text-neutral-400">A failed order releases an uncaptured card hold; an already captured payment needs a refund to its original payment method. Provider and bank times vary. <Link href="/terms#festdash" className="text-orange-300 underline underline-offset-4">Customer terms</Link> · <Link href="/festdash/driver/terms" className="text-orange-300 underline underline-offset-4">Dasher terms</Link> · <a href="mailto:northedm1@gmail.com" className="text-orange-300 underline underline-offset-4">Contact NorthEDM</a></p>

@@ -30,11 +30,12 @@ export async function settleFestdashCard(
   if (order.completed) {
     if (charge?.refunded || charge?.disputed || Number(charge?.amount_refunded ?? 0) > 0) throw new Error("This payment was refunded or disputed. Do not pay out.");
     if (pi.status === "requires_capture") {
+      if (pi.amount_capturable < order.totalCents) throw new Error("The full order amount is not available for capture.");
       const captured = await stripe.paymentIntents.capture(pi.id, {}, { idempotencyKey: `fd_capture_${order.id}` });
-      if (captured.status !== "succeeded") throw new Error("Payment capture is still processing.");
+      if (captured.status !== "succeeded" || captured.amount_received !== order.totalCents) throw new Error("The full order payment has not been confirmed by the provider.");
       return { status: "released", paid: true };
     }
-    if (pi.status === "succeeded") return { status: "released", paid: true };
+    if (pi.status === "succeeded" && pi.amount_received === order.totalCents) return { status: "released", paid: true };
     throw new Error(pi.status === "canceled" ? "The card hold expired or was canceled. Payment needs review; do not pay out." : "Card funds are not available for capture.");
   }
   if (pi.status === "canceled") return { status: "canceled", paid: false };

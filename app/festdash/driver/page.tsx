@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
 import Link from "next/link";
 import { HandoffConfirmation } from "@/app/components/festdash/HandoffConfirmation";
+import { OrderCancellation } from "@/app/components/festdash/OrderCancellation";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { useWakeLock, canKeepScreenOn } from "@/utils/useWakeLock";
@@ -373,7 +374,7 @@ export default function DriverPage() {
                   </button>
                 )}
                 {order.status === "in_transit" && <div className="w-full"><HandoffConfirmation orderId={order.id} onChange={loadOrders} /></div>}
-                <button onClick={() => { if (window.confirm("Mark this order as unable to complete? Its card hold will be canceled, or a captured payment refunded.")) updateStatus(order.id, "declined"); }} disabled={updating === order.id} className="w-full rounded-xl border border-red-400/30 px-4 py-2 text-sm text-red-300 disabled:opacity-40">Unable to complete delivery</button>
+                <OrderCancellation orderId={order.id} label="Unable to complete delivery" onChange={loadOrders} />
               </OrderCard>
             ))}
           </div>

@@ -7,6 +7,7 @@ import { formatMoney } from "@/utils/money";
 import { DEFAULT_SPLITS, platformShareBps } from "@/utils/gambiaPay";
 import { BillingCard } from "@/app/components/BillingCard";
 import { HandoffConfirmation } from "@/app/components/festdash/HandoffConfirmation";
+import { OrderCancellation } from "@/app/components/festdash/OrderCancellation";
 type Order = {
   id: string;
   customer_name: string;
@@ -387,7 +388,7 @@ export default function VendorDashboard() {
               )}
               {(selected.status === "accepted" || selected.status === "in_transit") && <>
                 {selected.fulfillment === "pickup" ? <HandoffConfirmation orderId={selected.id} pickup onChange={loadOrders} /> : <p className="text-sm text-neutral-400">The customer and assigned Dasher confirm handover from their own accounts.</p>}
-                <button onClick={() => { if (window.confirm("Unable to fulfill this order? Its hold will be canceled, or a captured payment refunded.")) { updateStatus(selected.id, "declined"); setSelected(null); } }} className="w-full rounded-xl border border-red-400/30 px-4 py-3 text-red-300">Unable to fulfill / cancel order</button>
+                <OrderCancellation orderId={selected.id} label="Unable to fulfill / cancel order" onChange={() => { loadOrders(); setSelected(null); }} />
               </>}
             </div>
           </div>

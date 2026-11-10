@@ -388,6 +388,7 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      payment_method_types: ["card"],
       // Items, runner fee and service fee as separate lines so the Stripe
       // receipt shows what each part is (same total as dueCents).
       line_items: [

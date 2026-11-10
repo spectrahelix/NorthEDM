@@ -4,7 +4,7 @@ import { newHandoffCodes } from "../utils/festdashHandoff.ts";
 
 const base = { id: "order-test", intent: "pi_test", checkout: null, completed: true, bothConfirmed: true, totalCents: 3000, currency: "USD" };
 function provider(status = "requires_capture", extra = {}) {
-  const pi = { id: "pi_test", status, amount: 3000, currency: "usd", latest_charge: { refunded: false, amount_refunded: 0 }, ...extra };
+  const pi = { id: "pi_test", status, amount: 3000, amount_received: 3000, amount_capturable: 3000, currency: "usd", latest_charge: { refunded: false, amount_refunded: 0 }, ...extra };
   const calls = [];
   const stripe = {
     paymentIntents: {
@@ -65,4 +65,7 @@ const retryRefund = provider("succeeded"); await settleFestdashCard(retryRefund.
 assert(!retryRefund.calls.some(c => c[0] === "refund"), "a known pending refund is retrieved instead of created again");
 const mismatch = provider("requires_capture", { amount: 100 }); await assert.rejects(settleFestdashCard(mismatch.stripe, base), /does not match/);
 assert(!mismatch.calls.some(c => c[0] === "capture"));
+const partial = provider("succeeded", { amount_received: 100 }); await assert.rejects(settleFestdashCard(partial.stripe, base), /not available for capture/);
+const insufficient = provider("requires_capture", { amount_capturable: 100 }); await assert.rejects(settleFestdashCard(insufficient.stripe, base), /full order amount/);
+assert(!insufficient.calls.some(c => c[0] === "capture"));
 console.log("FestDash provider checks passed: fail-closed confirmation gate, capture retry, ambiguous timeout, hold cancellation, refund reversal, pending/failed refunds, expiry, and unpaid checkout cancellation. No real payment was made.");
