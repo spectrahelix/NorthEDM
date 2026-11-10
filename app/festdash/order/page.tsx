@@ -176,10 +176,10 @@ export default function OrderPage() {
     fetch(`/api/local-rules`).then((r) => r.json())
       .then((j) => {
         setLocalRules({ walletsEnabled: !!j.walletsEnabled, remitFeeBps: Number(j.remitFeeBps ?? 0) });
-        if (!j.walletsEnabled) setPaymentMethod("card"); // the only way to pay for now
+        setPaymentMethod("card"); // secure handoff requires a provider-held card payment
       }).catch(() => {});
   }, [local, currency]);
-  const walletsOff = local && localRules !== null && !localRules.walletsEnabled;
+  const walletsOff = local; // external wallet transfers cannot be held by the platform
   const walletOptions = walletsOff ? [] : WALLET_METHODS.filter((m) => !!walletNumberFor(selectedVendor?.payments, m));
   const whatsappTo = selectedVendor?.payments?.whatsapp ?? selectedVendor?.whatsapp_number ?? null;
   const modes = selectedVendor?.fulfillment_modes ?? "both";
@@ -198,7 +198,7 @@ export default function OrderPage() {
   useEffect(() => {
     fetch("/api/waychit/status").then((r) => r.json()).then((j) => setWaychit({ enabled: !!j.enabled, fee_bps: Number(j.fee_bps ?? 300) })).catch(() => {});
   }, []);
-  const waychitOn = !!waychit?.enabled && local && currency === "GMD" && !walletsOff;
+  const waychitOn = false; // enable only when the provider supports this hold/refund flow
   const remitFeeCents = local && paymentMethod === "card" && localRules ? transferFeeCents(discountedCents + (pickup ? 0 : runnerFeeCents) + serviceFee, currency, localRules.remitFeeBps) : 0;
   const beforeProcessing = (local ? discountedCents : netTotalCents) + (pickup ? 0 : runnerFeeCents) + serviceFee + remitFeeCents;
   const processingFeeCents = waychitOn && paymentMethod === "waychit" ? waychitCharge(beforeProcessing, waychit!.fee_bps).processingFeeCents : 0;
@@ -561,7 +561,7 @@ export default function OrderPage() {
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-orange-500/50 focus:outline-none"
                 placeholder="(570) 555-1234"
               />
-              <p className="mt-1 text-xs text-neutral-600">The last 4 digits are your confirmation code — give them at {pickup ? "the counter" : "handover"}.</p>
+              <p className="mt-1 text-xs text-neutral-600">Your phone is for contact only. Handoff uses separate random codes for you and the {pickup ? "shop operator" : "Dasher"}.</p>
             </div>
 
             {pickup && (
@@ -938,7 +938,7 @@ export default function OrderPage() {
                     className={`rounded-xl border px-4 py-3 text-left text-sm transition ${paymentMethod === "card" ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 text-neutral-300 hover:bg-white/5"}`}
                   >
                     <span className="font-semibold">Card · Google Pay · Apple Pay</span>
-                    <span className="block text-xs text-neutral-500">Any Visa / Mastercard, or Google Pay / Apple Pay with a card saved; charged in {selectedVendor?.currency ?? "the shop's currency"}, held until delivery</span>
+                    <span className="block text-xs text-neutral-500">Any Visa / Mastercard, or Google Pay / Apple Pay with a card saved; charged in {selectedVendor?.currency ?? "the shop's currency"}, held until both handoff confirmations</span>
                   </button>
                   {waychitOn && (
                     <button
@@ -965,7 +965,7 @@ export default function OrderPage() {
                   ))}
                 </div>
                 {paymentMethod === "card" && (
-                  <p className="mt-3 text-xs text-neutral-500">🔒 Secure checkout; your card is authorized now and only charged when your order is delivered.</p>
+                  <p className="mt-3 text-xs text-neutral-500">🔒 Secure checkout; your card is authorized now and captured only after both handoff confirmations.</p>
                 )}
                 {paymentMethod === "waychit" && (
                   <p className="mt-3 text-xs text-neutral-500">🔒 You&apos;ll go to Waychit to pay with Wave, QMoney or Afrimoney. The moment it goes through, the shop gets your order — no reference needed.</p>
@@ -976,7 +976,7 @@ export default function OrderPage() {
                     The shop&apos;s purse keeper confirms it, then the shop starts on your order.
                   </p>
                 )}
-                <p className="mt-3 text-xs text-neutral-600">At handover, give the last 4 digits of your phone to confirm — to your runner, or at the counter if you're picking up.</p>
+                <p className="mt-3 text-xs text-neutral-600">At handover, you and the Dasher (or pickup shop) each enter the other person's private random code from your own signed-in accounts. Both confirmations are required before payment release.</p>
                 {paymentMethod && paymentMethod !== "card" && paymentMethod !== "waychit" && <PaymentTimingNote method={paymentMethod} className="mt-2" />}
               </div>
               {whatsappTo && (
@@ -992,8 +992,8 @@ export default function OrderPage() {
             </>
           ) : (
             <div className="rounded-2xl border border-orange-500/20 bg-orange-950/20 p-4 text-sm text-orange-300">
-              🔒 You&apos;ll be taken to secure checkout. Your card is <span className="font-semibold">authorized and held in escrow</span> — it&apos;s only charged when your order is delivered.
-              On delivery, give your runner the <span className="font-semibold">last 4 digits of your phone</span> to confirm.
+              🔒 You&apos;ll be taken to secure checkout. Your card is <span className="font-semibold">authorized with a temporary card hold</span> — it&apos;s captured only after both sides confirm handover.
+              Each person enters the other person&apos;s <span className="font-semibold">random four-digit handoff code</span>. Phone digits cannot confirm an order. A failed order releases the hold; a captured payment is refunded through the provider. <Link href="/terms#festdash" className="text-orange-300 underline">Read payment and handoff terms</Link>.
             </div>
           )}
 

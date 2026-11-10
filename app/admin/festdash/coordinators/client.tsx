@@ -109,7 +109,7 @@ export default function CoordinatorsClient() {
         <div>
           <Link href="/admin/festdash" className="font-dm-mono text-xs text-neutral-500 hover:text-white">← FestDash admin</Link>
           <h1 className="mt-2 font-bebas text-4xl tracking-wide">Coordinators <span className="text-orange-400">&amp; regional shops</span></h1>
-          <p className="text-sm text-neutral-400">Purse keepers collect fees and payments locally and remit your share. Everything here is a record; no money moves through the site.</p>
+          <p className="text-sm text-neutral-400">FestDash card payments stay on hold until the customer and Dasher both confirm handover. Payment providers handle capture and payouts; local subscription fees and manual regional settlements recorded here document money already moved.</p>
         </div>
         {msg && <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm">{msg}</p>}
 

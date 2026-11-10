@@ -1,221 +1,53 @@
 import { NextResponse } from "next/server";
-import { queueRunnerPayout } from "@/utils/waychitOrders";
 import { createClient } from "@/utils/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { getStripe } from "@/utils/stripe";
-import { checkWrite } from "@/utils/dbWrite";
+import { serviceClient } from "@/utils/coordinator";
+import { ensureFestdashHandoff } from "@/utils/festdashHandoff";
+import { settleFestdashOrder } from "@/utils/festdashSettlement";
 
-import { loadSplitSettings, recordSaleSplit } from "@/utils/coordinator";
-import { isLocalRail } from "@/utils/gambiaPay";
-import { recordCommission, commissionTerms } from "@/utils/commissions";
-import { payRunnerFee } from "@/utils/runnerPay";
-// Allowed status transitions — orders can't skip steps or move backwards.
 const TRANSITIONS: Record<string, string[]> = {
-  awaiting_confirmation: ["declined"],
-  pending: ["accepted", "declined"],
-  accepted: ["in_transit", "delivered"],
-  in_transit: ["delivered"],
-  delivered: [],
-  declined: [],
+  awaiting_payment: ["declined"], awaiting_confirmation: ["declined"],
+  pending: ["accepted", "declined"], accepted: ["in_transit", "declined"],
+  in_transit: ["declined"], delivered: [], declined: [],
 };
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await createClient();
+  const { data: { user } } = await session.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { id } = await params;
-  const { status, code } = await req.json();
-
-  const valid = ["accepted", "in_transit", "delivered", "declined"];
-  if (!valid.includes(status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-  }
-
-  // Load the order (RLS lets the owning vendor / assigned driver read it)
-  const { data: order } = await supabase
-    .from("festdash_orders")
-    .select("id, vendor_id, driver_id, status, confirmation_code, payment_method, total_cents, runner_fee_cents, service_fee_cents, remit_fee_cents, currency, payment_ref, fulfillment")
-    .eq("id", id)
-    .single();
-
-  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
-  // Authorize: the order's vendor, or its assigned driver
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("vendor_id")
-    .eq("id", user.id)
-    .single();
-
-  const isVendor = !!profile?.vendor_id && profile.vendor_id === order.vendor_id;
-  const isDriver = !!order.driver_id && order.driver_id === user.id;
-  if (!isVendor && !isDriver) {
-    return NextResponse.json({ error: "Not allowed to update this order" }, { status: 403 });
-  }
-
-  // Enforce a valid transition
-  const allowed = TRANSITIONS[order.status] ?? [];
-  if (!allowed.includes(status)) {
-    return NextResponse.json(
-      { error: `Can't move an order from "${order.status}" to "${status}".` },
-      { status: 409 }
-    );
-  }
-
-  const patch: Record<string, unknown> = {
-    status,
-    updated_at: new Date().toISOString(),
-  };
-
-  // Delivery must be confirmed with the customer's 4-digit code
-  if (status === "delivered") {
-    if (order.confirmation_code) {
-      const supplied = String(code ?? "").replace(/\D/g, "").slice(-4);
-      if (supplied !== order.confirmation_code) {
-        return NextResponse.json({ error: "Incorrect confirmation code." }, { status: 422 });
-      }
-    }
-    patch.confirmed_at = new Date().toISOString();
-  }
-
-  // The write goes through the service role: ordinary sessions can no longer
-  // update order rows directly (only the assigned runner's GPS columns), so
-  // every state change has to pass the checks above. Ownership was verified
-  // against the RLS-filtered read.
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-  const { error } = await admin
-    .from("festdash_orders")
-    .update(patch)
-    .eq("id", id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // A finished order stops any live location the customer was sharing.
-  if (status === "delivered" || status === "declined") {
+  const body = await req.json().catch(() => ({}));
+  const { status } = body;
+  if (status === "delivered") return NextResponse.json({ error: "Use the secure two-way handoff. Both the customer and Dasher must confirm from their own accounts." }, { status: 409 });
+  if (!["accepted", "in_transit", "declined"].includes(status)) return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+  const admin = serviceClient();
+  const { data: order, error } = await admin.from("festdash_orders")
+    .select("id, vendor_id, customer_id, driver_id, status, fulfillment").eq("id", id).maybeSingle();
+  if (error) return NextResponse.json({ error: "Order records are unavailable." }, { status: 503 });
+  if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  const [{ data: profile }, { data: vendor }, { data: driver }] = await Promise.all([
+    admin.from("user_profiles").select("vendor_id").eq("id", user.id).maybeSingle(),
+    admin.from("vendors").select("user_id").eq("id", order.vendor_id).maybeSingle(),
+    admin.from("festdash_drivers").select("is_active").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const isVendor = profile?.vendor_id === order.vendor_id || vendor?.user_id === user.id;
+  const isDriver = order.driver_id === user.id && driver?.is_active;
+  const isCustomer = order.customer_id === user.id;
+  const customerMayCancel = isCustomer && status === "declined" && ["awaiting_payment", "awaiting_confirmation", "pending"].includes(order.status);
+  if (!isVendor && !isDriver && !customerMayCancel) return NextResponse.json({ error: "Not allowed to update this order." }, { status: 403 });
+  if (status === "accepted" && !isVendor) return NextResponse.json({ error: "Only the shop can accept an order." }, { status: 403 });
+  if (status === "in_transit" && !(order.fulfillment === "pickup" ? isVendor : isDriver)) return NextResponse.json({ error: "Only the assigned Dasher can start delivery (or the shop can mark a pickup ready)." }, { status: 403 });
+  if (!(TRANSITIONS[order.status] ?? []).includes(status)) return NextResponse.json({ error: `Cannot move this order from ${order.status} to ${status}.` }, { status: 409 });
+  // Ensure a durable reconciliation record before closing a legacy order too.
+  try { await ensureFestdashHandoff(admin, id); }
+  catch { return NextResponse.json({ error: "Secure payment records are unavailable. No status change was made." }, { status: 503 }); }
+  const { data: changed, error: writeError } = await admin.from("festdash_orders")
+    .update({ status, updated_at: new Date().toISOString() }).eq("id", id).eq("status", order.status).select("id").maybeSingle();
+  if (writeError) return NextResponse.json({ error: "Order could not be updated." }, { status: 503 });
+  if (!changed) return NextResponse.json({ error: "The order changed. Refresh before trying again." }, { status: 409 });
+  if (status === "declined") {
     await admin.from("festdash_customer_live").delete().eq("order_id", id);
+    const settlement = await settleFestdashOrder(admin, id);
+    return NextResponse.json({ success: true, payment_status: settlement.status, payment_pending: settlement.pending });
   }
-
-  // Cash on delivery: the handover is the payment. Mark it collected and book
-  // the split for the shop's coordinator (idempotent per order).
-  if (status === "delivered" && order.payment_method === "cash") {
-    await admin
-      .from("festdash_orders")
-      .update({ payment_status: "paid_cash", paid: true, payment_confirmed_by: user.id, payment_confirmed_at: new Date().toISOString() })
-      .eq("id", id);
-    const { data: v } = await admin.from("vendors").select("coordinator_user_id").eq("id", order.vendor_id).maybeSingle();
-    if (v?.coordinator_user_id) {
-      const settings = await loadSplitSettings(admin);
-      await recordSaleSplit(admin, {
-        id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0), service_fee_cents: Number(order.service_fee_cents ?? 0), remit_fee_cents: Number(order.remit_fee_cents ?? 0),
-        currency: String(order.currency || "USD"), payment_method: "cash", payment_ref: order.payment_ref ?? null, delivery: order.fulfillment !== "pickup",
-      }, v.coordinator_user_id as string, settings, user.id);
-    }
-  }
-
-  // Escrow settlement, tied to the new state:
-  //   delivered → CAPTURE the authorized hold (funds move to the vendor, minus
-  //               FestDash's share if a Connect account is attached), then book
-  //               the coordinator's part of that share as a held commission.
-  //   declined  → CANCEL the authorization (releases the hold; card untouched).
-  // Best-effort and never reverses the delivery/decline that already happened —
-  // a Stripe hiccup is recorded as *_failed for the owner to settle manually.
-  // Waychit orders were paid into NorthEDM's Waychit account up front. At
-  // delivery the runner's fee joins the payouts queue; a declined paid order
-  // stops its queued payouts (the owner refunds the customer from Waychit —
-  // there is no refund API).
-  if (order.payment_method === "waychit") {
-    if (status === "delivered") await queueRunnerPayout(admin, id);
-    if (status === "declined") {
-      await admin.from("waychit_payouts").update({ status: "reversed", error: "Order declined — refund the customer from Waychit; nothing to pay out.", updated_at: new Date().toISOString() })
-        .eq("order_kind", "festdash").eq("order_id", id).eq("status", "owed");
-    }
-  }
-
-  if (status === "delivered" || status === "declined") {
-    const { data: full } = await admin
-      .from("festdash_orders")
-      .select("stripe_payment_intent, payment_status")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (full?.stripe_payment_intent && full.payment_status === "authorized") {
-      try {
-        const stripe = getStripe();
-        if (status === "delivered") {
-          await stripe.paymentIntents.capture(full.stripe_payment_intent);
-          // The capture above has ALREADY moved the customer's money to the
-          // vendor. If this write is lost the order never shows as released,
-          // and nothing anywhere says so — the worst shape a silent failure
-          // can take.
-          await checkWrite(
-            `escrow released for order ${id}`,
-            await admin
-              .from("festdash_orders")
-              .update({ payment_status: "released", escrow_released_at: new Date().toISOString(), paid: true })
-              .eq("id", id),
-            { critical: true }
-          );
-          const { data: vend } = await admin
-            .from("vendors").select("coordinator_user_id, user_id, currency").eq("id", order.vendor_id).maybeSingle();
-          if (vend && isLocalRail(vend)) {
-            // Card on a Gambian shop: the whole charge sits with NorthEDM.
-            // Stripe can't reach the shop or the runner, so book the 90/10 split
-            // plus the runner fee as owed BY the owner to the coordinator, who
-            // pays the shop and runner locally. Settled by Remitly from
-            // /admin/festdash/coordinators ("Sent by Remitly").
-            const settings = await loadSplitSettings(admin);
-            await recordSaleSplit(admin, {
-              id, vendor_id: Number(order.vendor_id), total_cents: Number(order.total_cents), runner_fee_cents: Number(order.runner_fee_cents ?? 0), service_fee_cents: Number(order.service_fee_cents ?? 0), remit_fee_cents: Number(order.remit_fee_cents ?? 0),
-              currency: String(order.currency || vend.currency || "USD"), payment_method: "card", payment_ref: full.stripe_payment_intent, collected_by: "owner", delivery: order.fulfillment !== "pickup",
-            }, vend.coordinator_user_id as string, settings, user.id);
-          } else {
-          // The runner's fee, in full, to the runner's payout account (or the
-          // daily cron pays it once they set payouts up).
-          await payRunnerFee(admin, id);
-          // The coordinator's share of a card sale (sale_coordinator_bps of the
-          // amount charged) is owed to them out of the platform fee just taken.
-          // It is booked as a held commission and paid by the daily release
-          // cron through Stripe Connect once the refund window closes — the
-          // same path promoter commissions take, idempotent per order. A vendor
-          // with no coordinator leaves that share with NorthEDM.
-          if (vend?.coordinator_user_id) {
-            const splits = await loadSplitSettings(admin);
-            const { holdDays } = await commissionTerms(admin, "festdash_order");
-            await recordCommission(admin, {
-              promoterUserId: vend.coordinator_user_id as string,
-              referredUserId: (vend.user_id as string | null) ?? null,
-              source: "festdash_order",
-              sourceId: id,
-              baseCents: Number(order.total_cents) - Number(order.runner_fee_cents ?? 0) - Number(order.service_fee_cents ?? 0) - Number(order.remit_fee_cents ?? 0),
-              rateBps: splits.sale_coordinator_bps,
-              holdDays,
-            });
-          }
-          }
-        } else {
-          await stripe.paymentIntents.cancel(full.stripe_payment_intent);
-          await admin
-            .from("festdash_orders")
-            .update({ payment_status: "canceled", paid: false })
-            .eq("id", id);
-        }
-      } catch (e) {
-        console.error("festdash escrow settle error:", e);
-        await admin
-          .from("festdash_orders")
-          .update({ payment_status: status === "delivered" ? "capture_failed" : "cancel_failed" })
-          .eq("id", id);
-      }
-    }
-  }
-
   return NextResponse.json({ success: true });
 }

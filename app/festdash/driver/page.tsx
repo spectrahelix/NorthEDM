@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { BackBar } from "@/app/components/BackBar";
+import Link from "next/link";
+import { HandoffConfirmation } from "@/app/components/festdash/HandoffConfirmation";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { useWakeLock, canKeepScreenOn } from "@/utils/useWakeLock";
@@ -186,19 +188,11 @@ export default function DriverPage() {
   }
 
   async function updateStatus(orderId: string, status: string) {
-    let code: string | undefined;
-    if (status === "delivered") {
-      const entered = window.prompt(
-        "Enter the customer's 4-digit confirmation code (last 4 of their phone):"
-      );
-      if (!entered) return;
-      code = entered;
-    }
     setUpdating(orderId);
     const res = await fetch(`/api/festdash/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, code }),
+      body: JSON.stringify({ status }),
     });
     if (res.ok) {
       await loadOrders();
@@ -273,6 +267,7 @@ export default function DriverPage() {
                 placeholder="e.g. Red golf cart, blue bike, on foot"
               />
             </div>
+            <p className="text-sm leading-6 text-neutral-400">By selecting Register as Runner, you agree to the <Link href="/festdash/driver/terms" className="text-orange-300 underline underline-offset-4">Dasher Handoff and Payment Terms</Link> and <Link href="/terms" className="text-orange-300 underline underline-offset-4">Terms of Service</Link>. Both you and the customer must confirm from separate accounts using private random codes before capture.</p>
             {regError && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{regError}</p>}
             <button
               type="submit"
@@ -377,15 +372,8 @@ export default function DriverPage() {
                     {updating === order.id ? "…" : "🏃 I'm On My Way"}
                   </button>
                 )}
-                {order.status === "in_transit" && (
-                  <button
-                    onClick={() => updateStatus(order.id, "delivered")}
-                    disabled={updating === order.id}
-                    className="flex-1 rounded-xl bg-green-600 py-2.5 font-semibold text-white hover:bg-green-500 disabled:opacity-50"
-                  >
-                    {updating === order.id ? "…" : "✅ Mark Delivered"}
-                  </button>
-                )}
+                {order.status === "in_transit" && <div className="w-full"><HandoffConfirmation orderId={order.id} onChange={loadOrders} /></div>}
+                <button onClick={() => { if (window.confirm("Mark this order as unable to complete? Its card hold will be canceled, or a captured payment refunded.")) updateStatus(order.id, "declined"); }} disabled={updating === order.id} className="w-full rounded-xl border border-red-400/30 px-4 py-2 text-sm text-red-300 disabled:opacity-40">Unable to complete delivery</button>
               </OrderCard>
             ))}
           </div>

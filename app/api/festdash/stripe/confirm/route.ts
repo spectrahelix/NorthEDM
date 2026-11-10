@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
+import { recordFestdashAuthorization } from "@/utils/festdashSettlement";
 
 // Confirm fallback for the Checkout return (success_url → /festdash/track/:id).
 // The webhook is the primary promoter, but this lets an order go live even if
@@ -53,17 +54,8 @@ export async function POST(req: Request) {
       (pi.status === "requires_capture" || pi.status === "succeeded");
 
     if (authorized) {
-      await admin
-        .from("festdash_orders")
-        .update({
-          status: "pending",
-          paid: true,
-          payment_status: "authorized",
-          stripe_payment_intent: pi!.id,
-        })
-        .eq("id", orderId)
-        .eq("status", "awaiting_payment"); // don't clobber if webhook already promoted
-      return NextResponse.json({ ok: true, status: "pending", payment_status: "authorized" });
+      const result = await recordFestdashAuthorization(admin, orderId, pi!.id);
+      return NextResponse.json({ ok: result.status !== "awaiting_payment", ...result });
     }
 
     return NextResponse.json({ ok: false, status: order.status, payment_status: order.payment_status });
