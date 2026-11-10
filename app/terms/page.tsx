@@ -6,7 +6,7 @@ export const metadata = {
     "Terms for NorthEDM LLC's website, Android app, community, marketplace, FestDash, and paid plans.",
 };
 
-const EFFECTIVE_DATE = "November 9, 2026";
+const EFFECTIVE_DATE = "November 10, 2026";
 
 // Customer-facing terms from the saved LLC draft. Internal publication
 // notes and research references are not part of the agreement.
@@ -90,6 +90,7 @@ const SECTIONS = [
     "title": "10. Credits, discounts, referrals, and commissions",
     "paragraphs": [
       "A discount, voucher, or promotional credit is subject to the conditions disclosed when issued, including eligible purchases, limits, and any lawful expiration. Promotional credit is not a bank balance, investment, or generally redeemable cash balance, except where law requires otherwise. We may address fraud or duplicate use without retroactively removing lawful, completed benefits.",
+      "For an eligible shop subscription attributed to a promoter or coordinator, the standard commission is 10% of the subscription amount actually paid. A $30.00 payment allocates $3.00 to the promoter or coordinator and $27.00 to NorthEDM before payment-provider costs. A discount reduces the commission base: a $27.00 payment allocates $2.70 to the promoter or coordinator and $24.30 to NorthEDM. This subscription commission is separate from a shop's share of product sales, customer discounts, and runner fees. The Promoter and Coordinator Agreement explains eligibility, collection, payment timing, and adjustments.",
       "Earned cash commissions are distinct from promotional credits. Promoter and coordinator compensation, eligibility, reversals, payout timing, and payment-provider requirements are governed by the applicable written program terms. No referral code guarantees income. Anyone promoting a compensated relationship must make a clear disclosure where the promotion appears. Participation does not authorize someone to bind NorthEDM, change its prices, collect an undisclosed fee, or receive payments outside an authorized arrangement."
     ]
   },
@@ -211,6 +212,9 @@ export default function TermsPage() {
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
+              {section.id === "promotions" && (
+                <p><Link href="/promote/terms" className="text-[#3AFFD4] underline underline-offset-4">Read the Promoter and Coordinator Agreement →</Link></p>
+              )}
             </div>
           </section>
         ))}

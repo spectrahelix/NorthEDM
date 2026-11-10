@@ -196,10 +196,10 @@ export default function PromoterDashboard() {
               <div className="min-w-0 flex-1">
                 <p className="font-dm-mono text-2xl tracking-[0.2em] text-white">{myCode}</p>
                 <p className="mt-1 text-sm text-neutral-400">
-                  Reusable — share it as much as you like. Anyone who uses it saves
-                  <span className="text-white"> 10%</span>, and you earn
-                  <span className="text-[#39FF14]"> 10% back</span> on what they pay.
+                  Reusable — share it as much as you like. On eligible shop subscriptions, you earn
+                  <span className="text-[#39FF14]"> 10% of the amount paid</span>: $3.00 on a $30.00 payment. Discounts reduce that base. Other purchases have their own offer and commission terms.
                 </p>
+                <p className="mt-2 text-sm"><Link href="/promote/terms" className="text-orange-300 underline underline-offset-4">Promoter &amp; coordinator agreement</Link></p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={() => {

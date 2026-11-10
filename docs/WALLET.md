@@ -6,6 +6,14 @@ safety over speed.
 
 ## The model (confirmed with CJ)
 
+**Subscription clarification (owner, 2026-11-10):** shop subscription commissions
+are 10% of the amount actually paid, not 90% and not 10% of the undiscounted
+list price. A $30 payment allocates $3 to the promoter/coordinator and $27 to
+NorthEDM before provider costs. A discounted $27 payment allocates $2.70 and
+$24.30. `splitSubscription()` handles local fee records; card invoices use
+`amount_paid` in `handleSubscriptionEvent()`. Sales use their own rates below.
+Public agreement: `/promote/terms`; general terms: `/terms#promotions`.
+
 A promoter has **one permanent, reusable code + QR**. When a customer uses it on a
 paid action:
 

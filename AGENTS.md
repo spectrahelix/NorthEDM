@@ -768,7 +768,9 @@ through the site; it records what moved and who confirmed it.** Full design in
   that works (US → Gambia).
   **A promoter's own shop (2026-11-03)** is a shop that promoter referred:
   10% off the fee automatically and they keep the promoter share of its sales
-  and fee payments (90% to them, 10% to the owner). `selfReferral()` in
+  and fee payments. **Subscription fees: promoter keeps 10% of the amount
+  actually paid ($3 on $30); NorthEDM receives 90% ($27), before provider
+  costs** (owner clarified 2026-11-10). `selfReferral()` in
   `utils/coordinator.ts`; applications set it as `coordinator_user_id` when no
   other code is given, `quote()` and the purse fee fall back to it. Gee's shop
   is the first case.
