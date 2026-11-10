@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatMoney } from "@/utils/money";
+import { splitSubscription } from "@/utils/gambiaPay";
 import { BridgeReview } from "@/app/components/festdash/BridgeReview";
 import { WalletWatch } from "@/app/components/festdash/WalletWatch";
 import { WaychitPanel } from "@/app/components/festdash/WaychitPanel";
@@ -75,6 +76,7 @@ export default function CoordinatorsClient() {
   const nameOf = new Map(data.promoters.map((p) => [p.user_id, p.display_name ?? p.user_id.slice(0, 8)]));
   const vendorName = new Map(data.vendors.map((v) => [v.id, v.name ?? `Vendor #${v.id}`]));
   const pendingRemits = data.ledger.filter((r) => r.kind === "remittance" && !r.received_at);
+  const subscriptionSplit = settings ? splitSubscription(settings.subscription_fee_cents, settings) : null;
 
   // Two directions, per coordinator, per currency:
   //  they owe you  — your share of what the coordinator collected, minus remittances
@@ -112,7 +114,7 @@ export default function CoordinatorsClient() {
         {msg && <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm">{msg}</p>}
 
         {/* Settings */}
-        {settings && (
+        {settings && subscriptionSplit && (
           <section className={card}>
             <p className={label}>Splits &amp; fee — one setting for every FestDash sale, card or wallet</p>
             <div className="grid gap-3 sm:grid-cols-4">
@@ -120,12 +122,15 @@ export default function CoordinatorsClient() {
               <div><span className={label}>Promoter&apos;s part of that % (out of it)</span><input className={input + " w-full"} value={settings.sale_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, sale_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Extra % on FestDash delivery orders</span><input className={input + " w-full"} value={(settings.delivery_extra_bps ?? 1000) / 100} onChange={(e) => setSettings({ ...settings, delivery_extra_bps: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Shop fee $/month</span><input className={input + " w-full"} value={settings.subscription_fee_cents / 100} onChange={(e) => setSettings({ ...settings, subscription_fee_cents: Math.round(Number(e.target.value) * 100) })} /></div>
-              <div><span className={label}>Coordinator % of fee</span><input className={input + " w-full"} value={settings.subscription_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, subscription_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
+              <div><span className={label}>Promoter / coordinator % of subscription</span><input className={input + " w-full"} value={settings.subscription_coordinator_bps / 100} onChange={(e) => setSettings({ ...settings, subscription_coordinator_bps: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Bundle $/month (both)</span><input className={input + " w-full"} value={(settings.bundle_fee_cents ?? 4500) / 100} onChange={(e) => setSettings({ ...settings, bundle_fee_cents: Math.round(Number(e.target.value) * 100) })} /></div>
               <div><span className={label}>Promoter codes: max % off</span><input className={input + " w-full"} value={settings.mint_max_percent_off ?? 50} onChange={(e) => setSettings({ ...settings, mint_max_percent_off: Math.round(Number(e.target.value)) })} /></div>
               <div><span className={label}>Promoter codes: max $ off</span><input className={input + " w-full"} value={(settings.mint_max_amount_off_cents ?? 2000) / 100} onChange={(e) => setSettings({ ...settings, mint_max_amount_off_cents: Math.round(Number(e.target.value) * 100) })} /></div>
             </div>
-            <p className="mt-2 text-xs text-neutral-500">Every shop keeps {100 - settings.sale_owner_bps / 100}% of each store, marketplace and FestDash pickup sale, referred or not; a FestDash order a runner delivers takes {(settings.delivery_extra_bps ?? 1000) / 100}% more, so the shop keeps {100 - (settings.sale_owner_bps + (settings.delivery_extra_bps ?? 1000)) / 100}% of those. Of the platform&apos;s {settings.sale_owner_bps / 100}%, a shop&apos;s promoter or coordinator gets {settings.sale_coordinator_bps / 100}% of the sale and NorthEDM {(settings.sale_owner_bps - settings.sale_coordinator_bps) / 100}%; with no promoter NorthEDM keeps the whole {settings.sale_owner_bps / 100}%. On card orders the platform % is the Stripe fee taken at delivery and the promoter&apos;s part is paid through Stripe after the hold window. On wallet sales the coordinator keeps it from what they collected. Of each {formatMoney(settings.subscription_fee_cents, "USD")} fee you get {formatMoney(settings.subscription_fee_cents - Math.round(settings.subscription_fee_cents * settings.subscription_coordinator_bps / 10000), "USD")}.</p>
+            <p className="mt-2 text-xs text-neutral-500">Every shop keeps {100 - settings.sale_owner_bps / 100}% of each store, marketplace and FestDash pickup sale, referred or not; a FestDash order a runner delivers takes {(settings.delivery_extra_bps ?? 1000) / 100}% more, so the shop keeps {100 - (settings.sale_owner_bps + (settings.delivery_extra_bps ?? 1000)) / 100}% of those. Of the platform&apos;s {settings.sale_owner_bps / 100}%, a shop&apos;s promoter or coordinator gets {settings.sale_coordinator_bps / 100}% of the sale and NorthEDM {(settings.sale_owner_bps - settings.sale_coordinator_bps) / 100}%; with no promoter NorthEDM keeps the whole {settings.sale_owner_bps / 100}%. On card orders the platform % is the Stripe fee taken at delivery and the promoter&apos;s part is paid through Stripe after the hold window. On wallet sales the coordinator keeps it from what they collected.</p>
+            <p className="mt-3 rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 text-sm text-neutral-300">
+              Subscription split: for each {formatMoney(settings.subscription_fee_cents, "USD")} payment, the promoter / coordinator keeps <strong className="text-white">{formatMoney(subscriptionSplit.coordinator, "USD")} ({settings.subscription_coordinator_bps / 100}%)</strong>. NorthEDM receives the remaining <strong className="text-white">{formatMoney(subscriptionSplit.owner, "USD")}</strong>, before payment-provider costs. Discounted subscriptions use the amount actually paid. <Link href="/promote/terms#subscription-commission" className="text-orange-300 underline underline-offset-4">Promoter &amp; coordinator agreement</Link>.
+            </p>
             <p className={label + " mt-5"}>Gambian shops — how customers pay for now</p>
             <div className="grid gap-3 sm:grid-cols-4">
               <div><span className={label}>Transfer fee (% of the order)</span><input className={input + " w-full"} value={(settings.remit_fee_bps ?? 300) / 100} onChange={(e) => setSettings({ ...settings, remit_fee_bps: Math.round(Number(e.target.value) * 100) })} /></div>

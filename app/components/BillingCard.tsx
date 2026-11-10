@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatMoney } from "@/utils/money";
 
 type Status = {
@@ -91,6 +92,9 @@ export function BillingCard({ kind, storeSlug, what, returnPath }: { kind: "fest
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Referral or discount code" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-dm-mono text-sm uppercase text-neutral-100 placeholder:font-sans placeholder:normal-case placeholder:text-neutral-600 outline-none" />
             <button onClick={apply} disabled={!code.trim()} className="rounded-xl border border-white/15 px-3 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-40">{applied && applied === code.trim().toUpperCase() ? "Applied ✓" : "Apply"}</button>
           </div>
+          <p className="text-xs leading-6 text-neutral-400">
+            Card plans renew automatically each month at the recurring price shown at checkout until you cancel. Cancel future renewals through Manage billing, or email northedm1@gmail.com for help. Review the <Link href="/terms#subscriptions" className="text-orange-300 underline underline-offset-4">subscription terms</Link> before authorizing payment.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <button onClick={() => go("/api/billing/checkout")} disabled={!!busy} className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-400 disabled:opacity-50">
               {busy === kind ? "Opening Stripe…" : `${what} — ${price}/mo`}

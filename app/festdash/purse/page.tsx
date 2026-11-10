@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BackBar } from "@/app/components/BackBar";
 import { formatMoney } from "@/utils/money";
-import { METHOD_LABEL, LOCAL_METHODS, orderRef, type LocalMethod } from "@/utils/gambiaPay";
+import { METHOD_LABEL, LOCAL_METHODS, orderRef, splitSubscription, type LocalMethod } from "@/utils/gambiaPay";
 import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 
 // The purse keeper's console. A regional coordinator collects shop fees and
@@ -149,6 +149,7 @@ export default function PursePage() {
   const ledger = data.ledger ?? [];
   const totals = data.totals ?? {};
   const s = data.settings;
+  const subscriptionSplit = s ? splitSubscription(s.subscription_fee_cents, s) : null;
   const feeMonths = fee.months;
   const feeCents = (fee.kind === "bundle" ? (s?.bundle_fee_cents ?? 4500) : (s?.subscription_fee_cents ?? 3000)) * feeMonths;
 
@@ -180,10 +181,10 @@ export default function PursePage() {
               ))}
             </div>
           )}
-          {s && (
+          {s && subscriptionSplit && (
             <p className="mt-3 text-xs text-neutral-600">
               Split per sale: shop {100 - s.sale_owner_bps / 100}% (pickup &amp; store) or {100 - (s.sale_owner_bps + (s.delivery_extra_bps ?? 1000)) / 100}% (delivered) · you {s.sale_coordinator_bps / 100}% · NorthEDM the rest of the platform&apos;s part (your share never comes from the shop).
-              Shop fee {formatMoney(s.subscription_fee_cents, "USD")}/month, of which you keep {s.subscription_coordinator_bps / 100}%.
+              Shop fee {formatMoney(s.subscription_fee_cents, "USD")}/month: you keep {formatMoney(subscriptionSplit.coordinator, "USD")} ({s.subscription_coordinator_bps / 100}%); NorthEDM receives {formatMoney(subscriptionSplit.owner, "USD")}, before payment-provider costs. Discounted fees use the amount actually paid. <Link href="/promote/terms#subscription-commission" className="text-orange-300 underline underline-offset-4">Read the promoter &amp; coordinator agreement</Link>.
             </p>
           )}
         </div>

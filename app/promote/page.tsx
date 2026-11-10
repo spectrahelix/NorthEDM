@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { Honeypot, useFormShield } from "@/app/components/FormShield";
 import { JoinUsOnline } from "@/app/components/JoinUsOnline";
@@ -198,6 +199,10 @@ export default function PromoterSignup() {
               placeholder="Tell us about your reach and the scene you're part of..."
             />
           </div>
+
+          <p className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-neutral-300">
+            Eligible shop subscriptions earn a 10% commission: on a $30.00 payment, the promoter keeps $3.00 and NorthEDM receives $27.00 before payment-provider costs. Discounts reduce the commission base. By selecting Apply to Promote, you agree to the <Link href="/promote/terms" className="text-orange-300 underline underline-offset-4">Promoter and Coordinator Agreement</Link> and <Link href="/terms" className="text-orange-300 underline underline-offset-4">Terms of Service</Link>. Approval is required before participating.
+          </p>
 
           {error && (
             <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">
