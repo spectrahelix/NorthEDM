@@ -158,6 +158,7 @@ export default async function HomePage() {
               <Link
                 key={l.href}
                 href={l.href}
+                aria-current={l.href === "/" ? "page" : undefined}
                 className={`rounded-full px-4 py-2 font-dm-mono text-xs uppercase tracking-widest transition hover:brightness-125 active:scale-[0.97] ${l.bold ? "font-semibold" : ""}`}
                 style={{ color: l.color, background: l.bg, border: `1px solid ${l.border}` }}
               >

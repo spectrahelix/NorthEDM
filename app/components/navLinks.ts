@@ -13,6 +13,13 @@ export type NavLink = {
 
 export const NAV_LINKS: NavLink[] = [
   {
+    href: "/",
+    label: "Home",
+    color: "#E5E7EB",
+    bg: "rgba(229,231,235,0.08)",
+    border: "rgba(229,231,235,0.28)",
+  },
+  {
     href: "/forum",
     label: "Forum",
     color: "#CC00FF",
