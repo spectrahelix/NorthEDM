@@ -3,6 +3,14 @@ import type Stripe from 'stripe';
 import { getStripe } from '@/utils/stripe';
 import { validAudioPayment, audioRefundState } from '@/utils/artisanAudio';
 
+// Closed by default. Only an operator database migration can open checkout after
+// live provider verification; the app service role has SELECT access only.
+export async function audioSalesEnabled(db: SupabaseClient) {
+  const { data, error } = await db.from('artisan_audio_config').select('sales_enabled').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  return data?.sales_enabled === true;
+}
+
 export async function audioSellerReady(accountId: string) {
   const account = await getStripe().accounts.retrieve(accountId);
   return !account.deleted && !!account.details_submitted && !!account.payouts_enabled &&

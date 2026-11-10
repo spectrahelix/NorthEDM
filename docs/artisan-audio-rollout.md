@@ -7,18 +7,23 @@ Express account; only the creator enters their identity and bank details at Stri
 
 ## Deployment gate
 
-Keep this feature PR in draft until the database migration has been applied and
-the two-account Stripe test flow below passes. A green build does not prove that
-the live database has the new tables or that payouts work. Do not merge solely
-because Vercel is green.
+Portfolio uploads and creator bank onboarding may ship once both database
+migrations and the live privacy/grant checks pass. Paid offers and new orders are
+blocked by `artisan_audio_config.sales_enabled = false`, including through older
+preview deployments. The service role can read this setting but cannot enable
+it. Do not enable paid purchases until the two-account Stripe test flow below
+passes. A green build does not prove that payments or bank deposits work.
 
 1. Apply `supabase/migrations/20261110230000_artisan_audio.sql` to the target
    Supabase project after the existing artisan and access-hardening migrations.
-   It creates private sales/order/payout tables, public preview storage, and
-   private immutable original storage. Validate actual live grants and storage
+   Then apply `supabase/migrations/20261110233610_artisan_audio_activation_gate.sql`.
+   These create private sales/order/payout tables, public preview storage,
+   private immutable original storage, and a database-enforced purchase gate.
+   Validate actual live grants and storage
    policies as anon, creator, and a different signed-in user.
-2. Use a staging deployment with Supabase service credentials and Stripe TEST
+2. Use an isolated staging deployment and database with Supabase service credentials and Stripe TEST
    credentials. Keep production and test Stripe account IDs and data separate.
+   Enable `artisan_audio_config.sales_enabled` only in that test database.
    Configure the existing `/api/festdash/stripe/webhook` endpoint with
    `checkout.session.completed`, `charge.refunded`, and `charge.dispute.created`.
 3. With an approved artisan TEST account, upload a public audio sample. Confirm
@@ -45,17 +50,17 @@ because Vercel is green.
    existing purchases; native digital purchase buttons are withheld until an
    applicable Google Play billing or alternative-payment program is configured.
    Web purchases use NorthEDM's Stripe checkout.
-10. After all checks pass, mark the PR ready and follow the repository's green
-    exact-head merge and production verification process. Verify with a real
-    production creator onboarding only when that creator completes it themselves.
+10. After all provider checks pass, enable the production purchase gate with a
+    reviewed migration and verify the changed behavior. Production creator bank
+    onboarding must be completed by the creator themselves.
 
 ## Byron account update
 
-The requested public bio is exactly `Voice Actor/Creative Writer`. Match Byron's
-actual account ID/username before editing the bio and approving any artisan tag.
-Do not infer identity from a first name or insert a guessed account ID into a
-migration. The NorthEDM `/portfolio` contributor listing can name Byron without
-claiming his account bio was edited.
+The requested public bio is exactly `Voice Actor/Creative Writer`. On November
+10, the connected NorthEDM database contained one matching username, `Byron`.
+His existing Artisan tag was already on; his bio was updated and verified through
+the returned database row. No rank or tag was granted by this update. The public
+portfolio contributor credit was merged separately in #262.
 
 ## Verification
 

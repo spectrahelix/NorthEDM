@@ -95,6 +95,7 @@ await db.exec(`
 `);
 await db.exec(await readFile('supabase/migrations/20260624000000_artisans.sql', 'utf8'));
 await db.exec(await readFile('supabase/migrations/20261110230000_artisan_audio.sql', 'utf8'));
+await db.exec(await readFile('supabase/migrations/20261110233610_artisan_audio_activation_gate.sql', 'utf8'));
 await db.exec(`insert into auth.users values ('${seller}'), ('${buyer}');
   insert into public.artisan_works(user_id,kind,title) values ('${seller}','audio','Voice demo');
   insert into storage.objects(bucket_id,name) values
@@ -117,10 +118,17 @@ assert.equal((await db.query("update storage.objects set name='changed.wav' wher
 await db.exec('reset role');
 const insertOrder = `insert into public.artisan_audio_orders(work_id,buyer_user_id,seller_user_id,title,private_path,filename,license,terms_version,price_cents,fee_cents,currency,stripe_account_id,immediate_delivery_requested)
   values (1,'${buyer}','${seller}','Voice demo','${seller}/full.wav','full.wav','Personal use only','2026-11-10',1000,100,'usd','acct_creator',true)`;
+await assert.rejects(db.exec(insertOrder), /await payment verification/);
+await assert.rejects(db.exec(`insert into public.artisan_audio_offers(work_id,seller_user_id,private_path,filename,price_cents,license,enabled,terms_version,terms_accepted_at,fee_bps)
+  values (1,'${seller}','${seller}/full.wav','full.wav',1000,'Personal use only',true,'2026-11-10',now(),1000)`), /await payment verification/);
+await db.exec('set role service_role');
+assert.equal((await db.query('select sales_enabled from public.artisan_audio_config')).rows[0].sales_enabled, false);
+await assert.rejects(db.exec('update public.artisan_audio_config set sales_enabled=true'), /permission denied/);
+await db.exec('reset role; update public.artisan_audio_config set sales_enabled=true');
 await db.exec(insertOrder);
 await assert.rejects(db.exec(insertOrder), /duplicate key/);
 await db.exec(`delete from public.artisan_works where id=1`);
 const saved = (await db.query('select * from public.artisan_audio_orders')).rows[0];
 assert.equal(saved.work_id, null); assert.equal(saved.private_path, `${seller}/full.wav`); assert.equal(saved.license, 'Personal use only');
 await db.close();
-console.log('Artisan audio: payment integrity, replay protection, storage privacy, owner isolation, duplicate checkout and retained purchase tests passed.');
+console.log('Artisan audio: payment integrity, replay protection, storage privacy, owner isolation, payment activation gate, duplicate checkout and retained purchase tests passed.');

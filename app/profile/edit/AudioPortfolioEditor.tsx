@@ -49,10 +49,12 @@ export function AudioSaleEditor({ userId, work }: { userId: string; work: Artisa
   const [filename, setFilename] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [feeBps, setFeeBps] = useState<number | null>(null);
+  const [salesEnabled, setSalesEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   useEffect(() => {
     fetch(`/api/artisan/audio?work=${work.id}`).then(r => r.ok ? r.json() : null).then(data => {
+      setSalesEnabled(data?.sales_enabled === true);
       if (typeof data?.fee_bps === 'number') setFeeBps(data.fee_bps);
       if (!data?.offer) return;
       setEnabled(data.offer.enabled); setPrice((data.offer.price_cents / 100).toFixed(2));
@@ -84,6 +86,7 @@ export function AudioSaleEditor({ userId, work }: { userId: string; work: Artisa
   }
   return <details className="border-t border-white/10 p-3 text-sm">
     <summary className="cursor-pointer text-[#FFC93C]">Optional recording sale</summary>
+    {!salesEnabled ? <p className="mt-3 text-xs text-neutral-400">Recording purchases are being prepared. Your portfolio sample remains playable, and you can set up your bank account below.</p> : <>
     <label className="mt-3 flex gap-2"><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />Offer a licensed download</label>
     {enabled && <div className="mt-3 space-y-3">
       <label className="block">Price (USD)<input type="number" min="0.50" max="10000" step="0.01" className={input} value={price} onChange={e => setPrice(e.target.value)} /></label>
@@ -96,6 +99,7 @@ export function AudioSaleEditor({ userId, work }: { userId: string; work: Artisa
     </div>}
     <button disabled={busy || (enabled && (!accepted || feeBps === null))} onClick={save} className="mt-3 rounded-lg border border-white/20 px-3 py-2 disabled:opacity-40">{busy ? 'Saving…' : 'Save sale setting'}</button>
     {message && <p role="status" className="mt-2 text-xs text-neutral-300">{message}</p>}
+    </>}
   </details>;
 }
 

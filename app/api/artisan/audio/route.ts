@@ -4,11 +4,12 @@ import { serviceClient, loadSplitSettings } from '@/utils/coordinator';
 import { getStripe, platformFeeCents } from '@/utils/stripe';
 import { safeOrigin } from '@/utils/safeRedirect';
 import { AUDIO_MIME, audioPrice, ownAudioPath } from '@/utils/artisanAudio';
-import { audioSellerReady, reconcileAudioOrder } from '@/utils/artisanAudioServer';
+import { audioSellerReady, reconcileAudioOrder, audioSalesEnabled } from '@/utils/artisanAudioServer';
 
 export async function GET(req: Request) {
   try {
     const db = serviceClient();
+    const salesEnabled = await audioSalesEnabled(db);
     const workId = Number(new URL(req.url).searchParams.get('work'));
     if (!Number.isSafeInteger(workId) || workId <= 0) return NextResponse.json({ error: 'Invalid sample.' }, { status: 400 });
     const { data: work } = await db.from('artisan_works').select('id,user_id,kind').eq('id', workId).maybeSingle();
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
     const { data: seller } = await db.from('artisan_sellers').select('stripe_account_id').eq('user_id', work.user_id).maybeSingle();
     const settings = await loadSplitSettings(db);
     const feeBps = Number(settings.sale_owner_bps) + Number(settings.sale_coordinator_bps);
-    const available = !!(profile?.is_artisan && offer?.enabled && offer.fee_bps === feeBps && seller && await audioSellerReady(seller.stripe_account_id));
+    const available = !!(salesEnabled && profile?.is_artisan && offer?.enabled && offer.fee_bps === feeBps && seller && await audioSellerReady(seller.stripe_account_id));
     let purchase = null;
     if (user) {
       const { data: orders, error: orderError } = await db.from('artisan_audio_orders').select('id,status').eq('work_id', workId).eq('buyer_user_id', user.id).in('status', ['pending','paid','refund_pending']).order('created_at', { ascending: false }).limit(1);
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
         purchase = data;
       }
     }
-    return NextResponse.json({ available, seller: profile?.stage_name || profile?.display_name || 'Artisan',
+    return NextResponse.json({ available, sales_enabled: salesEnabled, seller: profile?.stage_name || profile?.display_name || 'Artisan',
       ...(owner ? { fee_bps: feeBps } : {}),
       offer: offer && (owner || available) ? { price_cents: offer.price_cents, currency: offer.currency, license: offer.license,
         ...(owner ? { enabled: offer.enabled, filename: offer.filename } : {}) } : null,
@@ -56,6 +57,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const db = serviceClient();
+    if ((body.action === 'checkout' || (body.action === 'save' && body.enabled !== false)) && !await audioSalesEnabled(db))
+      return NextResponse.json({ error: 'Recording purchases are being prepared. Portfolio samples and bank setup are available.' }, { status: 503 });
     if (body.action === 'download') {
       const { data: order, error } = await db.from('artisan_audio_orders').select('*').eq('id', body.orderId).eq('buyer_user_id', user.id).maybeSingle();
       if (error) throw error;
