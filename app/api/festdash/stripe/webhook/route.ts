@@ -10,9 +10,10 @@ import { recordCommission, voidCommission, commissionTerms } from "@/utils/commi
 import { handleSubscriptionEvent } from "@/utils/billing";
 import { sendOrderEmails } from "@/utils/orderEmails";
 import { activatePass } from "@/utils/festdashPass";
+import { recordFestdashAuthorization } from "@/utils/festdashSettlement";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
-// completed Checkout means the card is AUTHORIZED (funds held in escrow), not
+// completed Checkout means the card is AUTHORIZED (a temporary card hold), not
 // captured. On that event we promote the order out of "awaiting_payment" into
 // the vendor queue ("pending") and record the PaymentIntent for later capture.
 //
@@ -106,27 +107,8 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const orderId = session.metadata?.festdash_order_id || session.client_reference_id;
     if (orderId) {
-      const { data: order } = await db
-        .from("festdash_orders")
-        .select("id, status, payment_status")
-        .eq("id", orderId)
-        .maybeSingle();
-      // Only promote an order that's still waiting — never clobber a later state.
-      if (order && order.status === "awaiting_payment") {
-        await checkWrite(
-          `festdash order ${orderId} -> authorized`,
-          await db
-            .from("festdash_orders")
-            .update({
-              status: "pending",
-              paid: true,
-              payment_status: "authorized",
-              stripe_payment_intent: (session.payment_intent as string) ?? null,
-            })
-            .eq("id", orderId),
-          { critical: true }
-        );
-      }
+      const intentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+      if (intentId) await recordFestdashAuthorization(db, orderId, intentId);
     }
   } else if (event.type === "checkout.session.completed" && event.data.object &&
       (event.data.object as Stripe.Checkout.Session).metadata?.kind === "store_order") {
@@ -191,7 +173,13 @@ export async function POST(req: Request) {
 
       const { data: fdOrder } = await db
         .from("festdash_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
-      if (fdOrder) await voidCommission(db, "festdash_order", String(fdOrder.id), reason);
+      if (fdOrder) {
+        await voidCommission(db, "festdash_order", String(fdOrder.id), reason);
+        const fullyRefunded = event.type === "charge.refunded" && (charge as Stripe.Charge).refunded;
+        await checkWrite(`FestDash ${fdOrder.id} ${reason}`, await db.from("festdash_orders")
+          .update({ payment_status: event.type === "charge.dispute.created" ? "disputed" : fullyRefunded ? "refunded" : "partially_refunded", paid: false })
+          .eq("id", fdOrder.id), { critical: true });
+      }
 
       const { data: stOrder } = await db
         .from("store_orders").select("id").eq("stripe_payment_intent", paymentIntent).maybeSingle();
@@ -222,6 +210,9 @@ export async function POST(req: Request) {
         .update({ payment_status: status, paid: false })
         .eq("id", orderId)
         .eq("stripe_payment_intent", pi.id);
+      // A failed or expired authorization must stop an unfulfilled order.
+      await db.from("festdash_orders").update({ status: "declined", updated_at: new Date().toISOString() })
+        .eq("id", orderId).eq("stripe_payment_intent", pi.id).not("status", "in", "(delivered,declined)");
     }
   }
 

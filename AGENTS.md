@@ -347,8 +347,7 @@ longer insert or update `festdash_orders`; `/api/festdash/orders` prices every
 line and `/api/festdash/orders/[id]` runs the state machine, the delivery code
 and the Stripe capture, all with the service role. The one end-user write left
 is the assigned runner's `driver_lat/lng/location_updated_at`. The runner pool
-API never returns the customer's phone (the delivery code is its last four
-digits), email, or payment fields.
+API never returns the customer's phone, email, private handoff codes, or payment fields.
 
 **Runners need activation.** Anyone can register at `/festdash/driver`, but
 they land `is_active = false` and see a "waiting" screen. The owner gets an
@@ -917,14 +916,26 @@ Currently lights out (update this list when it changes):
 
 ## FestDash — festival delivery network
 Full spec, current state, data model, state machine, and phased build plan live
-in [`docs/FESTDASH.md`](docs/FESTDASH.md). In short: festival-goers order from a
-vendor set up at their festival, prepay into **escrow**, and a registered
-**driver** delivers to their campsite guided by landmark directions + a **live
-GPS ping**; delivery is confirmed by a **4-digit code (last 4 of the customer's
-phone)**, after which escrowed funds release to the vendor's payout account.
-Recommended integrations: **Stripe Connect** (escrow + vendor payouts — note
+in [`docs/FESTDASH.md`](docs/FESTDASH.md). In short: festival-goers order from a vendor at their festival; the payment provider places
+a temporary card authorization and an approved Dasher delivers using landmarks
+and a live GPS ping. **Since the owner's 2026-11-10 decision, both separate
+accounts confirm physical handoff using different private random four-digit
+codes. Phone digits never confirm delivery.** Capture starts only after both
+confirmations; a failed order releases the hold or refunds a captured payment.
+Payment integration: **Stripe Connect** (authorization/capture + vendor payouts — note
 GoDaddy/Square don't fit this) and **Mapbox** (live map). Read the doc before
 working on FestDash.
+
+**Secure handoff rollout:** apply `20261110220000_festdash_two_party_handoff.sql`
+before publishing the two-party feature. Keep its PR in draft until the private
+schema/RPC/grants are verified. `festdash_handoffs` is service-only; do not grant
+end users SELECT, expose the other party's code or put codes in order rows.
+`festdash_handoff()` locks both records, limits guesses and requires two accounts;
+its trigger blocks early release. `festdashSettlement.ts` rechecks both flags,
+uses idempotent provider calls, records failures and retries through the existing
+cron. New FestDash orders are provider-held cards only; regional Remitly payouts
+remain manual. `npm run test:festdash` executes the real migration locally and
+provider fixtures without real charges. Read `docs/FESTDASH.md` before changes.
 
 ## Apps and Tools — Astrology and Hebrew Numerology Calculator (2026-11-03)
 `/apps-and-tools` (menu entry **Apps and Tools**; tools listed in

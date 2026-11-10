@@ -6,6 +6,8 @@ import { createClient } from "@/utils/supabase/client";
 import { formatMoney } from "@/utils/money";
 import { DEFAULT_SPLITS, platformShareBps } from "@/utils/gambiaPay";
 import { BillingCard } from "@/app/components/BillingCard";
+import { HandoffConfirmation } from "@/app/components/festdash/HandoffConfirmation";
+import { OrderCancellation } from "@/app/components/festdash/OrderCancellation";
 type Order = {
   id: string;
   customer_name: string;
@@ -49,10 +51,6 @@ export default function VendorDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [notEnrolled, setNotEnrolled] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState(false);
-  // Inline delivery-code entry (replaces window.prompt, which mobile browsers block).
-  const [deliverFor, setDeliverFor] = useState<string | null>(null);
-  const [deliverCode, setDeliverCode] = useState("");
-  const [deliverError, setDeliverError] = useState("");
   const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; onboarded: boolean; platformPct: number; pickupPct: number } | null>(null);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const prevPendingCount = useRef(0);
@@ -133,14 +131,13 @@ export default function VendorDashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [loadOrders, supabase]);
 
-  // For "delivered", pass the 4-digit code collected by the inline entry below.
   // Returns true on success so the caller can close its UI.
-  async function updateStatus(orderId: string, status: Order["status"], code?: string): Promise<boolean> {
+  async function updateStatus(orderId: string, status: Order["status"]): Promise<boolean> {
     setUpdating(orderId);
     const res = await fetch(`/api/festdash/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, code }),
+      body: JSON.stringify({ status }),
     });
     let ok = false;
     if (res.ok) {
@@ -151,27 +148,10 @@ export default function VendorDashboard() {
       if (selected?.id === orderId) setSelected((s) => s ? { ...s, status } : s);
     } else {
       const j = await res.json().catch(() => ({}));
-      if (status === "delivered") setDeliverError(j.error ?? "Update failed.");
-      else alert(j.error ?? "Update failed.");
+      alert(j.error ?? "Update failed.");
     }
     setUpdating(null);
     return ok;
-  }
-
-  async function confirmDelivery() {
-    if (!deliverFor) return;
-    const code = deliverCode.replace(/\D/g, "");
-    if (code.length !== 4) {
-      setDeliverError("Enter the 4-digit code.");
-      return;
-    }
-    setDeliverError("");
-    const ok = await updateStatus(deliverFor, "delivered", code);
-    if (ok) {
-      setDeliverFor(null);
-      setDeliverCode("");
-      setSelected(null);
-    }
   }
 
   const pending = orders.filter((o) => o.status === "pending");
@@ -233,7 +213,7 @@ export default function VendorDashboard() {
           <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-orange-950/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold text-orange-300">💳 Set up payouts</p>
-              <p className="text-sm text-neutral-400">Connect a Stripe account to receive your earnings — funds are held in escrow until each order is delivered, then paid out to you minus FestDash&apos;s share: {stripeStatus.platformPct}% on delivered orders, {stripeStatus.pickupPct}% on pickups.</p>
+              <p className="text-sm text-neutral-400">Connect a Stripe account to receive your earnings — card funds are authorized until the customer and Dasher (or pickup shop) both confirm handoff, then captured and paid out minus FestDash&apos;s share: {stripeStatus.platformPct}% on delivered orders, {stripeStatus.pickupPct}% on pickups.</p>
             </div>
             <button
               onClick={connectStripe}
@@ -296,7 +276,7 @@ export default function VendorDashboard() {
                   key={order.id}
                   order={order}
                   onView={() => setSelected(order)}
-                  onMarkDelivered={() => { setDeliverFor(order.id); setDeliverCode(""); setDeliverError(""); }}
+                  onMarkDelivered={order.fulfillment === "pickup" ? () => setSelected(order) : undefined}
                   updating={updating === order.id}
                 />
               ))}
@@ -406,63 +386,15 @@ export default function VendorDashboard() {
                   </button>
                 </div>
               )}
-              {(selected.status === "accepted" || selected.status === "in_transit") && (
-                <button
-                  onClick={() => { setDeliverFor(selected.id); setDeliverCode(""); setDeliverError(""); }}
-                  className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white"
-                >
-                  Mark Delivered
-                </button>
-              )}
+              {(selected.status === "accepted" || selected.status === "in_transit") && <>
+                {selected.fulfillment === "pickup" ? <HandoffConfirmation orderId={selected.id} pickup onChange={loadOrders} /> : <p className="text-sm text-neutral-400">The customer and assigned Dasher confirm handover from their own accounts.</p>}
+                <OrderCancellation orderId={selected.id} label="Unable to fulfill / cancel order" onChange={() => { loadOrders(); setSelected(null); }} />
+              </>}
             </div>
           </div>
         </div>
       )}
 
-      {/* Inline delivery-code entry — reliable on mobile (window.prompt is blocked
-          in many mobile browsers, which silently broke "Mark Delivered"). */}
-      {deliverFor && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-6"
-          onClick={() => { setDeliverFor(null); setDeliverError(""); }}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-1 font-bebas text-2xl tracking-wide text-white">Confirm Delivery</h3>
-            <p className="mb-4 text-sm text-neutral-400">
-              Enter the customer&apos;s 4-digit code (last 4 of their phone).
-            </p>
-            <input
-              autoFocus
-              inputMode="numeric"
-              maxLength={4}
-              value={deliverCode}
-              onChange={(e) => { setDeliverCode(e.target.value.replace(/\D/g, "").slice(0, 4)); setDeliverError(""); }}
-              onKeyDown={(e) => { if (e.key === "Enter") confirmDelivery(); }}
-              placeholder="0000"
-              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-center font-dm-mono text-2xl tracking-[0.5em] text-white placeholder:text-neutral-700 focus:border-green-500/50 focus:outline-none"
-            />
-            {deliverError && <p className="mt-2 text-sm text-red-400">{deliverError}</p>}
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={() => { setDeliverFor(null); setDeliverError(""); }}
-                className="flex-1 rounded-xl border border-white/10 py-3 text-neutral-400 transition hover:bg-white/5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelivery}
-                disabled={updating === deliverFor || deliverCode.length !== 4}
-                className="flex-1 rounded-xl bg-green-600 py-3 font-semibold text-white transition hover:bg-green-500 disabled:opacity-50"
-              >
-                {updating === deliverFor ? "Confirming…" : "Confirm Delivery"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
@@ -543,7 +475,7 @@ function OrderCard({
             disabled={updating}
             className="flex-1 rounded-xl bg-green-600 py-2 text-sm font-semibold text-white transition hover:bg-green-500 disabled:opacity-50"
           >
-            {updating ? "…" : "Mark Delivered"}
+            {updating ? "…" : "Confirm pickup handoff"}
           </button>
         )}
       </div>

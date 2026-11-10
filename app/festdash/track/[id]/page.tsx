@@ -10,6 +10,7 @@ import { formatMoney } from "@/utils/money";
 import { METHOD_LABEL, orderRef, isWalletMethod } from "@/utils/gambiaPay";
 import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { WalletDispute } from "@/app/components/festdash/WalletDispute";
+import { HandoffConfirmation } from "@/app/components/festdash/HandoffConfirmation";
 type Order = {
   id: string;
   vendor_id: number;
@@ -23,7 +24,6 @@ type Order = {
   items: { name: string; qty: number; price: number }[];
   total_cents: number;
   status: "awaiting_payment" | "awaiting_confirmation" | "pending" | "accepted" | "in_transit" | "delivered" | "declined";
-  confirmation_code: string | null;
   payment_method: string;
   payment_to: string | null;
   payment_ref: string | null;
@@ -219,7 +219,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
           <div className="mb-4 text-4xl">🔒</div>
           <h1 className="mb-2 font-bebas text-3xl tracking-wide text-white">Confirming your payment…</h1>
           <p className="text-neutral-500">
-            Your card is being authorized and held in escrow. This page updates automatically —
+            Your card is being authorized with a temporary hold. This page updates automatically —
             it usually only takes a moment.
           </p>
           <span className="mt-6 inline-flex h-2 w-2 animate-pulse rounded-full bg-orange-400" />
@@ -262,6 +262,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
         {isDeclined ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-6 text-center">
             <p className="text-red-400">{order.payment_status === "rejected" ? "The payment for this order was marked as not received." : "The vendor declined this order."}</p>
+            <p className="mt-3 text-sm text-neutral-300">{order.payment_status === "canceled" ? "The card hold was released; no completed card charge remains for this order." : order.payment_status === "refunded" ? "The payment provider confirmed the refund to your original payment method. Your bank may take time to post it." : "Payment cancellation or refund is being checked. Contact NorthEDM if it remains pending."}</p>
             {order.payment_status === "rejected" && order.payment_ref && (
               <div className="text-left"><WalletDispute kind="festdash" id={order.id} refAt={order.payment_ref_at ?? null} rejected alreadyReported={!!order.payment_disputed_at} /></div>
             )}
@@ -271,21 +272,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
           </div>
         ) : (
           <>
-            {/* Delivery code — the customer reads this to their runner to
-                confirm delivery. Hidden once delivered. */}
-            {order.status !== "delivered" && order.confirmation_code && (
-              <div className="mb-8 rounded-2xl border border-green-500/25 bg-green-950/20 p-5 text-center">
-                <p className="font-dm-mono text-xs uppercase tracking-[0.3em] text-green-400">
-                  Your Delivery Code
-                </p>
-                <p className="my-2 font-dm-mono text-4xl font-bold tracking-[0.4em] text-white">
-                  {order.confirmation_code}
-                </p>
-                <p className="text-xs text-neutral-400">
-                  Give this to your runner at drop-off to confirm delivery.
-                </p>
-              </div>
-            )}
+            <HandoffConfirmation orderId={id} pickup={order.fulfillment === "pickup"} onChange={loadOrder} />
 
             {/* Progress tracker */}
             <div className="mb-8 space-y-3">
@@ -373,7 +360,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 
             <div className="mt-4 rounded-2xl border border-white/8 bg-white/3 p-5 text-sm">
               <p className="mb-2 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">{order.fulfillment === "pickup" ? "Pickup" : "Delivery Info"}</p>
-              <p className="text-white">{order.fulfillment === "pickup" ? "Collect at the shop — show the last 4 digits of your phone." : order.campground_zone}</p>
+              <p className="text-white">{order.fulfillment === "pickup" ? "Collect at the shop — both accounts confirm using the private random handoff codes." : order.campground_zone}</p>
               {order.campsite_notes && <p className="mt-1 text-neutral-400">{order.campsite_notes}</p>}
               <p className="mt-1 text-neutral-500">Window: {order.delivery_window}</p>
               {order.campsite_photo_url && (

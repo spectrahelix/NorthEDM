@@ -11,8 +11,8 @@ function getAdminClient() {
 
 // What a runner may see. The open pool shows only what's needed to decide
 // whether to take the job; a claimed order adds what's needed to find the
-// customer. Never included: the customer's phone (the delivery code is its
-// last four digits), their email, and the payment / promo fields.
+// customer. Never included: the customer's phone, email, private handoff codes,
+// or the payment / promo fields.
 const POOL_COLUMNS =
   "id, vendor_id, event_name, campground, sub_campground, campground_zone, delivery_window, items, total_cents, runner_fee_cents, currency, payment_method, status, driver_id, created_at, updated_at";
 const MINE_COLUMNS =

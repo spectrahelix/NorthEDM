@@ -1,167 +1,92 @@
-# FestDash — Festival Delivery Network
+# FestDash — secure handoff and payment flow
 
-FestDash is NorthEDM's in-festival ordering + delivery platform: a festival-goer
-orders from a vendor that's set up at their festival, prepays, and a registered
-driver delivers it to their campsite, guided by landmark directions and a live
-GPS ping.
+NorthEDM's festival pickup/delivery flow uses payment-provider authorization,
+then captures only after both sides confirm physical handover. It is not a
+customer deposit account or a separately licensed escrow product.
 
-This document is the source of truth for the FestDash feature. Keep it updated as
-the build progresses.
+## Current implementation (owner decision, 2026-11-10)
 
----
+1. A signed-in customer orders. New FestDash orders use card or a card-backed
+   wallet through Stripe, with `capture_method: manual`. Direct mobile-wallet
+   transfers and Waychit are not offered for this flow because they cannot
+   provide the same hold/cancel/refund behavior. Shop subscriptions and store
+   orders have their own payment paths; their rails are not changed here.
+2. The provider confirms an authorization before the order reaches the shop.
+   A late checkout cannot revive a canceled order; its payment is canceled or
+   refunded. A US independent shop must have a payout account before checkout.
+3. The shop accepts; a different, active Dasher claims and begins delivery.
+   Pickup uses an authorized shop operator instead of a Dasher.
+4. `festdash_handoffs` stores two different, cryptographically random four-digit
+   codes. RLS plus revoked grants keep the table and RPC inaccessible to ordinary
+   sessions. Codes are absent from order rows, the open runner pool and realtime.
+   The authenticated handoff endpoint returns **only the caller's own code**.
+5. At physical handover the customer enters the Dasher/shop code in their own
+   account; the Dasher/shop enters the customer's code in theirs. Phone digits
+   never confirm handover. One account cannot supply both confirmations.
+6. `festdash_handoff()` locks the order then its handoff row. Failed guesses are
+   persisted; ten wrong attempts lock that party. Either participant can report
+   a problem, which pauses release. Only both confirmations mark physical
+   fulfillment delivered. A DB trigger blocks stale routes from marking delivered
+   or releasing payment without the two confirmations.
+7. The settlement helper independently rechecks the two confirmations before
+   capture. Conditional claims and stable provider idempotency keys protect
+   retries. Stripe's actual payment state is retrieved after ambiguous timeouts.
+   Capture and provider payouts are separate from physical handover status.
+8. An unaccepted order can be canceled by its customer. A shop or assigned
+   Dasher can mark an unfulfilled order unable to complete. A conditional status
+   update prevents cancellation from racing a finished handoff. Uncaptured holds
+   are canceled; captured payments are refunded to the original payment method,
+   reversing a destination transfer/application fee when appropriate.
+9. Pending or failed refunds are never displayed as successful. Refund IDs,
+   settlement markers and private errors support reconciliation. The existing
+   commissions cron also retries unsettled terminal FestDash orders. Authorization
+   expiry/failure webhooks close unfulfilled orders. Do not automatically renew
+   an expired authorization or charge another card without fresh authorization.
+10. Regional card orders still book the shop/runner shares for the owner's
+    approved manual Remitly settlement. This change does **not** make Gambian
+    bank/wallet payouts automatic. Existing unsupported manual-payment orders
+    need owner/provider review; the app cannot claw back an off-platform transfer.
 
-## Roles
-- **Customer** — festival attendee placing an order.
-- **Vendor** — a NorthEDM marketplace vendor enrolled in FestDash; receives,
-  accepts/denies, and fulfills orders.
-- **Driver** — a person registered & connected to FestDash who physically
-  delivers; shares live GPS. (May be the vendor themselves or a separate person.)
-- **Admin** — NorthEDM staff; enrolls vendors, oversees orders.
+## Source paths
 
----
+- Order creation: `app/api/festdash/orders/route.ts`.
+- Private codes and confirmation: `utils/festdashHandoff.ts`,
+  `app/api/festdash/orders/[id]/handoff/route.ts`, migration below.
+- Provider settlement: `utils/festdashPaymentCore.ts`,
+  `utils/festdashSettlement.ts`; webhook plus authenticated authorization fallback.
+- Shared UI: `app/components/festdash/HandoffConfirmation.tsx` on the customer
+  tracker, Dasher console and pickup shop dashboard.
+- Existing payout helpers remain authoritative for fees/commission rates.
+- Customer terms `/terms#festdash`; Dasher terms `/festdash/driver/terms`;
+  promoter/coordinator terms `/promote/terms`.
 
-## End-to-end flow (target spec)
-1. Customer opens the site → **FestDash** → picks their **festival** → sees the
-   **vendors available at that festival**.
-2. Customer opens a vendor's **marketplace menu** and builds an order.
-3. **Checkout — customer provides:**
-   - Name
-   - **Photo of their car + license plate** (helps the driver find them)
-   - **Structured campsite location:** campground name, sub-campground, row, and
-     tent — e.g. *"Camp Stegosaurus, row 4, 10 tents down."*
-   - **Additional notes / landmark directions** to help find them
-   - Phone number (last 4 digits become the delivery confirmation code)
-4. Customer **prepays**. Funds are **held in escrow** (a temporary platform
-   balance) — *not* released to the vendor yet.
-5. Vendor (connected to FestDash) **receives** the order → **accepts or denies**.
-   - Deny → escrowed funds refunded to customer.
-   - Accept → vendor sees the full order + customer info, prepares it.
-6. A registered **driver** is assigned / picks up the order and heads out,
-   following the customer's landmark directions **plus a live GPS ping**.
-7. **Live tracking:** the driver's phone shares GPS; the customer's track page
-   shows the driver's position approaching their campsite. The customer's own
-   GPS may also set their campsite ping.
-8. On arrival, delivery is **confirmed by a 4-digit code = the last 4 digits of
-   the customer's phone number.**
-9. On confirmed delivery, escrowed funds **transfer to the vendor's linked
-   payout account.**
+## Required rollout and checks
 
----
+**Apply `supabase/migrations/20261110220000_festdash_two_party_handoff.sql` before
+merging/deploying this feature.** It creates the private table/RPC, guards release,
+and retires unfinished phone-derived codes. Missing schema fails closed: no new
+checkout is started and no handoff can release payment. Keep the PR in draft
+until the migration and its live grants are verified. Do not remove the release
+trigger to make an older client work; update the client or fix forward.
 
-## Current state (skeleton already in repo)
-Happy-path ordering is ~60% built:
-- Pages: `app/festdash/{page,order,orders,track/[id],vendor-dashboard,driver,vendor-signup}`
-- Admin: `app/admin/festdash/{page,client}.tsx`
-- API: `app/api/festdash/{orders,orders/[id],vendors,menu/[vendorId],vendor-signup,admin/*}`
-- Tables (`supabase/migrations/20260612000000_festdash_schema.sql`):
-  `festdash_vendor_applications`, `festdash_vendors`, `festdash_orders`
-- Realtime: vendor-dashboard / driver / track pages subscribe to
-  `festdash_orders` via `postgres_changes`.
+Run `npm run test:festdash`, `npm run check`, TypeScript and the production build.
+The handoff suite uses embedded PostgreSQL (PGlite) to execute the actual migration
+and RPC: role privacy, two accounts, both confirmations, guessing limits,
+problem pause, cancellation ordering, pickup access and release guards. Provider
+fixtures test capture/cancel/refund, mismatched amounts, pending and failed
+refunds, idempotency and timeout recovery without moving real money.
 
-### What's REAL today
-Vendor enrollment (apply → admin approve → `festdash_vendors`); customer order
-creation; vendor menu from `products`; customer/vendor order views; campsite
-photo upload to Supabase Storage; status updates (pending → accepted →
-in_transit → delivered/declined); vendor-dashboard audio alert.
+Before claiming live money movement verified, use Stripe test mode and two test
+accounts to verify: no capture after one confirmation; capture after both in
+either order; decline/cancel releases an authorization; a captured failed-payment
+fixture refunds; expired and mismatched payments never pay out; both callers
+receive only their own code. Do not run an unrequested real charge for testing.
 
-### What's MISSING / STUBBED vs. the target spec
-| Area | Gap |
-|---|---|
-| **Payments / escrow / payouts** | Fully stubbed. `stripe_payment_intent`/`paid` unused; checkout says "pay the driver." No hold, no payout. |
-| **Live GPS tracking** | Runner's browser shares position every ~12s while en route (`/api/festdash/orders/[id]/location`); the customer's track page updates live over realtime with distance + ETA. The map (`LiveMap`, Mapbox GL) renders once `NEXT_PUBLIC_MAPBOX_TOKEN` is set; text fallback otherwise. Customers can pin their campsite by GPS or by dropping a pin on the map. |
-| **Driver registration & assignment** | `festdash_drivers` (self-registration at `/festdash/driver`, **inactive until the owner activates them in /admin/festdash**); claim = conditional update on `festdash_orders.driver_id`. |
-| **Confirmation code** | Absent. No phone capture, no last-4 code, no verify-on-delivery. |
-| **Car photo + license plate** | Absent (only a campsite photo exists). |
-| **Structured campsite fields** | Only one free-text `campground_zone`; need campground + sub-campground + row + tent. |
-| **State-machine guards** | PATCH accepts any status; no valid-transition enforcement. |
-| **Realtime publication** | `festdash_orders` not confirmed in `supabase_realtime` publication. |
-| **Storage policies** | `festdash-campsites` bucket policies are commented out in the migration (apply manually). |
-| **Event / delivery-window config** | Hardcoded in the order page. |
-
----
-
-## External integrations & recommendations
-
-### Payments + escrow + vendor payouts → **Stripe Connect (recommended)**
-The flow ("customer prepays → platform holds → release to vendor on delivery")
-is a textbook marketplace-escrow problem. **Stripe Connect** does this natively
-(authorize/capture or charge-then-transfer to connected vendor accounts), and
-the schema already has `stripe_payment_intent`.
-
-> ⚠️ The spec mentions Square/GoDaddy for vendor payout. Reality:
-> - **GoDaddy** has no marketplace/third-party-payout product — it can't pay out
->   to independent vendors. Not viable for this.
-> - **Square** can process payments but does not offer clean Connect-style
->   marketplace payouts to arbitrary vendor accounts.
-> - **Stripe Connect (Express accounts)** is the right tool: each vendor onboards
->   once via Stripe, and the platform holds funds and releases on delivery.
->
-> **Decision needed from owner.** Requires a Stripe account + API keys + per-vendor
-> Connect onboarding. Until provided, payments run in a clearly-marked **test/stub**
-> mode behind a payment-service interface so live Stripe drops in without rework.
-
-### Live map → **Mapbox GL JS (recommended)** or Google Maps
-The GPS **data layer** (driver/customer browser geolocation → stored → realtime
-to the customer) is buildable now with **no key**. The visual **map** rendering
-the ping needs a maps provider API key (Mapbox has a generous free tier).
-**Decision needed from owner.** Until then, tracking shows coordinates/distance
-text; the map drops in when a key is added.
-
-### Storage → Supabase Storage
-Car photo + campsite photo. Bucket + RLS policies must be applied (SQL).
-
-### Realtime → Supabase
-Run once: `ALTER PUBLICATION supabase_realtime ADD TABLE festdash_orders;`
-(plus any driver-location table) so live tracking/notifications work.
+The following coordinator history documents regional subscriptions and settlement;
+its earlier direct-wallet FestDash order descriptions are superseded by the
+secure card flow above. Regional provider onboarding restrictions still apply.
 
 ---
-
-## Order state machine (target)
-```
-draft
-  → payment_authorized        (customer prepaid; funds held in escrow)
-    → awaiting_vendor
-      → accepted              (vendor accepts)
-        → preparing
-          → out_for_delivery  (driver assigned + en route; GPS live)
-            → delivered        (confirmed via last-4 phone code)
-              → completed      (escrow released to vendor payout account)
-      → declined              (vendor denies → escrow refunded)  [terminal]
-  → canceled                  (customer cancels before accept → refund) [terminal]
-```
-PATCH transitions must be guarded (no skipping/illegal jumps).
-
----
-
-## Data-model additions (planned)
-`festdash_orders` (extend): `customer_phone`, `confirmation_code` (last-4),
-`confirmed_at`, structured `campground` / `sub_campground` / `row` / `tent`,
-`car_photo_url`, `license_plate`, `driver_id`, `payment_status`,
-`stripe_payment_intent` (use existing), `escrow_released_at`.
-
-New: `festdash_drivers` (driver registration), `festdash_order_locations` or
-columns for live `driver_lat/lng/updated_at` (+ realtime). Vendor payout linkage
-on `festdash_vendors` (e.g. `stripe_account_id`).
-
----
-
-## Phased build plan
-- **Phase 1 — Foundation (no external keys):** schema additions + migration;
-  expanded checkout (car photo + plate, structured campsite, phone); confirmation
-  code generation + verify-on-delivery; guarded state machine; driver
-  registration + order assignment; realtime/storage SQL documented.
-- **Phase 2 — Live GPS:** ✅ built (2026-11-01): geolocation capture → realtime
-  → track view with distance/ETA, Mapbox GL map behind `NEXT_PUBLIC_MAPBOX_TOKEN`.
-  Note: the site's `Permissions-Policy` header must keep `geolocation=(self)`.
-- **Phase 3 — Payments:** Stripe Connect — prepay/authorize → escrow hold →
-  capture/transfer on confirmed delivery → refund on decline/cancel; vendor
-  Connect onboarding replacing the "link Square/GoDaddy" step.
-
-## Open decisions (owner)
-1. **Payments processor** — ✅ **DECIDED: Stripe Connect** (Express accounts for vendors; handles escrow hold + payout).
-2. **Maps provider** — ✅ **DECIDED: Mapbox** (live ping map; data layer is keyless, map needs a free key).
-3. Run the **realtime** + **storage policy** + **schema** SQL when ready (see migrations).
-
 
 ## Gambia / coordinator model
 

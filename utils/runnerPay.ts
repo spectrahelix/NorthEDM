@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/utils/stripe";
+import { isLocalRail } from "@/utils/gambiaPay";
 
 /**
  * The runner's fee. The customer picks it at checkout (10% of the items
@@ -15,7 +16,7 @@ import { getStripe } from "@/utils/stripe";
 export async function payRunnerFee(admin: SupabaseClient, orderId: string): Promise<{ ok: boolean; reason?: string }> {
   const { data: o } = await admin
     .from("festdash_orders")
-    .select("id, driver_id, runner_fee_cents, runner_fee_transfer_id, payment_method, payment_status, status")
+    .select("id, vendor_id, driver_id, runner_fee_cents, runner_fee_transfer_id, payment_method, payment_status, status, currency")
     .eq("id", orderId)
     .maybeSingle();
   if (!o) return { ok: false, reason: "no such order" };
@@ -26,8 +27,9 @@ export async function payRunnerFee(admin: SupabaseClient, orderId: string): Prom
   // A card order on a Gambian shop is in the shop's currency and its runner is
   // paid by the coordinator out of the owner's Remitly; a USD transfer here
   // would be the wrong amount to the wrong place.
-  const { data: ledger } = await admin.from("coordinator_ledger").select("id").eq("kind", "sale").eq("order_id", o.id).eq("collected_by", "owner").maybeSingle();
-  if (ledger) return { ok: false, reason: "local-rail card order — runner paid by the coordinator" };
+  const { data: vendor, error: vendorError } = await admin.from("vendors").select("coordinator_user_id, currency").eq("id", o.vendor_id).maybeSingle();
+  if (vendorError || !vendor) return { ok: false, reason: "vendor payment rail unavailable — retry later" };
+  if (isLocalRail(vendor)) return { ok: false, reason: "local-rail card order — runner paid by the coordinator" };
   if (o.status !== "delivered" || o.payment_status !== "released") return { ok: false, reason: "not delivered and captured yet" };
   if (!o.driver_id) return { ok: false, reason: "no runner on the order" };
 
@@ -36,7 +38,7 @@ export async function payRunnerFee(admin: SupabaseClient, orderId: string): Prom
 
   try {
     const transfer = await getStripe().transfers.create(
-      { amount: fee, currency: "usd", destination: d.stripe_account_id, metadata: { kind: "runner_fee", festdash_order_id: o.id } },
+      { amount: fee, currency: String(o.currency || "USD").toLowerCase(), destination: d.stripe_account_id, metadata: { kind: "runner_fee", festdash_order_id: o.id } },
       { idempotencyKey: `runner_fee_${o.id}` }
     );
     await admin.from("festdash_orders").update({ runner_fee_transfer_id: transfer.id, runner_fee_paid_at: new Date().toISOString() }).eq("id", o.id);

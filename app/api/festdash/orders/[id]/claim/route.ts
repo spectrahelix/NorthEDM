@@ -38,7 +38,8 @@ export async function POST(
     .eq("id", id)
     .eq("status", "accepted")
     .is("driver_id", null)
-    .select()
+    .neq("customer_id", user.id)
+    .select("id")
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

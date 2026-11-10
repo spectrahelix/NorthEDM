@@ -8,8 +8,8 @@ import { BridgeIntake } from "@/app/components/festdash/BridgeIntake";
 
 // The purse keeper's console. A regional coordinator collects shop fees and
 // customers' wallet / cash payments, confirms wallet payments here, pays the
-// shops their share, and logs what they send to NorthEDM. Nothing here moves
-// money; it records it. Server: /api/festdash/purse*.
+// shops their share, and logs what they send to NorthEDM. Manual ledger entries
+// record transfers; secure card order settlement is handled by payment providers.
 
 type Coordinator = {
   id: string; display_name: string | null; region: string | null;

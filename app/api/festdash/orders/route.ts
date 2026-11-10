@@ -11,6 +11,8 @@ import { createPaymentRequest, WAYCHIT_MAX_GMD, waychitCharge, waychitState } fr
 import { safeOrigin } from "@/utils/safeRedirect";
 import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
 import { hasStock } from "@/utils/stock";
+import { ensureFestdashHandoff } from "@/utils/festdashHandoff";
+import { BRAND_SHOP_VENDOR_ID } from "@/utils/brandShop";
 // Stripe's minimum chargeable amount (USD). Below this we can't run a card.
 const STRIPE_MIN_CENTS = 50;
 
@@ -28,6 +30,10 @@ export async function POST(req: Request) {
     licensePlate, carPhotoUrl, customerLat, customerLng,
     promoCode, paymentMethod, runnerFeeCents, fulfillment,
   } = body;
+
+  // Only provider-held card payments support automatic capture/cancellation.
+  // Manual wallet transfers and Waychit cannot provide this secure hold flow.
+  if (paymentMethod && paymentMethod !== "card") return NextResponse.json({ error: "FestDash currently requires a card or card-backed wallet so payment can be held until both parties confirm." }, { status: 400 });
 
   // Pickup (2026-11-03): the customer collects at the shop. No campsite, no
   // runner, no runner fee; the 4-digit code is given at the counter.
@@ -48,7 +54,7 @@ export async function POST(req: Request) {
   const vid = Number(vendorId);
   const [{ data: vendorRow }, { data: fdRow }] = await Promise.all([
     admin.from("vendors").select("id, status, is_public, suspended_at, coordinator_user_id, currency, fulfillment_modes").eq("id", vid).maybeSingle(),
-    admin.from("festdash_vendors").select("vendor_id").eq("vendor_id", vid).eq("is_active", true).maybeSingle(),
+    admin.from("festdash_vendors").select("vendor_id, stripe_account_id").eq("vendor_id", vid).eq("is_active", true).maybeSingle(),
   ]);
   if (!vendorRow || vendorRow.status !== "approved" || !vendorRow.is_public || vendorRow.suspended_at || !fdRow) {
     return NextResponse.json({ error: "This vendor isn't taking FestDash orders right now." }, { status: 403 });
@@ -72,6 +78,8 @@ export async function POST(req: Request) {
   // coordinator's share and the runner fee are booked as owed BY the owner and
   // sent to the coordinator to disburse (collected_by = 'owner').
   const localCard = local && paymentMethod === "card";
+  const vendorAccount = localCard ? null : (fdRow.stripe_account_id as string | null) || null;
+  if (!localCard && !vendorAccount && vid !== BRAND_SHOP_VENDOR_ID) return NextResponse.json({ error: "This shop must finish its payout setup before accepting paid FestDash orders." }, { status: 409 });
   // Waychit (2026-11-04): Wave / QMoney / Afrimoney paid on Waychit's page into
   // NorthEDM's own merchant account; confirmed by its signed webhook, not by
   // the coordinator. Offered only while the owner has it switched on, and only
@@ -210,9 +218,7 @@ export async function POST(req: Request) {
   const remitFee = localCard && localRules ? transferFeeCents(discountedCents + runnerFee + serviceFee, currency, localRules.remitFeeBps) : 0;
   const netCents = discountedCents + runnerFee + serviceFee + remitFee;
 
-  // Delivery confirmation code = last 4 digits of the customer's phone
-  const phoneDigits = String(customerPhone ?? "").replace(/\D/g, "");
-  const confirmationCode = phoneDigits.length >= 4 ? phoneDigits.slice(-4) : null;
+  // Private random handoff codes live in festdash_handoffs, never on order rows.
 
   // Service role: ordinary sessions can't insert order rows (closed in the
   // 2026-11-01 hardening); every check above is what stands in for that.
@@ -234,7 +240,7 @@ export async function POST(req: Request) {
       car_photo_url: carPhotoUrl || null,
       license_plate: licensePlate || null,
       customer_phone: customerPhone || null,
-      confirmation_code: confirmationCode,
+      confirmation_code: null,
       customer_lat: typeof customerLat === "number" ? customerLat : null,
       customer_lng: typeof customerLng === "number" ? customerLng : null,
       delivery_window: pickup ? (deliveryWindow || "ASAP") : deliveryWindow,
@@ -269,6 +275,13 @@ export async function POST(req: Request) {
         .eq("id", promoCodeId);
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  try { await ensureFestdashHandoff(admin, data.id); }
+  catch {
+    await admin.from("festdash_orders").update({ status: "declined", payment_status: "canceled" }).eq("id", data.id);
+    if (promoCodeId) await admin.from("festdash_promo_codes").update({ times_redeemed: claimedTimes - 1 }).eq("id", promoCodeId).eq("times_redeemed", claimedTimes);
+    return NextResponse.json({ error: "Secure handoff is unavailable. No card payment was started. Please contact NorthEDM." }, { status: 503 });
   }
 
   // Record the commission redemption.
@@ -350,14 +363,8 @@ export async function POST(req: Request) {
   // booked to them at delivery (orders/[id]) and paid out by the commissions
   // cron after the hold window. If the vendor has no Connect account, funds are
   // held on the platform and settled to the vendor manually.
-  const { data: fv } = await admin
-    .from("festdash_vendors")
-    .select("stripe_account_id")
-    .eq("vendor_id", Number(vendorId))
-    .maybeSingle();
   // Never a destination transfer on the local rail: the funds stay with
   // NorthEDM and are disbursed through the coordinator (see localCard above).
-  const vendorAccount = localCard ? null : (fv?.stripe_account_id as string | null) || null;
 
   const itemSummary = lines
     .map((i) => `${i.qty}× ${i.name}`)
@@ -381,6 +388,7 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      payment_method_types: ["card"],
       // Items, runner fee and service fee as separate lines so the Stripe
       // receipt shows what each part is (same total as dueCents).
       line_items: [
