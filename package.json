@@ -9,6 +9,7 @@
     "lint": "eslint",
     "check": "node scripts/check-wiring.mjs",
     "check:auth": "node scripts/check-oauth-providers.mjs",
+    "test:artisan-audio": "node --no-warnings scripts/test-artisan-audio.mjs",
     "test:astro-hebrew": "node --no-warnings scripts/test-astro-hebrew.mjs"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "stripe": "^22.2.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@huggingface/transformers": "^4.3.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

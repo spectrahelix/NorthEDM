@@ -1,5 +1,6 @@
 import { toEmbed } from "./embed";
 import type { ArtisanWork } from "@/utils/supabase/user-profiles";
+import { ArtisanAudioWork } from "./ArtisanAudioWork";
 
 // Read-only gallery of an artisan's portfolio works: uploaded images, embedded
 // media (YouTube/SoundCloud/Spotify/Vimeo), and external links.
@@ -16,6 +17,7 @@ export function ArtisanWorks({ works }: { works: ArtisanWork[] }) {
             key={w.id}
             className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
           >
+            {w.kind === "audio" && w.url && <ArtisanAudioWork work={w} />}
             {w.kind === "image" && w.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img

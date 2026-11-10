@@ -10,6 +10,7 @@ import { recordCommission, voidCommission, commissionTerms } from "@/utils/commi
 import { handleSubscriptionEvent } from "@/utils/billing";
 import { sendOrderEmails } from "@/utils/orderEmails";
 import { activatePass } from "@/utils/festdashPass";
+import { handleAudioEvent } from "@/utils/artisanAudioServer";
 
 // FestDash Stripe webhook. Orders are created with capture_method=manual, so a
 // completed Checkout means the card is AUTHORIZED (funds held in escrow), not
@@ -48,6 +49,8 @@ export async function POST(req: Request) {
   }
 
   const db = admin();
+
+  if (await handleAudioEvent(db, event)) return NextResponse.json({ received: true });
 
   // Monthly subscriptions (FestDash listing, store fee): mirrored into
   // stripe_subscriptions, store billing_status flipped, promoter share booked.

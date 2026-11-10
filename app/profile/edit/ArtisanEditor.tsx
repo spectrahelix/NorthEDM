@@ -4,10 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import type { UserProfile, ArtisanWork, Social } from "@/utils/supabase/user-profiles";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
+import { AudioPortfolioUpload, AudioSaleEditor, ArtisanAudioPayouts } from "./AudioPortfolioEditor";
 
 const CRAFTS = [
   "Visual Art",
   "Music",
+  "Voice Acting",
+  "Creative Writing",
   "Crafts",
   "DIY / Maker",
   "Photography",
@@ -40,7 +43,7 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
   const [err, setErr] = useState("");
 
   // New-work form
-  const [newKind, setNewKind] = useState<"image" | "embed" | "link">("image");
+  const [newKind, setNewKind] = useState<"image" | "embed" | "link" | "audio">("image");
   const [newUrl, setNewUrl] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -154,8 +157,9 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
   }
 
   async function deleteWork(id: number) {
+    const { error } = await supabase.from("artisan_works").delete().eq("id", id);
+    if (error) { setErr(error.message); return; }
     setWorks((w) => w.filter((x) => x.id !== id));
-    await supabase.from("artisan_works").delete().eq("id", id);
   }
 
   return (
@@ -280,10 +284,10 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
         </p>
 
         {works.length > 0 && (
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {works.map((w) => (
               <div key={w.id} className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-                {w.kind === "image" && w.image_url ? (
+                {w.kind === "audio" ? <div className="p-4 pr-10"><p className="mb-3 text-sm">{w.title || 'Audio sample'}</p><audio controls preload="none" src={w.url || undefined} aria-label={w.title || 'Audio sample'} className="w-full" />{w.caption && <p className="mt-2 text-xs text-neutral-400">{w.caption}</p>}</div> : w.kind === "image" && w.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={w.image_url} alt={w.title || ""} className="aspect-square w-full object-cover" />
                 ) : (
@@ -296,10 +300,12 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
                 )}
                 <button
                   onClick={() => deleteWork(w.id)}
-                  className="absolute right-1.5 top-1.5 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                  aria-label={`Remove ${w.title || 'portfolio work'}`}
+                  className="absolute right-1.5 top-1.5 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white"
                 >
                   ✕
                 </button>
+                {w.kind === "audio" && <AudioSaleEditor userId={userId} work={w} />}
               </div>
             ))}
           </div>
@@ -308,7 +314,7 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
         {/* Add work */}
         <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
           <div className="mb-3 flex gap-2">
-            {(["image", "embed", "link"] as const).map((k) => (
+            {(["image", "audio", "embed", "link"] as const).map((k) => (
               <button
                 key={k}
                 onClick={() => setNewKind(k)}
@@ -323,15 +329,15 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
             ))}
           </div>
 
-          <input
+          {newKind !== "audio" && <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             maxLength={80}
             placeholder="Title (optional)"
             className="mb-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
-          />
+          />}
 
-          {newKind === "image" ? (
+          {newKind === "audio" ? <AudioPortfolioUpload userId={userId} onAdded={work => setWorks(w => [...w, work])} /> : newKind === "image" ? (
             <>
               <input ref={fileRef} type="file" accept={ACCEPT_WEB_IMAGES} className="hidden" onChange={addImageWork} />
               <button
@@ -360,6 +366,8 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
           )}
         </div>
       </div>
+
+      <ArtisanAudioPayouts />
 
       {err && <p className="mt-4 text-sm text-[#FF5C3A]">{err}</p>}
       {msg && <p className="mt-4 text-sm" style={{ color: GOLD }}>{msg}</p>}

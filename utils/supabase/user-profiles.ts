@@ -109,7 +109,7 @@ export function currentShow(shows: VendorShow[]): { show: VendorShow; live: bool
 export type ArtisanWork = {
   id: number;
   user_id: string;
-  kind: "image" | "embed" | "link";
+  kind: "image" | "embed" | "link" | "audio";
   title: string | null;
   caption: string | null;
   image_url: string | null;
