@@ -36,6 +36,7 @@ const PROJECTS: {
 // Companies, communities & people NorthEDM is building relationships with.
 // Small listings — kept intentionally complete.
 const PARTNERS: { name: string; note: string }[] = [
+  { name: "Byron", note: "Voice Actor/Creative Writer" },
   { name: "CarlyIsFunny", note: "Comedy · client site" },
   { name: "Homestead Life", note: "Holistic goods · founder vendor" },
   { name: "CJ's Foraging Tours", note: "Guided foraging" },
