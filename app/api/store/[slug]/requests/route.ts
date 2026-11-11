@@ -6,6 +6,7 @@ import { shieldForm } from "@/utils/botSignals";
 import { emailUser, notifyUserInApp } from "@/utils/notifyEmail";
 import { notifyProductRequest } from "@/utils/alerts";
 import { BRAND_STORE_SLUG } from "@/utils/brandShop";
+import { isStoreListing, storeListingGroups } from "@/utils/storeCatalog";
 
 /**
  * "Couldn't find what you were looking for? → request here" (owner,
@@ -74,9 +75,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   // A picked item must belong to one of this store's approved vendors.
   let itemName = itemText;
   if (productId !== null) {
-    const { data: p } = await admin.from("products").select("id, name, vendor_id").eq("id", productId).maybeSingle();
+    const [{ data: p }, listingGroups] = await Promise.all([
+      admin.from("products").select("id, name, vendor_id, variant_of").eq("id", productId).maybeSingle(),
+      storeListingGroups(admin, store.id),
+    ]);
     const { data: member } = p ? await admin.from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("vendor_id", p.vendor_id).eq("status", "approved").maybeSingle() : { data: null };
-    if (!p || !member) return NextResponse.json({ error: "That item isn't sold here." }, { status: 400 });
+    if (!p || !member || !isStoreListing(listingGroups, p)) return NextResponse.json({ error: "That item isn't sold here." }, { status: 400 });
     itemName = String(p.name);
   }
 

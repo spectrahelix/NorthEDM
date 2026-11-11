@@ -21,6 +21,7 @@ import { IN_STOCK_FILTER } from "@/utils/stock";
 import { ItemRequestsPanel } from "./ItemRequestsPanel";
 import { ItemRequestButton, type RequestableItem } from "./ItemRequest";
 import { JoinUsOnline } from "@/app/components/JoinUsOnline";
+import { isStoreListing, storeGroupFilter, storeListingGroups } from "@/utils/storeCatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -56,32 +57,39 @@ export default async function StorefrontPage({ params, searchParams }: { params:
   const isDraft = !storeData.active;
   if (isDraft && !(await viewerCanPreviewStore(storeData.owner_user_id as string))) notFound();
   const store = storeData as unknown as Store;
+  const listingGroups = await storeListingGroups(admin, store.id);
+  const groupFilter = storeGroupFilter(listingGroups);
 
   const { data: members } = await supabase
     .from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("status", "approved");
   const vendorIds = (members ?? []).map((m) => m.vendor_id as number);
 
+  const sellableItems = supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`)
+    .in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").or(IN_STOCK_FILTER).order("created_at", { ascending: false });
+  if (groupFilter) sellableItems.or(groupFilter);
   const [{ data: vendorsData }, { data: productsData }] = await Promise.all([
     vendorIds.length
       ? supabase.from("vendors").select("id, name, category, description").in("id", vendorIds).eq("status", "approved").eq("is_public", true)
       : Promise.resolve({ data: [] as Vendor[] }),
     vendorIds.length
-      ? supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`).in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").or(IN_STOCK_FILTER).order("created_at", { ascending: false })
+      ? sellableItems
       : Promise.resolve({ data: [] as Product[] }),
   ]);
   const vendors = (vendorsData ?? []) as Vendor[];
   // Wallet-rail stores (operator is a coordinator shop) take wallet payments in the shop's currency.
   const rail = await storeRail(admin, (storeData.owner_user_id as string | null) ?? null);
-  const products = (productsData ?? []) as Product[];
+  const products = ((productsData ?? []) as Product[]).filter(p => isStoreListing(listingGroups, p));
   // Every size of every item is shown (owner, 2026-11-05); the ones not on
   // sale (or out of a limited stock) are listed as "Out of stock" and can't
   // be added. Read with the service role — off-sale rows aren't readable to
   // visitors — and only for this store's visible vendors, only display fields.
   const visibleVendorIds = vendors.map((v) => v.id);
+  const offSaleItems = admin.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`)
+    .in("vendor_id", visibleVendorIds).not("id", "in", `(${products.map((p) => p.id).join(",") || 0})`)
+    .order("created_at", { ascending: false });
+  if (groupFilter) offSaleItems.or(groupFilter);
   const offSale = visibleVendorIds.length
-    ? (((await admin.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`)
-        .in("vendor_id", visibleVendorIds).not("id", "in", `(${products.map((p) => p.id).join(",") || 0})`)
-        .order("created_at", { ascending: false })).data ?? []) as Product[])
+    ? (((await offSaleItems).data ?? []) as Product[]).filter(p => isStoreListing(listingGroups, p))
     : [];
   const vendorName = new Map(vendors.map((v) => [v.id, v.name]));
   // The shop's identity on its own page: theme background + display font,

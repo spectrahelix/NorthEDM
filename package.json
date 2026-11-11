@@ -10,6 +10,7 @@
     "check": "node scripts/check-wiring.mjs",
     "check:auth": "node scripts/check-oauth-providers.mjs",
     "test:artisan-audio": "node --no-warnings scripts/test-artisan-audio.mjs",
+    "test:store-slot-plans": "node --no-warnings scripts/test-store-slot-plans.mjs",
     "test:astro-hebrew": "node --no-warnings scripts/test-astro-hebrew.mjs"
   },
   "dependencies": {

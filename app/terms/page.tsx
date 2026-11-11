@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { STORE_SLOT_PLANS } from "@/utils/storePlans";
 
 export const metadata = {
   title: "Terms of Service",
@@ -6,7 +7,7 @@ export const metadata = {
     "Terms for NorthEDM LLC's website, Android app, community, marketplace, FestDash, and paid plans.",
 };
 
-const EFFECTIVE_DATE = "November 10, 2026";
+const EFFECTIVE_DATE = "November 11, 2026";
 
 // Customer-facing terms from the saved LLC draft. Internal publication
 // notes and research references are not part of the agreement.
@@ -80,6 +81,8 @@ const SECTIONS = [
     "id": "subscriptions",
     "title": "9. Subscriptions, billing, and passes",
     "paragraphs": [
+      "New card-paid store plans are available in the sizes shown below. Each slot covers one product listing in that storefront, including its size options. Selected listings still use a slot when sold out. You can change your selection in Manage store and keep other products in your inventory.",
+      "Your existing subscription price and access continue under the terms you accepted. To choose a different monthly card tier, cancel future renewal through Manage billing and select the new tier after the paid period ends. Before choosing a smaller plan, save a storefront selection that fits its limit. New card-paid FestDash and Store bundles include a 30-slot storefront. Coordinator-collected fee arrangements follow their agreed terms.",
       "Paid shop and listing plans may renew automatically only under the price, renewal frequency, and other material terms presented when you enroll and expressly authorize recurring billing. Promotional pricing must identify the later recurring price before consent. A change to recurring charges requires appropriate advance disclosure and any consent required by law.",
       "You can cancel future renewals through Manage billing on the relevant shop or vendor dashboard. If that control is unavailable or does not work, contact northedm1@gmail.com for cancellation assistance. A valid cancellation must be honored under applicable law; uninstalling the app alone is not cancellation. The disclosed plan terms determine remaining paid-period access and any refund, subject to mandatory rights. Failed payments may suspend paid features.",
       "A one-time FestDash pass lasts for the period shown when purchased. It does not renew automatically unless a separate recurring offer is clearly presented and accepted. Any waived fee or benefit applies only as described in that offer."
@@ -209,6 +212,13 @@ export default function TermsPage() {
               {section.title}
             </h2>
             <div className="space-y-3 text-sm leading-7 text-neutral-300">
+              {section.id === "subscriptions" && (
+                <table className="w-full max-w-md border-collapse text-left">
+                  <caption className="mb-2 text-left font-semibold text-white">Monthly store plans</caption>
+                  <thead><tr className="border-b border-white/15"><th scope="col" className="px-2 py-1">Product slots</th><th scope="col" className="px-2 py-1">Monthly price in USD</th></tr></thead>
+                  <tbody>{STORE_SLOT_PLANS.map(plan => <tr key={plan.slots} className="border-b border-white/10"><th scope="row" className="px-2 py-1 font-normal">{plan.slots}</th><td className="px-2 py-1">${(plan.cents / 100).toFixed(2)}</td></tr>)}</tbody>
+                </table>
+              )}
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
