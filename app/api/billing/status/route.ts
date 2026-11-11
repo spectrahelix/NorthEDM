@@ -23,6 +23,7 @@ export async function GET(req: Request) {
   let storeBilling: string | null = null;
   let catalogStoreId: string | null = null;
   let currentSubscriptionId: string | null = null;
+  let ownsStore = false;
   // Every shop can pay by card; wallet-rail shops may also pay their coordinator in dalasi.
   let cardRail = false, walletRail = false;
   if (vendorId) {
@@ -44,6 +45,7 @@ export async function GET(req: Request) {
     catalogStoreId = store.id;
     storeBilling = store.billing_status;
     currentSubscriptionId = store.stripe_subscription_id;
+    ownsStore = store.owner_user_id === user.id;
   }
   // The bundle covers both products, so a bundle row satisfies either card.
   const kinds = kind === "bundle" ? ["bundle"] : [kind, "bundle"];
@@ -68,6 +70,8 @@ export async function GET(req: Request) {
     bundle_available: bundleAvailable, bundle_cents: q.bundle_cents, single_cents: q.single_cents, wallet_rail: walletRail,
     bundle_quote: bundleQuote ? { amount_cents: bundleQuote.amount_cents, recurring_cents: bundleQuote.recurring_cents } : null,
     slot_limit: catalog?.slot_limit ?? null, selected_slots: catalog?.listing_groups.length ?? 0,
+    can_upgrade: ownsStore && row?.kind === "store" && row.status === "active" &&
+      !!catalog?.slot_limit && catalog.slot_limit < 30 && catalog.stripe_subscription_id === currentSubscriptionId,
     quoted_slots: q.store_slots, pending_checkout: !!catalog?.checkout_attempt,
     manually_active: kind === "store" && storeBilling === "active" && !isActiveRow(row),
     can_subscribe: !row || row.status === "canceled" || row.status === "incomplete_expired",

@@ -7,6 +7,7 @@ export const STORE_SLOT_PLANS = [
 ] as const;
 export type StoreSlots = (typeof STORE_SLOT_PLANS)[number]['slots'];
 export const STORE_PLAN_TERMS_VERSION = '2026-11-11';
+export const STORE_UPGRADE_TERMS_VERSION = '2026-11-11-upgrade';
 export const BUNDLE_STORE_SLOTS: StoreSlots = 30;
 
 export function storeSlotPlan(value: unknown) {
@@ -23,6 +24,26 @@ export type StoreCatalogPlan = {
   checkout_expires_at: string | null;
   checkout_quote_key: string | null;
   stripe_subscription_id: string | null;
+  pending_upgrade: StorePlanUpgradeAttempt | null;
+};
+
+export type StoreUpgradeQuote = {
+  slots: StoreSlots;
+  proration_date: number;
+  adjustment_cents: number;
+  recurring_cents: number | null;
+  period_end: number;
+  version: typeof STORE_UPGRADE_TERMS_VERSION;
+};
+
+export type StorePlanUpgradeAttempt = StoreUpgradeQuote & {
+  id: string;
+  subscription_id: string;
+  from_slots: StoreSlots;
+  price_id: string;
+  previous_invoice_id: string;
+  started_at: number;
+  invoice_id?: string;
 };
 
 export function listingGroupsForStore(plan: StoreCatalogPlan | null): Set<number> | null {
