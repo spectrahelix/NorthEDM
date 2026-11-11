@@ -17,6 +17,10 @@ passes. A green build does not prove that payments or bank deposits work.
 1. Apply `supabase/migrations/20261110230000_artisan_audio.sql` to the target
    Supabase project after the existing artisan and access-hardening migrations.
    Then apply `supabase/migrations/20261110233610_artisan_audio_activation_gate.sql`.
+   Public profiles and the artisan directory use `PUBLIC_PROFILE_COLUMNS`,
+   limited to columns already readable anonymously. Member-only username,
+   application-status, and vendor-link fields are omitted for signed-out reads.
+   No profile permissions were expanded; contact/address columns remain protected.
    These create private sales/order/payout tables, public preview storage,
    private immutable original storage, and a database-enforced purchase gate.
    Validate actual live grants and storage
