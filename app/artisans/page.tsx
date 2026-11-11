@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
 import { RankBadge } from "@/app/components/RankBadge";
-import { PROFILE_COLUMNS, type UserProfile, type ArtisanWork } from "@/utils/supabase/user-profiles";
+import { PUBLIC_PROFILE_COLUMNS, type UserProfile, type ArtisanWork } from "@/utils/supabase/user-profiles";
 
 export const metadata = {
   title: "Artisans",
@@ -15,7 +15,7 @@ export default async function ArtisansPage() {
 
   const { data: artisanData } = await supabase
     .from("user_profiles")
-    .select(PROFILE_COLUMNS)
+    .select(PUBLIC_PROFILE_COLUMNS)
     .eq("is_artisan", true)
     .order("created_at", { ascending: false });
 

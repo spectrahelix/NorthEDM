@@ -49,7 +49,7 @@ export default async function ProfilePage({
     data: { user: currentUser },
   } = await supabase.auth.getUser();
 
-  const profile = await getUserProfile(supabase, id);
+  const profile = await getUserProfile(supabase, id, { publicOnly: !currentUser });
   if (!profile) notFound();
 
   const [

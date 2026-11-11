@@ -215,6 +215,7 @@ export default function TermsPage() {
               {section.id === "promotions" && (
                 <p><Link href="/promote/terms" className="text-[#3AFFD4] underline underline-offset-4">Read the Promoter and Coordinator Agreement →</Link></p>
               )}
+              {section.id === "your-content" && <p><Link href="/audio/terms" className="text-[#3AFFD4] underline underline-offset-4">Audio portfolio, purchase and seller terms →</Link></p>}
             </div>
           </section>
         ))}
