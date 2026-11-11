@@ -11,6 +11,7 @@ import { StoreLogoUpload } from "@/app/components/StoreLogoUpload";
 import { BillingCard } from "@/app/components/BillingCard";
 import { PayoutsCard } from "@/app/components/PayoutsCard";
 import { StoreOrders } from "@/app/components/StoreOrders";
+import { StoreCatalogSlots } from "@/app/components/StoreCatalogSlots";
 
 type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string; operator_fee_bps: number; theme: string; font: string | null; allow_custom_font: boolean; allow_custom_theme: boolean; theme_options: string[]; logo_url: string | null };
 type Member = { vendor_id: number; status: string; name: string; category: string | null };
@@ -28,6 +29,7 @@ export default function StoreManagePage() {
   const [accent, setAccent] = useState("#39FF14");
   const [addId, setAddId] = useState("");
   const [msg, setMsg] = useState("");
+  const [catalogRevision, setCatalogRevision] = useState(0);
 
   async function load() {
     const res = await fetch(`/api/store/${slug}`);
@@ -71,7 +73,8 @@ export default function StoreManagePage() {
         </div>
 
         {/* Monthly store subscription — drives whether the store can take orders */}
-        <div className="mt-8"><BillingCard kind="store" storeSlug={slug} what="Store subscription" /></div>
+        <div className="mt-8"><BillingCard kind="store" storeSlug={slug} what="Store subscription" catalogRevision={catalogRevision} /></div>
+        <StoreCatalogSlots slug={slug} onSaved={() => setCatalogRevision(revision => revision + 1)} />
         <div className="mt-4"><PayoutsCard returnTo={`/${slug}/manage`} /></div>
         <StoreOrders slug={slug} />
 

@@ -14,6 +14,7 @@ import { loadLocalRules, transferFeeCents } from "@/utils/localRules";
 import { BRAND_STORE_SLUG, brandCodeTerms, brandDiscount, isActivePromoter, promoterForCode } from "@/utils/brandShop";
 import { resolveCode } from "@/utils/discountCodes";
 import { hasStock } from "@/utils/stock";
+import { isStoreListing, storeListingGroups } from "@/utils/storeCatalog";
 import { cookies } from "next/headers";
 
 // Checkout for an embedded store (/[store]). Mirrors /api/shop/checkout's rules:
@@ -47,8 +48,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   }
 
   // Only vendors actually in this store may be sold here.
-  const { data: members } = await admin
-    .from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("status", "approved");
+  const [{ data: members }, listingGroups] = await Promise.all([
+    admin.from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("status", "approved"),
+    storeListingGroups(admin, store.id),
+  ]);
   const memberIds = new Set((members ?? []).map((m) => Number(m.vendor_id)));
   if (memberIds.size === 0) return NextResponse.json({ error: "This store has no vendors yet." }, { status: 400 });
 
@@ -56,7 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const ids = items.map((i) => Number(i.id)).filter(Number.isFinite);
   const { data: products } = await admin
     .from("products")
-    .select("id, vendor_id, name, price, inventory_count, is_public, status, weight_g")
+    .select("id, vendor_id, name, price, inventory_count, is_public, status, weight_g, variant_of")
     .in("id", ids);
   const byId = new Map((products ?? []).map((p) => [Number(p.id), p]));
 
@@ -79,7 +82,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     if (!p || !p.is_public || p.status !== "published" || !sellable.has(Number(p.vendor_id))) {
       return NextResponse.json({ error: "An item is no longer available." }, { status: 400 });
     }
-    if (!memberIds.has(Number(p.vendor_id))) {
+    if (!memberIds.has(Number(p.vendor_id)) || !isStoreListing(listingGroups, p)) {
       return NextResponse.json({ error: "An item isn't sold by this store." }, { status: 400 });
     }
     if (!hasStock(p, qty)) {
