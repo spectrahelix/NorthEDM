@@ -6,6 +6,7 @@ import { applyCode, describeCode, redeemCode, resolveCode, type ResolvedCode } f
 import { selfReferral } from "@/utils/coordinator";
 import { BUNDLE_STORE_SLOTS, STORE_PLAN_TERMS_VERSION, storeSlotPlan } from "@/utils/storePlans";
 import { bindStorePlanCheckout, releaseStorePlanCheckout, reserveStorePlanCheckout } from "@/utils/storePlanCheckout";
+import { syncUpgradedStoreSlots, upgradePricePlan } from "@/utils/storePlanUpgrade";
 
 /**
  * Card-paid monthly subscriptions (owner's model, 2026-11-02):
@@ -207,18 +208,23 @@ async function upsertFromSubscription(db: SupabaseClient, sub: SubLike, paidChec
   };
   const billing = ACTIVE.has(sub.status) ? "active" : sub.status === "past_due" ? "past_due" : "canceled";
   if (m.store_plan_attempt) {
-    const plan = storeSlotPlan(m.store_slots);
+    const initialPlan = storeSlotPlan(m.store_slots);
     const item = sub.items.data[0];
     const price = item?.price;
     const acceptedPrice = Number(m.store_plan_list_cents);
-    if (!row.store_id || !plan || kind === "festdash" || (kind === "bundle" && plan.slots !== BUNDLE_STORE_SLOTS) ||
-        (kind === "store" && acceptedPrice !== plan.cents) || !m.store_plan_version ||
-        sub.items.data.length !== 1 || !item || !price || item.quantity !== 1 || price.currency !== "usd" || price.unit_amount !== acceptedPrice ||
+    const upgradedPlan = kind === "store" ? upgradePricePlan(price) : undefined;
+    if (!row.store_id || !initialPlan || kind === "festdash" || (kind === "bundle" && initialPlan.slots !== BUNDLE_STORE_SLOTS) ||
+        (kind === "store" && acceptedPrice !== initialPlan.cents) || !m.store_plan_version ||
+        sub.items.data.length !== 1 || !item || !price || item.quantity !== 1 || price.currency !== "usd" ||
+        price.unit_amount !== (upgradedPlan?.cents ?? acceptedPrice) ||
         price.recurring?.interval !== "month" || price.recurring.interval_count !== 1) {
       throw new Error("Stripe subscription does not match the selected store plan.");
     }
+    const slots = upgradedPlan
+      ? await syncUpgradedStoreSlots(db, row.store_id, sub, upgradedPlan.slots)
+      : initialPlan.slots;
     const { error } = await db.rpc("sync_store_plan_subscription", {
-      p_store_id: row.store_id, p_slots: plan.slots, p_attempt: m.store_plan_attempt,
+      p_store_id: row.store_id, p_slots: slots, p_attempt: m.store_plan_attempt,
       p_subscription_id: sub.id, p_billing_status: billing, p_can_activate: paidCheckout && sub.status === "active",
     });
     if (error) throw new Error(error.message);
@@ -249,7 +255,8 @@ export async function handleSubscriptionEvent(db: SupabaseClient, event: Stripe.
     if (codeId) await redeemCode(db, codeId, session.metadata?.user_id || null);
     return true;
   }
-  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted" ||
+      event.type === "customer.subscription.pending_update_applied") {
     const received = event.data.object as SubLike;
     const current = received.metadata?.store_plan_attempt ? await stripe.subscriptions.retrieve(received.id) : received;
     await upsertFromSubscription(db, current as SubLike);

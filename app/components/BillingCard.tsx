@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatMoney } from "@/utils/money";
 import { BUNDLE_STORE_SLOTS, STORE_PLAN_TERMS_VERSION, STORE_SLOT_PLANS, type StoreSlots } from "@/utils/storePlans";
+import { StorePlanUpgrade } from "@/app/components/StorePlanUpgrade";
 
 type Status = {
   not_applicable?: boolean; active?: boolean; status?: string | null; current_period_end?: string | null; active_kind?: string | null;
@@ -11,6 +12,7 @@ type Status = {
   bundle_quote?: { amount_cents: number; recurring_cents: number } | null;
   slot_limit?: StoreSlots | null; selected_slots?: number; quoted_slots?: StoreSlots | null;
   manually_active?: boolean; can_subscribe?: boolean; pending_checkout?: boolean;
+  can_upgrade?: boolean;
 };
 
 async function getBillingStatus(kind: "festdash" | "store", slug: string | undefined, slots: StoreSlots, code: string): Promise<Status | null> {
@@ -110,7 +112,7 @@ export function BillingCard({ kind, storeSlug, what, returnPath, catalogRevision
               : `${what === "FestDash listing" ? "Your shop is hidden from FestDash until the listing is active." : "Your store can't take orders until the subscription is active."} ${s.discount_label ? `${s.discount_label}: ${price} instead of ${formatMoney(s.list_cents ?? 0, "USD")}${s.recurring_cents != null && s.recurring_cents !== s.amount_cents ? `, then ${formatMoney(s.recurring_cents, "USD")}/month` : ""}.` : ""}`}
           </p>
           {kind === "store" && s.slot_limit && <p className="text-sm text-neutral-300">{s.selected_slots ?? 0} of {s.slot_limit} storefront slots selected.</p>}
-          {kind === "store" && s.active && <p className="mt-1 text-xs text-neutral-400">To change tiers, cancel renewal in Manage billing and select a new plan when the paid period ends.</p>}
+          {kind === "store" && s.active && <p className="mt-1 text-xs text-neutral-400">To move to a smaller plan, cancel renewal in Manage billing and select the smaller plan after the paid period ends.</p>}
           {err && <p className="mt-1 text-xs text-[#FF5C3A]">{err}</p>}
         </div>
         {s.active || s.has_customer ? (
@@ -118,6 +120,7 @@ export function BillingCard({ kind, storeSlug, what, returnPath, catalogRevision
         ) : null}
       </div>
 
+      {s.can_upgrade && storeSlug && s.slot_limit && <StorePlanUpgrade slug={storeSlug} currentSlots={s.slot_limit} />}
       {!active && (s.can_subscribe ?? !s.has_customer) && (
         <div className="mt-4 space-y-3">
           {kind === "store" && <fieldset>
