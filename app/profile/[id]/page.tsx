@@ -6,6 +6,7 @@ import { getUserProfile } from "@/utils/supabase/user-profiles";
 import { RankBadge } from "@/app/components/RankBadge";
 import { getRoleColor } from "@/app/components/roleColors";
 import { ProfileHeader } from "@/app/components/ProfileHeader";
+import { MessageBlockButton } from "@/app/components/MessageBlockButton";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
 import { ProfileCTAs } from "@/app/components/ProfileCTAs";
 import { VouchersCard } from "@/app/components/VouchersCard";
@@ -99,9 +100,14 @@ export default async function ProfilePage({
 
   const isOwn = currentUser?.id === id;
   // Who may change this member's extra ranks (archon / warden / moderator).
-  const { data: viewer } = currentUser
-    ? await supabase.from("user_profiles").select("id, role, extra_ranks, is_site_moderator").eq("id", currentUser.id).maybeSingle()
-    : { data: null };
+  const [{ data: viewer }, { data: messageBlock }] = await Promise.all([
+    currentUser
+      ? supabase.from("user_profiles").select("id, role, extra_ranks, is_site_moderator").eq("id", currentUser.id).maybeSingle()
+      : { data: null },
+    currentUser && !isOwn
+      ? supabase.from("message_blocks").select("blocked_id").eq("blocker_id", currentUser.id).eq("blocked_id", id).maybeSingle()
+      : { data: null },
+  ]);
   const rankEditable = !!viewer && canEditRanks(viewer, profile);
 
   // Upcoming shows (vendors). Hidden from others if the vendor toggled hide.
@@ -180,7 +186,12 @@ export default async function ProfilePage({
               isOwn ? (
                 <Link href="/profile/edit" className="rounded-xl border border-white/10 px-4 py-2 text-sm text-neutral-300 transition hover:bg-white/5 hover:text-white">Edit profile</Link>
               ) : (
-                <Link href={currentUser ? `/messages?to=${id}` : "/signup"} className="rounded-xl bg-[#3AFFD4]/10 px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/20">Send message</Link>
+                <>
+                  {!messageBlock && (
+                    <Link href={currentUser ? `/messages?to=${id}` : "/signup"} className="rounded-xl bg-[#3AFFD4]/10 px-4 py-2 text-sm text-[#3AFFD4] transition hover:bg-[#3AFFD4]/20">Send message</Link>
+                  )}
+                  {currentUser && <MessageBlockButton viewerId={currentUser.id} memberId={id} memberName={profile.display_name} blocked={!!messageBlock} />}
+                </>
               )
             }
           />

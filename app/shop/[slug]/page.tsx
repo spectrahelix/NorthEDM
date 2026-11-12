@@ -5,6 +5,7 @@ import AddToCart from "./AddToCart";
 import { SpecsTable } from "@/app/components/SpecsTable";
 import type { SpecsColumns } from "@/utils/specs";
 import { Price } from "@/app/components/CurrencyContext";
+import { MessageSellerLink } from "@/app/components/MessageSellerLink";
 
 type P = Partial<SpecsColumns> & {
   id: string; slug: string; name: string; description: string;
@@ -57,6 +58,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 product={{ id: p.id, slug: p.slug, name: p.name, price_cents: p.price_cents, image: images[0] }}
                 stock={p.inventory_count}
               />
+              <MessageSellerLink item={{ shopItem: p.id }} name={p.name} className="mt-3" />
             </div>
           </div>
         </div>

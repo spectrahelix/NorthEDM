@@ -1,41 +1,57 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { PROFILE_COLUMNS, type UserProfile } from "@/utils/supabase/user-profiles";
+
+type Recipient = { id: string; display_name: string; role: string };
+const RECIPIENT_COLUMNS = "id, display_name, role";
+
+export type MessageDraft = {
+  recipientId?: string;
+  subject?: string;
+  item?: { name: string; path: string };
+};
 
 export function ComposeModal({
   userId,
-  prefilledTo,
+  draft,
+  blockedIds,
   onClose,
   onSent,
 }: {
   userId: string;
-  prefilledTo?: string;
+  draft: MessageDraft;
+  blockedIds: ReadonlySet<string>;
   onClose: () => void;
   onSent: () => void;
 }) {
   const [toQuery, setToQuery] = useState("");
-  const [toResults, setToResults] = useState<UserProfile[]>([]);
-  const [recipient, setRecipient] = useState<UserProfile | null>(null);
-  const [subject, setSubject] = useState("");
+  const [toResults, setToResults] = useState<Recipient[]>([]);
+  const [recipient, setRecipient] = useState<Recipient | null>(null);
+  const [subject, setSubject] = useState(draft.subject ?? "");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const searchRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Prefill recipient if provided
+  const blocked = !!recipient && blockedIds.has(recipient.id);
+
   useEffect(() => {
-    if (!prefilledTo) return;
+    if (!draft.recipientId) return;
+    let current = true;
     const supabase = createClient();
     supabase
       .from("user_profiles")
-      .select(PROFILE_COLUMNS)
-      .eq("id", prefilledTo)
-      .single()
+      .select(RECIPIENT_COLUMNS)
+      .eq("id", draft.recipientId)
+      .maybeSingle()
       .then(({ data }) => {
-        if (data) setRecipient(data as UserProfile);
+        if (!current) return;
+        if (data) setRecipient(data as Recipient);
+        else setError("This account is unavailable for messaging.");
       });
-  }, [prefilledTo]);
+    return () => { current = false; };
+  }, [draft.recipientId]);
 
   async function searchUsers(q: string) {
     if (!q.trim() || q.trim().length < 2) {
@@ -45,11 +61,11 @@ export function ComposeModal({
     const supabase = createClient();
     const { data } = await supabase
       .from("user_profiles")
-      .select(PROFILE_COLUMNS)
+      .select(RECIPIENT_COLUMNS)
       .ilike("display_name", `%${q.trim()}%`)
       .neq("id", userId)
       .limit(6);
-    setToResults((data ?? []) as UserProfile[]);
+    setToResults((data ?? []) as Recipient[]);
   }
 
   function onToInput(val: string) {
@@ -63,6 +79,7 @@ export function ComposeModal({
       setError("Please select a recipient.");
       return;
     }
+    if (blocked || sending) return;
     if (!subject.trim() || !body.trim()) {
       setError("Subject and body are required.");
       return;
@@ -75,19 +92,13 @@ export function ComposeModal({
       recipient_id: recipient.id,
       subject: subject.trim(),
       body: body.trim(),
+      ...(draft.item ? { item_path: draft.item.path } : {}),
     });
     if (sendError) {
-      setError(sendError.message);
+      setError(sendError.code === "42501" ? "Messaging is unavailable for this account." : "Couldn't send your message. Try again.");
       setSending(false);
       return;
     }
-    // Notify recipient
-    await supabase.from("notifications").insert({
-      user_id: recipient.id,
-      type: "message",
-      message: `New message from ${(await supabase.from("user_profiles").select("display_name").eq("id", userId).single()).data?.display_name ?? "someone"}: ${subject.trim()}`,
-      link: "/messages",
-    });
     setSending(false);
     onSent();
   }
@@ -99,7 +110,7 @@ export function ComposeModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-neutral-900 p-6 shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-label="New message" className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-neutral-900 p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="font-bebas text-3xl tracking-wide">New Message</h2>
           <button onClick={onClose} className="text-xl text-neutral-500 transition hover:text-white">
@@ -119,14 +130,14 @@ export function ComposeModal({
                   {recipientInitials}
                 </div>
                 <span className="text-sm text-neutral-100">{recipient.display_name}</span>
-                <button
+                {!draft.item && <button
                   onClick={() => { setRecipient(null); setToQuery(""); }}
                   className="ml-auto text-neutral-600 hover:text-white"
                 >
                   ✕
-                </button>
+                </button>}
               </div>
-            ) : (
+            ) : draft.item ? <p className="text-sm text-neutral-400">{error || "Finding the recipient…"}</p> : (
               <>
                 <input
                   type="text"
@@ -167,6 +178,7 @@ export function ComposeModal({
             )}
           </div>
 
+          {draft.item && <Link href={draft.item.path} className="block rounded-xl border border-white/10 p-3 text-sm text-[#3AFFD4] hover:underline">{draft.item.name}</Link>}
           {/* Subject */}
           <div>
             <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
@@ -196,7 +208,8 @@ export function ComposeModal({
             />
           </div>
 
-          {error && <p className="text-sm text-[#FF5C3A]">{error}</p>}
+          {blocked && <p className="text-sm text-neutral-400">Unblock this account in Messages to contact them.</p>}
+          {error && <p role="alert" className="text-sm text-[#FF5C3A]">{error}</p>}
 
           <div className="flex justify-end gap-3 pt-1">
             <button
@@ -207,7 +220,7 @@ export function ComposeModal({
             </button>
             <button
               onClick={send}
-              disabled={sending}
+              disabled={sending || !recipient || blocked}
               className="rounded-xl bg-[#39FF14] px-5 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {sending ? "Sending…" : "Send Message"}

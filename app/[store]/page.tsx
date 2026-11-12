@@ -26,8 +26,8 @@ import { isStoreListing, storeGroupFilter, storeListingGroups } from "@/utils/st
 export const dynamic = "force-dynamic";
 
 type Store = { id: string; slug: string; name: string; tagline: string | null; accent_color: string };
-type Vendor = { id: number; name: string | null; category: string | null; description: string | null };
-type Product = { id: number; vendor_id: number; name: string | null; category: string | null; price: number | null; image_url: string | null; variant_of: number | null; variant_label: string | null };
+type Vendor = { id: number; name: string | null; category: string | null; description: string | null; user_id: string | null; suspended_at: string | null };
+type Product = { id: number; vendor_id: number; name: string | null; category: string | null; price: number | null; image_url: string | null; variant_of: number | null; variant_label: string | null; is_public: boolean | null; status: string | null };
 
 export async function generateMetadata({ params }: { params: Promise<{ store: string }> }): Promise<Metadata> {
   const { store: raw } = await params;
@@ -64,12 +64,12 @@ export default async function StorefrontPage({ params, searchParams }: { params:
     .from("store_vendors").select("vendor_id").eq("store_id", store.id).eq("status", "approved");
   const vendorIds = (members ?? []).map((m) => m.vendor_id as number);
 
-  const sellableItems = supabase.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`)
+  const sellableItems = supabase.from("products").select(`id, vendor_id, name, category, price, image_url, is_public, status, ${VARIANT_COLUMNS}`)
     .in("vendor_id", vendorIds).eq("is_public", true).eq("status", "published").or(IN_STOCK_FILTER).order("created_at", { ascending: false });
   if (groupFilter) sellableItems.or(groupFilter);
   const [{ data: vendorsData }, { data: productsData }] = await Promise.all([
     vendorIds.length
-      ? supabase.from("vendors").select("id, name, category, description").in("id", vendorIds).eq("status", "approved").eq("is_public", true)
+      ? supabase.from("vendors").select("id, name, category, description, user_id, suspended_at").in("id", vendorIds).eq("status", "approved").eq("is_public", true)
       : Promise.resolve({ data: [] as Vendor[] }),
     vendorIds.length
       ? sellableItems
@@ -84,7 +84,7 @@ export default async function StorefrontPage({ params, searchParams }: { params:
   // be added. Read with the service role — off-sale rows aren't readable to
   // visitors — and only for this store's visible vendors, only display fields.
   const visibleVendorIds = vendors.map((v) => v.id);
-  const offSaleItems = admin.from("products").select(`id, vendor_id, name, category, price, image_url, ${VARIANT_COLUMNS}`)
+  const offSaleItems = admin.from("products").select(`id, vendor_id, name, category, price, image_url, is_public, status, ${VARIANT_COLUMNS}`)
     .in("vendor_id", visibleVendorIds).not("id", "in", `(${products.map((p) => p.id).join(",") || 0})`)
     .order("created_at", { ascending: false });
   if (groupFilter) offSaleItems.or(groupFilter);
@@ -138,8 +138,10 @@ export default async function StorefrontPage({ params, searchParams }: { params:
       : billing === "past_due" || billing === "canceled"
         ? "This store has paused ordering. Browsing is still available."
         : undefined;
+  const messageableVendors = new Set(vendors.filter(vendor => vendor.user_id && vendor.user_id !== viewer?.id && !vendor.suspended_at).map(vendor => vendor.id));
   const cartProducts: StoreProduct[] = [...products.map((p) => ({ p, available: true })), ...offSale.map((p) => ({ p, available: false }))].map(({ p, available }) => ({
     available,
+    canMessageSeller: !isDraft && p.is_public === true && p.status === "published" && messageableVendors.has(p.vendor_id),
     id: p.id,
     name: p.name ?? "Item",
     price_cents: Math.round(Number(p.price ?? 0) * 100),

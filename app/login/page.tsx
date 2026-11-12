@@ -172,7 +172,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-neutral-500">
           New to NorthEDM?{" "}
-          <Link href="/signup" className="text-[#3AFFD4] transition hover:opacity-80">
+          <Link href={next.startsWith("/messages?") ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="text-[#3AFFD4] transition hover:opacity-80">
             Create an account
           </Link>
         </p>

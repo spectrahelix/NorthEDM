@@ -10,6 +10,7 @@ import { groupVariants } from "@/utils/productVariants";
 import { formatMoney } from "@/utils/money";
 import { brandsForVendors, viewerWantsShopFonts } from "@/utils/shopBrand";
 import { ShopFontToggle } from "@/app/components/ShopFontToggle";
+import { MessageSellerLink } from "@/app/components/MessageSellerLink";
 
 import { VENDOR_PUBLIC_COLUMNS } from "@/utils/vendorColumns";
 import { Price, CurrencyPill } from "@/app/components/CurrencyContext";
@@ -30,6 +31,7 @@ type Vendor = {
   is_public: boolean | null;
   is_founder: boolean | null;
   status: string | null;
+  suspended_at: string | null;
   user_id: string | null;
   currency?: string | null;
   website: string | null;
@@ -232,11 +234,11 @@ export default async function VendorDetailPage({
                 const product = g.options[0];
                 const sized = g.options.length > 1;
                 return (
-                  <Link
+                  <article
                     key={g.key}
-                    href={`/marketplace/${vendor.id}/item/${product.id}`}
                     className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:bg-white/[0.06]"
                   >
+                    <Link href={`/marketplace/${vendor.id}/item/${product.id}`} className="flex flex-1 flex-col">
                     <ProductThumb src={g.image_url} alt={g.title} />
                     <div className="flex flex-1 flex-col p-3">
                       <h3 className="line-clamp-2 text-sm font-semibold text-white" style={display}>{sized ? g.title : (product.name || "Unnamed Product")}</h3>
@@ -251,7 +253,11 @@ export default async function VendorDetailPage({
                         <Price cents={Math.round(Number(product.price ?? 0) * 100)} currency={vendor.currency ?? "USD"} className={`text-xl ${display ? "" : "font-bebas"}`} style={{ color: accent, ...display }} />
                       </div>
                     </div>
-                  </Link>
+                    </Link>
+                    {vendor.user_id && vendor.user_id !== user?.id && !vendor.suspended_at && (
+                      <MessageSellerLink item={{ product: product.id }} name={g.title} className="mx-3 mb-3" />
+                    )}
+                  </article>
                 );
               })
             ) : (
