@@ -8,6 +8,7 @@ import { getRoleColor } from "@/app/components/roleColors";
 import { ProfileHeader } from "@/app/components/ProfileHeader";
 import { MessageBlockButton } from "@/app/components/MessageBlockButton";
 import { ArtisanWorks } from "@/app/components/ArtisanWorks";
+import { ArtisanProfessionalDetails } from "@/app/components/ArtisanProfessionalDetails";
 import { ProfileCTAs } from "@/app/components/ProfileCTAs";
 import { VouchersCard } from "@/app/components/VouchersCard";
 import { RankEditor } from "@/app/components/RankEditor";
@@ -212,6 +213,7 @@ export default async function ProfilePage({
               )}
             </p>
           )}
+          {isArtisan && <ArtisanProfessionalDetails profile={profile} className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2" />}
           {/* City and pronouns live in the header now; only the website link stays here. */}
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
             {profile.website && (
