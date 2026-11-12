@@ -87,6 +87,25 @@ export default function PortfolioPage() {
         <h2 className="mt-12 mb-5 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
           Partners &amp; Contributors
         </h2>
+        <a
+          id="primal-sounds"
+          href="https://www.primal-sounds.com/contact"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group mb-4 flex max-w-lg scroll-mt-44 items-center justify-between gap-3 rounded-xl border border-amber-300/25 border-l-2 border-l-amber-400 bg-linear-to-r from-[#22180d] to-[#121110] px-4 py-3 transition hover:border-amber-300/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
+        >
+          <span className="min-w-0">
+            <span className="block font-bebas text-2xl leading-none tracking-wider text-neutral-100">
+              Primal <span className="text-amber-300">Sounds</span>
+            </span>
+            <span className="mt-1 block text-xs leading-snug text-neutral-300">
+              Nick Patrick · Event production &amp; AV rental
+            </span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300/30 px-2.5 py-1.5 text-xs font-medium text-amber-200 transition group-hover:bg-amber-300/10">
+            Get a quote <span aria-hidden="true">↗</span>
+          </span>
+        </a>
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] divide-y divide-white/5">
           {PARTNERS.map((c) => (
             <div key={c.name} className="flex items-center justify-between gap-4 px-5 py-3">
