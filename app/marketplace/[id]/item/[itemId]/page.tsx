@@ -15,6 +15,7 @@ import { VARIANT_COLUMNS, baseName, groupKeyOf } from "@/utils/productVariants";
 import { formatMoney } from "@/utils/money";
 import { hasStock, stockLabel } from "@/utils/stock";
 import { serviceClient } from "@/utils/coordinator";
+import { MessageSellerLink } from "@/app/components/MessageSellerLink";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ async function load(id: string, itemId: string) {
   const key = groupKeyOf(product as { id: number; name: string | null; variant_of: number | null });
   const [{ data: gallery }, { data: vendor }, { data: sibs }] = await Promise.all([
     supabase.from("product_images").select("url").eq("product_id", product.id).order("position").order("id"),
-    supabase.from("vendors").select("id, name, accent_color, user_id, currency").eq("id", product.vendor_id).maybeSingle(),
+    supabase.from("vendors").select("id, name, accent_color, user_id, currency, status, is_public, suspended_at").eq("id", product.vendor_id).maybeSingle(),
     // Every size of the item (owner, 2026-11-05): off-sale sizes are listed as
     // "Out of stock". Service role, display fields only, this item's group only.
     serviceClient().from("products").select("id, name, price, inventory_count, status, is_public, variant_label")
@@ -134,11 +135,15 @@ export default async function ItemPage({ params }: Params) {
             {/* Shops that post parcels from the US (not the Gambian hand-over shops) show a shipping estimate. */}
             {vendorCurrency === "USD" && <ShipEstimate productId={p.id as number} accent={accent} />}
             <div className="mt-6 flex flex-wrap gap-2">{brand.hasFont && <ShopFontToggle enabled={viewerFonts} />}<CurrencyPill options={VIEW_CURRENCIES} /></div>
-            <br />
-            <Link href={`/marketplace/${p.vendor_id}`}
-              className="mt-8 inline-block rounded-xl border border-white/15 px-5 py-2.5 text-sm text-neutral-200 transition hover:bg-white/5">
-              More from {vendorName} →
-            </Link>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {live && vendor?.user_id && vendor.is_public && vendor.status === "approved" && !vendor.suspended_at && (
+                <MessageSellerLink item={{ product: p.id }} name={p.name || title} />
+              )}
+              <Link href={`/marketplace/${p.vendor_id}`}
+                className="inline-flex items-center rounded-lg border border-white/15 px-3 py-1.5 text-sm text-neutral-200 transition hover:bg-white/5">
+                More from {vendorName} →
+              </Link>
+            </div>
           </div>
         </div>
       </div>

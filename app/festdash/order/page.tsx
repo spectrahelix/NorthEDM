@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ACCEPT_WEB_IMAGES, toWebImage } from "@/utils/webImage";
 import { ProductThumb } from "@/app/components/ProductThumb";
+import { MessageSellerLink } from "@/app/components/MessageSellerLink";
 
 import LiveMap from "@/app/components/festdash/LiveMap";
 import { formatMoney } from "@/utils/money";
@@ -56,6 +57,7 @@ export default function OrderPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [canMessageSeller, setCanMessageSeller] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
   const [loadingMenu, setLoadingMenu] = useState(false);
@@ -132,6 +134,7 @@ export default function OrderPage() {
     const res = await fetch(`/api/festdash/menu/${vendor.id}`);
     const json = await res.json();
     setMenuItems(json.items ?? []);
+    setCanMessageSeller(json.canMessageSeller === true);
     setLoadingMenu(false);
     setStep(2);
     if ((vendor.fulfillment_modes ?? "both") === "pickup") { setFulfillment("pickup"); setDeliveryWindow("ASAP"); }
@@ -473,6 +476,7 @@ export default function OrderPage() {
                               <p className="text-xs text-neutral-500 line-clamp-2">{item.description}</p>
                             )}
                             <p className="mt-1 text-sm text-orange-400">{money(Math.round(item.price * 100))}</p>
+                            {canMessageSeller && <MessageSellerLink item={{ product: item.id }} name={item.name} className="mt-2" />}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {qty > 0 ? (

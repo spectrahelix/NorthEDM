@@ -12,6 +12,7 @@ import { PaymentTimingNote } from "@/app/components/festdash/PaymentTimingNote";
 import { ShipTo, type ShipChoice } from "@/app/components/ShipTo";
 import { Price, ConversionNote } from "@/app/components/CurrencyContext";
 import { groupVariants } from "@/utils/productVariants";
+import { MessageSellerLink } from "@/app/components/MessageSellerLink";
 
 export type StoreProduct = {
   id: number; name: string; price_cents: number; vendor_name: string | null;
@@ -20,6 +21,7 @@ export type StoreProduct = {
   variant_of?: number | null; variant_label?: string | null;
   /** False = shown but not buyable: not on sale, or a limited stock that ran out. */
   available?: boolean;
+  canMessageSeller?: boolean;
 };
 
 type Wallet = { currency: string; numbers: { wave?: string | null; qmoney?: string | null; afrimoney?: string | null }; coordinator: string | null } | null;
@@ -223,6 +225,7 @@ export function StoreCart({
                     </div>
                   )}
                 </div>
+                {p.canMessageSeller && <MessageSellerLink item={{ product: p.id }} name={p.name} className="mt-2 w-full" />}
               </div>
             </div>
           );
