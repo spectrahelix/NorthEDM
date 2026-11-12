@@ -19,6 +19,8 @@ export type UserProfile = {
   artisan_status?: "none" | "pending" | "approved";
   stage_name?: string | null;
   artisan_craft?: string | null;
+  artisan_profession?: string | null;
+  artisan_specialty?: string | null;
   artisan_statement?: string | null;
   pronouns?: string | null;
   website?: string | null;
@@ -57,11 +59,11 @@ export type UserProfile = {
  * reach their owner only through the `my_private_profile()` RPC.
  */
 export const PROFILE_COLUMNS =
-  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, artisan_status, artisan_applied_at, stage_name, artisan_craft, artisan_statement, pronouns, website, socials, is_vendor, vendor_id, is_marketplace, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, username, username_chosen_at, extra_ranks, is_site_moderator";
+  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, artisan_status, artisan_applied_at, stage_name, artisan_craft, artisan_profession, artisan_specialty, artisan_statement, pronouns, website, socials, is_vendor, vendor_id, is_marketplace, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, username, username_chosen_at, extra_ranks, is_site_moderator";
 
 /** Existing anonymous column grants; never broaden profile access to render a public page. */
 export const PUBLIC_PROFILE_COLUMNS =
-  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, stage_name, artisan_craft, artisan_statement, pronouns, website, socials, is_vendor, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, extra_ranks, is_site_moderator";
+  "id, display_name, avatar_url, avatar_border, bio, home_city, role, created_at, avatar_config, is_artisan, stage_name, artisan_craft, artisan_profession, artisan_specialty, artisan_statement, pronouns, website, socials, is_vendor, is_festdash_vendor, is_promoter, is_founder, is_driver, is_forager, is_verified, hidden_tags, hide_shows, extra_ranks, is_site_moderator";
 
 // The ordered tag keys a profile has earned. Pass forum=true to drop any the
 // user chose to hide from the forum (they always show on their own profile).

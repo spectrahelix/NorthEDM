@@ -30,6 +30,8 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
 
   const [stageName, setStageName] = useState(profile.stage_name || "");
   const [craft, setCraft] = useState(profile.artisan_craft || "");
+  const [profession, setProfession] = useState(profile.artisan_profession ?? "");
+  const [specialty, setSpecialty] = useState(profile.artisan_specialty ?? "");
   const [statement, setStatement] = useState(profile.artisan_statement || "");
   const [socials, setSocials] = useState<Social[]>(
     Array.isArray(profile.socials) ? profile.socials : []
@@ -76,6 +78,8 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
       .update({
         stage_name: stageName.trim() || null,
         artisan_craft: craft || null,
+        artisan_profession: profession.trim() || null,
+        artisan_specialty: specialty.trim() || null,
         artisan_statement: statement.trim() || null,
         socials: cleanSocials,
         artisan_status: nextStatus,
@@ -204,7 +208,7 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
         </div>
         <div>
           <label className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">
-            Craft
+            Craft category
           </label>
           <select
             value={craft}
@@ -221,6 +225,30 @@ export function ArtisanEditor({ userId, profile }: { userId: string; profile: Us
           </select>
         </div>
       </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Profession</span>
+          <input
+            value={profession}
+            onChange={(e) => setProfession(e.target.value)}
+            maxLength={80}
+            placeholder="e.g. Voice actor, illustrator"
+            className="w-full rounded-xl border border-[#FFC93C22] bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus-visible:outline-[#FFC93C]"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Specialty</span>
+          <input
+            value={specialty}
+            onChange={(e) => setSpecialty(e.target.value)}
+            maxLength={120}
+            placeholder="e.g. Character voices and narration"
+            className="w-full rounded-xl border border-[#FFC93C22] bg-white/[0.03] px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600 focus-visible:outline-[#FFC93C]"
+          />
+        </label>
+      </div>
+      <p className="mt-2 text-xs text-neutral-400">These optional fields appear on your public Artisan profile and directory card.</p>
 
       {/* Statement */}
       <div className="mt-4">

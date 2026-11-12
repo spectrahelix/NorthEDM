@@ -2,12 +2,13 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AvatarBorder } from "@/app/components/AvatarBorder";
 import { RankBadge } from "@/app/components/RankBadge";
+import { ArtisanProfessionalDetails } from "@/app/components/ArtisanProfessionalDetails";
 import { PUBLIC_PROFILE_COLUMNS, type UserProfile, type ArtisanWork } from "@/utils/supabase/user-profiles";
 
 export const metadata = {
   title: "Artisans",
   description:
-    "Discover verified NorthEDM artisans — visual artists, musicians, crafters, and makers from the Northeast community. Preview their work.",
+    "Discover verified NorthEDM artisans and creative professionals from the Northeast community. Explore their work and specialties.",
 };
 
 export default async function ArtisansPage() {
@@ -55,8 +56,8 @@ export default async function ArtisansPage() {
             Makers of the Northeast
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-neutral-300">
-            Visual artists, musicians, crafters, and DIY makers from the NorthEDM community.
-            Verified creators with a peek at their work.
+            Visual artists, musicians, crafters, DIY makers, and other creative professionals from the NorthEDM community.
+            Explore their work and specialties.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
@@ -134,6 +135,7 @@ export default async function ArtisansPage() {
                     )}
                   </div>
                 </div>
+                <ArtisanProfessionalDetails profile={a} className="grid gap-2 px-4 pb-4" />
               </Link>
             ))}
           </div>
