@@ -57,28 +57,31 @@ export default function EditProfilePage() {
         supabase.from("user_profiles").select(PROFILE_COLUMNS).eq("id", user.id).single(),
         // Personal details come back only to their owner, through the RPC.
         supabase.rpc("my_private_profile"),
-      ]).then(([{ data }, { data: priv }]) => {
-          if (data) {
-            const p = { ...(data as UserProfile), ...((priv ?? {}) as Partial<UserProfile>) } as UserProfile;
-            setProfile(p);
-            setDisplayName(p.display_name);
-            setBio(p.bio);
-            setHomeCity(p.home_city);
-            setPronouns(p.pronouns || "");
-            setWebsite(p.website || "");
-            setAvatarBorder((p.avatar_border as BorderKey) || "moss");
-            setAvatarUrl(p.avatar_url);
-            setHiddenTags(Array.isArray(p.hidden_tags) ? p.hidden_tags : []);
-            setFullName(p.full_name || "");
-            setPhone(p.phone || "");
-            setAddress1(p.address_line1 || "");
-            setAddress2(p.address_line2 || "");
-            setCity(p.city || "");
-            setRegion(p.region || "");
-            setPostalCode(p.postal_code || "");
-          }
+      ]).then(([{ data, error: profileError }, { data: priv, error: privateError }]) => {
+        if (profileError || privateError || !data) {
+          setError("We couldn't load your profile. Refresh and try again.");
           setLoading(false);
-        });
+          return;
+        }
+        const p = { ...(data as UserProfile), ...((priv ?? {}) as Partial<UserProfile>) };
+        setProfile(p);
+        setDisplayName(p.display_name);
+        setBio(p.bio);
+        setHomeCity(p.home_city);
+        setPronouns(p.pronouns || "");
+        setWebsite(p.website || "");
+        setAvatarBorder((p.avatar_border as BorderKey) || "moss");
+        setAvatarUrl(p.avatar_url);
+        setHiddenTags(Array.isArray(p.hidden_tags) ? p.hidden_tags : []);
+        setFullName(p.full_name || "");
+        setPhone(p.phone || "");
+        setAddress1(p.address_line1 || "");
+        setAddress2(p.address_line2 || "");
+        setCity(p.city || "");
+        setRegion(p.region || "");
+        setPostalCode(p.postal_code || "");
+        setLoading(false);
+      });
     });
   }, [router]);
 
@@ -121,19 +124,11 @@ export default function EditProfilePage() {
     setError("");
     const supabase = createClient();
 
-    // Record old name in history before overwriting
-    if (displayName.trim() !== profile.display_name) {
-      await supabase.from("display_name_history").insert({
-        user_id: userId,
-        display_name: profile.display_name,
-      });
-      setProfile({ ...profile, display_name: displayName.trim() });
-    }
-
-    const { error: upsertError } = await supabase
+    // The row is created at signup. An upsert would require SELECT on the
+    // private checkout columns referenced by ON CONFLICT DO UPDATE.
+    const { data: updated, error: updateError } = await supabase
       .from("user_profiles")
-      .upsert({
-        id: userId,
+      .update({
         display_name: displayName.trim(),
         bio: bio.trim(),
         home_city: homeCity.trim(),
@@ -149,10 +144,13 @@ export default function EditProfilePage() {
         city: city.trim() || null,
         region: region.trim() || null,
         postal_code: postalCode.trim() || null,
-      });
+      })
+      .eq("id", userId)
+      .select("id")
+      .maybeSingle();
     setSaving(false);
-    if (upsertError) {
-      setError(upsertError.message);
+    if (updateError || !updated) {
+      setError("We couldn't save your profile. Please try again.");
       return;
     }
     setSaved(true);
@@ -410,7 +408,7 @@ export default function EditProfilePage() {
             </button>
             <button
               onClick={save}
-              disabled={saving || saved}
+              disabled={!profile || saving || saved}
               className="rounded-xl bg-[#39FF14] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Profile"}
