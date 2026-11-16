@@ -2,20 +2,20 @@
 
 _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and on demand with `node scripts/site-audit.mjs`. The weekly run also opens a dated GitHub issue labeled `weekly-audit` so nothing has to be checked by hand._
 
-**Last run:** 2026-11-09 18:44 UTC
+**Last run:** 2026-11-16 18:29 UTC
 **Health:** 🟢 All clear
 
 | Area | Result |
 | :-- | :-- |
-| Features (pages) | **90** routes (12 dynamic) |
-| API endpoints | **136** |
-| Users | **21** total · 2 new (7d) · 6 new (30d) |
-| Latest signup | 2026-11-03 (5d ago) |
+| Features (pages) | **93** routes (12 dynamic) |
+| API endpoints | **141** |
+| Users | **24** total · 3 new (7d) · 7 new (30d) |
+| Latest signup | 2026-11-13 (3d ago) |
 | Open bug/feedback reports | 0 of 13 total |
-| Security (npm audit) | 0 critical · 0 high · 10 moderate · 0 low |
+| Security (npm audit) | 0 critical · 0 high · 9 moderate · 0 low |
 | Wiring | ✅ consistent |
 | TypeScript | ✅ clean |
-| Migrations | 97 (latest: `20261106030000_revoke_trigger_fn_execute.sql`) |
+| Migrations | 104 (latest: `20261113162004_record_profile_display_name_changes.sql`) |
 | Env vars referenced | 27 |
 | TODO/FIXME | 0 |
 
@@ -24,7 +24,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 
 ---
 
-## Feature inventory (90 pages)
+## Feature inventory (93 pages)
 
 - `/[store]`
 - `/[store]/manage`
@@ -58,6 +58,8 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/apps-and-tools`
 - `/apps-and-tools/astrology-hebrew-numerology`
 - `/artisans`
+- `/audio/purchases`
+- `/audio/terms`
 - `/auth/finish`
 - `/avatar/builder`
 - `/crowdwave`
@@ -99,6 +101,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/promote`
 - `/promote/codes`
 - `/promote/dashboard`
+- `/promote/terms`
 - `/quote/[token]`
 - `/requests`
 - `/reset-password`
@@ -117,7 +120,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/verify-email`
 - `/wook-world`
 
-## API endpoints (136)
+## API endpoints (141)
 
 - `/api/admin/artisan`
 - `/api/admin/blocks`
@@ -149,6 +152,9 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/admin/username-nudge`
 - `/api/apps-tools/astrology-hebrew/calculate`
 - `/api/apps-tools/astrology-hebrew/resolve-place`
+- `/api/artisan/audio`
+- `/api/artisan/audio/purchases`
+- `/api/artisan/stripe`
 - `/api/auth/forgot-password`
 - `/api/auth/resend-confirmation`
 - `/api/auth/signup`
@@ -156,6 +162,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/billing/checkout`
 - `/api/billing/portal`
 - `/api/billing/status`
+- `/api/billing/upgrade`
 - `/api/booking`
 - `/api/cron/local-events`
 - `/api/cron/release-commissions`
@@ -222,6 +229,7 @@ _Living report. Regenerated weekly by `.github/workflows/weekly-audit.yml` and o
 - `/api/social/broadcast`
 - `/api/store-credit`
 - `/api/store/[slug]`
+- `/api/store/[slug]/catalog`
 - `/api/store/[slug]/checkout`
 - `/api/store/[slug]/logo`
 - `/api/store/[slug]/orders`
