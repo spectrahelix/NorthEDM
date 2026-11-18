@@ -2,19 +2,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-type Member = { id: string; display_name: string; username: string | null; role: string | null };
 type Campaign = { id: string; subject: string; created_at: string; delivered: number; skipped: number };
 type Template = { id: number; title: string; subject: string; body: string; active: boolean };
 type Settings = { enabled: boolean; sender_id: string | null };
 const input = "w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-neutral-100";
 export default function MemberMessagingPage() {
-  const [members,setMembers] = useState<Member[]>([]);
   const [campaigns,setCampaigns] = useState<Campaign[]>([]);
   const [templates,setTemplates] = useState<Template[]>([]);
   const [settings,setSettings] = useState<Settings>({ enabled:false,sender_id:null });
-  const [selected,setSelected] = useState<string[]>([]);
-  const [subject,setSubject] = useState("");
-  const [body,setBody] = useState("");
   const [busy,setBusy] = useState(false);
   const [loading,setLoading] = useState(true);
   const [message,setMessage] = useState("");
@@ -25,7 +20,7 @@ export default function MemberMessagingPage() {
     if ([401,403].includes(m.status) || [401,403].includes(w.status)) {setDenied(true);setLoading(false);return;}
     const [a,b] = await Promise.all([m.json(),w.json()]);
     if(!m.ok || !w.ok) {setMessage(a.error || b.error || "Could not load message settings.");setLoading(false);return;}
-    setMembers(a.members || []);setCampaigns(a.campaigns || []);setSettings(b.settings);setTemplates(b.templates || []);
+    setCampaigns(a.campaigns || []);setSettings(b.settings);setTemplates(b.templates || []);
     setLoading(false);
   },[]);
   useEffect(()=>{void load()},[load]);
@@ -40,16 +35,6 @@ export default function MemberMessagingPage() {
       return data;
     } catch(e) {setMessage(e instanceof Error?e.message:"Request failed");return null}
     finally{setBusy(false)}
-  }
-  async function send(){
-    if(!selected.length || !subject.trim() || !body.trim()) return;
-    if(!window.confirm(`Send a private message to ${selected.length} selected member(s)? Each recipient will get an individual DM. This cannot be undone.`)) return;
-    const result=await update("/api/admin/member-broadcasts",{subject,body,recipient_ids:selected});
-    if(result){
-      const r=result.results || {};
-      setMessage(`Announcement complete: ${r.delivered||0} delivered; ${r.opted_out||0} opted out, ${r.blocked||0} blocked, ${r.failed||0} failed.`);
-      setSelected([]);setSubject("");setBody("");
-    }
   }
   if(loading) return <main className="admin-surface min-h-screen p-10 text-neutral-300">Loading member messaging…</main>;
   if(denied) return <main className="admin-surface min-h-screen p-10 text-neutral-300">Administrator access required.</main>;
