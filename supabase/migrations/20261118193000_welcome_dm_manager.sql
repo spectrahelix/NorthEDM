@@ -60,6 +60,9 @@ begin
     select 1 from auth.users where id = p_recipient and email_confirmed_at is not null
   ) then return false; end if;
   if not exists (select 1 from public.user_profiles where id = p_recipient) then return false; end if;
+  if exists (select 1 from public.message_blocks where
+    (blocker_id=p_recipient and blocked_id=v_sender) or
+    (blocker_id=v_sender and blocked_id=p_recipient)) then return false; end if;
   if exists (select 1 from public.welcome_dm_deliveries where recipient_id=p_recipient) then return false; end if;
   select count(*) into v_count from public.welcome_dm_templates where active;
   if v_count=0 then return false; end if;
