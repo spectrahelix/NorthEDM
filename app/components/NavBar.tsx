@@ -15,10 +15,12 @@ import { NAV_LINKS } from "./navLinks";
 export function NavBar({
   userId,
   showAdmin,
+  showBroadcast = false,
   showVendorDash = false,
 }: {
   userId: string | null;
   showAdmin: boolean;
+  showBroadcast?: boolean;
   showVendorDash?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -87,6 +89,9 @@ export function NavBar({
               >
                 My Shop
               </Link>
+            )}
+            {showBroadcast && (
+              <Link href="/moderation/broadcasts" className="font-dm-mono text-xs uppercase tracking-widest text-[#3AFFD4]/80 transition hover:text-[#3AFFD4]">Broadcasts</Link>
             )}
             {showAdmin && (
               <Link
@@ -230,6 +235,9 @@ export function NavBar({
                       >
                         My Shop
                       </Link>
+                    )}
+                    {showBroadcast && (
+                      <Link href="/moderation/broadcasts" className="flex items-center rounded-xl px-4 py-3.5 text-base font-medium text-[#3AFFD4]/80 transition hover:bg-[#3AFFD4]/5 hover:text-[#3AFFD4]">DM Broadcasts</Link>
                     )}
                     {showAdmin && (
                       <Link
