@@ -101,13 +101,15 @@ export default async function RootLayout({
 
   let forumRole: string | null = null;
   let hasVendor = false;
+  let siteModerator = false;
   let usernamePrompt: { current: string | null; suggestion: string } | null = null;
   if (user) {
     const [{ data: userProfile }, { data: profileData }] = await Promise.all([
-      supabase.from("user_profiles").select("role, username, username_chosen_at").eq("id", user.id).single(),
+      supabase.from("user_profiles").select("role, username, username_chosen_at, is_site_moderator").eq("id", user.id).single(),
       supabase.from("user_profiles").select("vendor_id").eq("id", user.id).single(),
     ]);
     forumRole = userProfile?.role ?? null;
+    siteModerator = userProfile?.is_site_moderator === true;
     hasVendor = !!profileData?.vendor_id;
     // A profile that exists but was never given a chosen username gets the
     // one-time prompt (Google sign-ins, admin-created accounts).
@@ -122,6 +124,7 @@ export default async function RootLayout({
     forumRole === "warden" ||
     (user?.email === ADMIN_EMAIL);
 
+  const showBroadcast = showAdmin || siteModerator;
   const viewCurrency = await viewerCurrency();
   return (
     <html
@@ -185,7 +188,7 @@ export default async function RootLayout({
               </div>
             </Link>
 
-            <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} showVendorDash={hasVendor} />
+            <NavBar userId={user?.id ?? null} showAdmin={showAdmin ?? false} showBroadcast={showBroadcast} showVendorDash={hasVendor} />
           </div>
         </header>
         <SectionStrip />
