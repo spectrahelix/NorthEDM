@@ -6,6 +6,7 @@ import { BackBar } from "@/app/components/BackBar";
 import { createClient } from "@/utils/supabase/client";
 import { ComposeModal, type MessageDraft } from "./ComposeModal";
 import { MessageBlockButton } from "@/app/components/MessageBlockButton";
+import { AnnouncementPreference } from "./AnnouncementPreference";
 
 type Member = { id: string; display_name: string };
 
@@ -144,6 +145,7 @@ export function MessagesInbox({ userId, initialDraft, initialBlocked, contactNot
 
       <div className="mx-auto max-w-3xl px-6 py-8">
         {contactNotice && <p role="status" className="mb-4 rounded-xl border border-white/10 p-3 text-sm text-neutral-300">{contactNotice}</p>}
+        <AnnouncementPreference />
         <details className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm">
           <summary className="cursor-pointer text-neutral-300">Blocked accounts{blocked.length ? ` (${blocked.length})` : ""}</summary>
           {blocked.length === 0 ? <p className="mt-3 text-neutral-400">You haven&apos;t blocked any accounts.</p> : (
