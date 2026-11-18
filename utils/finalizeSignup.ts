@@ -3,6 +3,25 @@ import { awardReferralReward } from "@/utils/referrals";
 import { recordPromoterAttribution } from "@/utils/attribution";
 import { notifyNewSignup } from "@/utils/alerts";
 
+// Runs only when a member completes their first verified sign-in after account
+// creation. A claimed flag prevents repeat welcomes on future logins.
+async function maybeSendFirstWelcome(userId: string) {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } });
+    const { data: claimed, error: claimError } = await admin.from("user_profiles")
+      .update({ welcome_dm_checked_at: new Date().toISOString() })
+      .eq("id", userId).is("welcome_dm_checked_at", null).select("id").maybeSingle();
+    if (claimError) throw claimError;
+    if (!claimed) return;
+    const { error } = await admin.rpc("deliver_signup_welcome", { p_recipient: userId });
+    if (error) console.warn("First-time welcome DM failed:", error.message);
+  } catch (e) {
+    console.warn("First-time welcome DM unavailable:", e);
+  }
+}
+
 // Shared post-authentication handling, called from BOTH /auth/callback and
 // /auth/confirm so a signup is never silent regardless of which URL Supabase's
 // confirmation link uses. Seeds the profile for brand-new users, grants any
@@ -69,6 +88,7 @@ export async function finalizeAuthedUser(supabase: SupabaseClient, next?: string
     }
 
     await notifyNewSignup({ email: user.email ?? "", name: displayName });
+    await maybeSendFirstWelcome(user.id);
     // A caller that asked for a specific destination (the shop walkthrough)
     // gets it; everyone else starts at profile setup.
     return next && next !== "/feed" && !next.startsWith("/profile/edit") ? next : "/profile/edit?welcome=1";
@@ -91,5 +111,8 @@ export async function finalizeAuthedUser(supabase: SupabaseClient, next?: string
       });
     }
   }
+  // Email/password accounts were seeded before verification. The checked-at
+  // flag distinguishes their first confirmed sign-in from every later login.
+  await maybeSendFirstWelcome(user.id);
   return null;
 }
