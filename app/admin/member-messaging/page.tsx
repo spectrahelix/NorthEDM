@@ -84,36 +84,15 @@ export default function MemberMessagingPage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-2xl border border-[#3AFFD4]/25 bg-white/[0.02] p-5">
-        <h2 className="font-bebas text-2xl">Broadcast private messages</h2>
-        <p className="mt-2 text-sm text-neutral-400">Select members, preview the message, and confirm. Each eligible member receives an individual inbox message. Member block lists and announcement opt-outs are honored.</p>
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="block text-xs text-neutral-400">Subject<input className={`mt-1 ${input}`} maxLength={100} value={subject} onChange={e=>setSubject(e.target.value)} placeholder="NorthEDM community update"/></label>
-            <label className="mt-4 block text-xs text-neutral-400">Message<textarea className={`mt-1 min-h-40 ${input}`} maxLength={3000} value={body} onChange={e=>setBody(e.target.value)} placeholder="Hello NorthEDM community…"/></label>
-            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="font-dm-mono text-xs uppercase text-neutral-400">Message preview</p>
-              <strong className="mt-2 block text-sm">{subject||"Your announcement subject"}</strong>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-400">{body||"Your announcement will appear here."}</p>
-            </div>
-          </div>
-          <div>
-            <div className="flex flex-wrap justify-between gap-2">
-              <p className="font-dm-mono text-xs uppercase text-neutral-400">Recipients ({selected.length} selected)</p>
-              <button type="button" onClick={()=>setSelected(selected.length===Math.min(50,members.length)?[]:members.slice(0,50).map(m=>m.id))} className="text-xs text-[#3AFFD4] underline">{selected.length?"Clear / select first 50":"Select first 50"}</button>
-            </div>
-            <p className="mt-2 text-xs text-neutral-500">Maximum 50 members per broadcast. Review your audience before sending.</p>
-            <div className="mt-3 max-h-72 space-y-1 overflow-y-auto rounded-xl border border-white/10 p-2">
-              {members.map(m=><label key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/5">
-                <input type="checkbox" checked={selected.includes(m.id)} disabled={!selected.includes(m.id)&&selected.length>=50} onChange={e=>setSelected(old=>e.target.checked?[...old,m.id]:old.filter(id=>id!==m.id))}/>
-                <span className="min-w-0 truncate text-sm">{m.display_name||m.username||"Member"} <span className="text-xs text-neutral-500">{m.username?"@"+m.username:""}</span></span>
-              </label>)}
-              {!members.length && <p className="p-4 text-sm text-neutral-500">No other members found.</p>}
-            </div>
-            <button type="button" disabled={busy||!selected.length||!subject.trim()||!body.trim()}
-              onClick={()=>void send()} className="mt-4 w-full rounded-xl bg-[#3AFFD4] px-5 py-3 text-sm font-semibold text-black disabled:opacity-40">Review and send {selected.length} private DMs</button>
-          </div>
-        </div>
+      <section className="mt-8 grid gap-4 md:grid-cols-2">
+        <Link href="/moderation/broadcasts" className="rounded-2xl border border-[#3AFFD4]/25 bg-white/[0.02] p-6 hover:bg-white/[0.05]">
+          <h2 className="font-bebas text-2xl text-[#3AFFD4]">Broadcast private DMs</h2>
+          <p className="mt-2 text-sm text-neutral-400">Send to selected members, your own groups, or the whole community. No artificial recipient limit. Warden and Site Moderator roles can use this tool.</p>
+        </Link>
+        <Link href="/admin/member-messaging/groups" className="rounded-2xl border border-[#CC00FF]/25 bg-white/[0.02] p-6 hover:bg-white/[0.05]">
+          <h2 className="font-bebas text-2xl text-[#DCA5FF]">Manage member groups</h2>
+          <p className="mt-2 text-sm text-neutral-400">Create private admin-defined groups and organize members for targeted broadcasts. A member can belong to multiple groups.</p>
+        </Link>
       </section>
       <section className="mt-8 rounded-2xl border border-white/10 p-5">
         <h2 className="font-bebas text-2xl">Recent announcements</h2>
