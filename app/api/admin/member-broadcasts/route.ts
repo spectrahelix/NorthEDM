@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminGuard } from "@/utils/admin";
+import { broadcastGuard } from "@/utils/broadcastGuard";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function GET(req: NextRequest) {
-  const g = await adminGuard();
+  const g = await broadcastGuard();
   if (!g.ok) return NextResponse.json({ error: g.error }, { status: g.status });
 
   // Pagination is for screen rendering, not a limit on who can receive a broadcast.
@@ -29,11 +29,11 @@ export async function GET(req: NextRequest) {
     ]);
     return { ...campaign, delivered: success.count ?? 0, skipped: skipped.count ?? 0 };
   }));
-  return NextResponse.json({ members: (members || []).filter(m => m.id !== g.userId), count: count ?? 0, page, groups: groups ?? [], campaigns: counts });
+  return NextResponse.json({ members: (members || []).filter(m => m.id !== g.userId), count: count ?? 0, page, groups: groups ?? [], campaigns: counts, canManageGroups: g.canManageGroups, role: g.role });
 }
 
 export async function POST(req: Request) {
-  const g = await adminGuard();
+  const g = await broadcastGuard();
   if (!g.ok) return NextResponse.json({ error: g.error }, { status: g.status });
   const body = await req.json().catch(() => ({}));
   const subject = typeof body.subject === "string" ? body.subject.trim() : "";
