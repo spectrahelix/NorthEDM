@@ -70,6 +70,8 @@ export default function AdminSocialPage() {
           <a href="/social" target="_blank" rel="noopener noreferrer" className="text-[#3AFFD4] hover:underline">/social</a> hub.
         </p>
 
+        <a href="/admin/social/command-center" className="mt-6 inline-flex items-center rounded-xl border border-[#CC00FF]/40 bg-[#CC00FF]/10 px-5 py-3 font-dm-mono text-sm text-[#E3A5FF] transition hover:bg-[#CC00FF]/20">✦ Open Social Command Center — drafts, approvals, schedule &amp; Muse handoff →</a>
+
         {/* Composer */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="mb-3 font-dm-mono text-xs uppercase tracking-widest text-neutral-500">Broadcast a post</p>
